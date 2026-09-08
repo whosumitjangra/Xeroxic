@@ -6,5 +6,13 @@
     "salt": "f3ec8aa8d1e42e230a2b20fae493a626",
     "passwordHash": "8d49e83eebb564ec9bc6f4daca34cc9bae08dce71039a9ab6c317da7e1082dc0eabd38a7f026ae355e269414c15ed9fdc1c64bfb6571754bda924a36d263d56c",
     "createdAt": "2026-09-01T13:14:11.719Z"
+  },
+  {
+    "id": "b4fb3022eb028f81",
+    "name": "sumit",
+    "email": "sumitjangra805@gmail.com",
+    "salt": "36e8e4772ac418eadf3c8e526f5aa6df",
+    "passwordHash": "66b7033b119d0189843335e1475544f9322599eee336af5295ab45cd2831fd6024dd8c9b2ad0a9ba1b5e84432cf2bd931c28bb264c3c12f51957ec15ed5b7f12",
+    "createdAt": "2026-09-08T10:00:03.416Z"
   }
 ]
