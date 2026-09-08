@@ -4,6 +4,7 @@
   "description": "Xerox Centre — Print management web application for AIT Pune",
   "main": "server.js",
   "scripts": {
+    "build": "echo 'Build complete'",
     "start": "node server.js",
     "dev": "node server.js",
     "test": "node test/serverless-test.js"
