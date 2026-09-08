@@ -1,10 +1,18 @@
 {
   "version": 2,
+  "outputDirectory": "public",
   "functions": {
     "api/index.js": {
       "includeFiles": "data/**,public/**,uploads/**"
     }
   },
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/index.html",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/api",
@@ -13,10 +21,6 @@
     {
       "source": "/api/(.*)",
       "destination": "/api/index.js?__route=$1"
-    },
-    {
-      "source": "/",
-      "destination": "/index.html"
     }
   ]
 }
