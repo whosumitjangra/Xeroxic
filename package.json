@@ -1,0 +1,22 @@
+{
+  "name": "xerox-centre",
+  "version": "1.0.0",
+  "description": "Xerox Centre — Print management web application for AIT Pune",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node test/serverless-test.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "xerox",
+    "print-centre",
+    "fullstack",
+    "vercel"
+  ],
+  "author": "Sumit",
+  "license": "ISC"
+}

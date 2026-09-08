@@ -1,0 +1,553 @@
+:root{
+  --green: #5cb85c;
+  --green-dark: #4a9d4a;
+  --teal: #4fa89b;
+  --blue: #a3d3f0;
+  --pink: #f5e6e8;
+  --upload-green: #7de89a;
+  --ink: #16211c;
+  --paper: #ffffff;
+  --info-bg: #eaf5f2;
+}
+*{ box-sizing: border-box; }
+body{
+  margin:0;
+  font-family: 'Poppins', sans-serif;
+  background: #eef3ee;
+  color: var(--ink);
+  min-height: 100vh;
+}
+.page{ display:none; max-width: 1200px; margin: 0 auto; padding: 0 24px 60px; }
+.page.active{ display:block; }
+
+/* Header */
+header{
+  background: var(--green);
+  border-radius: 0 0 32px 32px;
+  padding: 18px 32px;
+  display:flex;
+  align-items:center;
+  gap: 20px;
+  margin-bottom: 40px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+}
+header.light{
+  background: var(--info-bg);
+  border: 2px solid var(--ink);
+  border-bottom: none;
+}
+.logo{
+  width: 46px; height:46px; background:#fff; border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  font-size: 22px; flex-shrink:0; overflow:hidden;
+}
+.logo img{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.search{
+  flex:1; max-width: 420px;
+  padding: 10px 16px; border-radius: 20px; border:none;
+  font-family:'Poppins'; font-size:14px;
+}
+.spacer{ flex:1; }
+.brand{ color:#fff; text-align:left; }
+.brand .title{ font-weight:700; font-size:15px; letter-spacing:0.5px; }
+.brand .sub{ font-size:11px; opacity:0.9; }
+.icon-btn{
+  width:38px; height:38px; border-radius:50%;
+  background: rgba(255,255,255,0.35);
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size:16px; cursor:pointer; border:none;
+}
+.welcome-name{
+  color:#fff;
+  font-weight:600;
+  font-size:14px;
+  white-space:nowrap;
+}
+.signin{
+  background:#fff; color: var(--green-dark); font-weight:600;
+  border:none; padding: 10px 20px; border-radius: 20px; cursor:pointer; font-family:'Poppins';
+}
+.back-btn{
+  display:inline-flex; align-items:center; gap:8px;
+  background:transparent; border:none; color: var(--ink);
+  font-family:'Poppins'; font-weight:600; font-size:14px;
+  cursor:pointer; margin-bottom: 18px; padding: 8px 0;
+}
+.back-btn:hover{ text-decoration: underline; }
+
+h1.page-title{
+  font-family: 'Caveat', cursive;
+  font-size: 64px;
+  text-align:center;
+  margin: 0 0 46px;
+  font-weight: 700;
+}
+h1.centre-title{
+  font-family: 'Caveat', cursive;
+  font-size: 40px;
+  margin: 4px 0 0;
+  font-weight: 700;
+}
+
+/* Dock cards */
+.dock{
+  display:flex;
+  justify-content:center;
+  gap: 40px;
+  padding: 40px 0;
+  flex-wrap: wrap;
+}
+.card{
+  width: 260px;
+  height: 340px;
+  border-radius: 22px;
+  padding: 28px;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  cursor:pointer;
+  border:none;
+  text-align:left;
+  font-family:'Poppins';
+  color:#fff;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.10);
+  filter: blur(0);
+  transform: scale(1) translateY(0);
+  transition: transform 0.28s cubic-bezier(.2,.9,.3,1.3), box-shadow 0.28s ease, filter 0.28s ease;
+  transform-origin: bottom center;
+}
+.card:nth-child(3){ color: var(--ink); }
+
+.card.is-dimmed{
+  transform: scale(0.94) translateY(0);
+  filter: blur(4px);
+}
+.card.is-active{
+  transform: scale(1.12) translateY(-18px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.22);
+  filter: blur(0);
+  z-index: 5;
+}
+.card:focus-visible{ outline: 3px solid var(--ink); outline-offset: 4px; }
+.card.teal{ background: var(--teal); }
+.card.blue{ background: var(--blue); }
+.card.pink{ background: var(--pink); }
+.card .card-title{
+  font-family:'Caveat', cursive;
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.card .card-desc{ font-size: 14px; line-height:1.4; opacity:0.95; }
+
+/* Print Centre page */
+.pc-grid{
+  display:grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 28px;
+  margin-top: 10px;
+}
+@media (max-width: 760px){ .pc-grid{ grid-template-columns: 1fr; } }
+
+.dropzone{
+  background: var(--upload-green);
+  border-radius: 20px;
+  min-height: 460px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap: 20px;
+  padding: 30px;
+  text-align:center;
+  transition: background 0.2s ease, transform 0.15s ease;
+  cursor: pointer;
+}
+.dropzone.dragover{ background:#5fe083; transform: scale(1.01); }
+.dropzone svg{ width: 130px; height: 110px; }
+.dropzone p{ font-size: 20px; font-weight:500; margin:0; }
+.upload-btn{
+  background: #3d2b28;
+  color:#fff;
+  border:none;
+  padding: 16px 34px;
+  border-radius: 14px;
+  font-family:'Poppins';
+  font-size: 18px;
+  font-weight:600;
+  cursor:pointer;
+}
+.upload-btn:hover{ background:#2c1f1d; }
+.upload-btn:disabled{ opacity:0.6; cursor:not-allowed; }
+.file-input{ display:none; }
+.upload-status{
+  font-size: 13px;
+  font-weight:500;
+  margin:0;
+  min-height: 16px;
+}
+
+.info-box{
+  border: 2.5px solid var(--ink);
+  border-radius: 20px;
+  padding: 28px 24px;
+  font-size: 16px;
+  line-height:1.5;
+}
+.info-box p{ margin: 0 0 30px; }
+.info-box p:last-child{ margin-bottom:0; }
+
+.file-list{
+  margin-top: 4px;
+  text-align:left;
+  width:100%;
+  max-width: 420px;
+}
+.file-list .file-item{
+  background: rgba(255,255,255,0.7);
+  border-radius: 10px;
+  padding: 8px 14px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap: 10px;
+}
+.file-item .file-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.file-item .file-actions{ display:flex; gap: 8px; flex-shrink:0; }
+.file-item button{
+  background:none; border:none; cursor:pointer; font-size:14px; color:#3d2b28;
+}
+
+.visually-hidden{
+  position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);
+}
+
+/* ---------------- Auth pages (Login / Signup) ---------------- */
+.auth-wrap{
+  min-height: 100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 24px;
+  background: linear-gradient(180deg, var(--green) 0%, #eef3ee 55%);
+}
+.auth-card{
+  background: #fff;
+  width: 100%;
+  max-width: 380px;
+  border-radius: 24px;
+  padding: 36px 32px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+  text-align:center;
+}
+.auth-logo{
+  width: 64px; height:64px;
+  margin: 0 auto 12px;
+  display:flex; align-items:center; justify-content:center;
+}
+.auth-logo img{ width:100%; height:100%; object-fit:contain; }
+.auth-title{
+  font-family:'Caveat', cursive;
+  font-size: 40px;
+  margin: 0 0 4px;
+  font-weight:700;
+}
+.auth-sub{
+  font-size: 13px;
+  color: #666;
+  margin: 0 0 26px;
+}
+.auth-label{
+  display:block;
+  text-align:left;
+  font-size: 13px;
+  font-weight:600;
+  margin: 14px 0 6px;
+}
+.auth-input{
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #dde5de;
+  font-family:'Poppins';
+  font-size: 14px;
+  outline:none;
+  transition: border-color 0.15s ease;
+}
+.auth-input:focus{ border-color: var(--teal); }
+.auth-error{
+  color: #c0392b;
+  font-size: 12.5px;
+  min-height: 16px;
+  margin: 10px 0 0;
+  text-align:left;
+}
+.auth-btn{
+  width: 100%;
+  margin-top: 20px;
+  background: var(--green);
+  color:#fff;
+  border:none;
+  padding: 13px;
+  border-radius: 14px;
+  font-family:'Poppins';
+  font-size: 15px;
+  font-weight:600;
+  cursor:pointer;
+  transition: background 0.15s ease;
+}
+.auth-btn:hover{ background: var(--green-dark); }
+.auth-switch{
+  margin-top: 20px;
+  font-size: 13px;
+  color:#555;
+}
+.auth-switch a{ color: var(--green-dark); font-weight:600; text-decoration:none; }
+.auth-switch a:hover{ text-decoration: underline; }
+
+/* ---------------- Track link (header) ---------------- */
+.track-link{
+  background: rgba(255,255,255,0.35);
+  color:#fff;
+  border:none;
+  padding: 9px 16px;
+  border-radius: 18px;
+  font-family:'Poppins';
+  font-size: 13px;
+  font-weight:600;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.track-link:hover{ background: rgba(255,255,255,0.5); }
+
+/* ---------------- Proceed to print options ---------------- */
+.proceed-wrap{
+  text-align:center;
+  margin-top: 24px;
+}
+
+/* ---------------- Print Options page ---------------- */
+#order-items{
+  display:flex;
+  flex-direction:column;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+.order-item{
+  background:#fff;
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  display:grid;
+  grid-template-columns: 1.4fr 1fr 1fr 0.8fr;
+  gap: 20px;
+  align-items:start;
+}
+@media (max-width: 800px){ .order-item{ grid-template-columns: 1fr; } }
+
+.order-item .file-preview{
+  display:flex;
+  align-items:center;
+  gap: 12px;
+}
+.order-item .file-icon{
+  width: 46px; height: 56px;
+  background: var(--info-bg);
+  border: 1.5px solid var(--teal);
+  border-radius: 6px;
+  display:flex; align-items:center; justify-content:center;
+  font-size: 20px;
+  flex-shrink:0;
+}
+.order-item .file-preview img{
+  width: 46px; height: 56px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1.5px solid var(--teal);
+}
+.order-item .file-meta .fname{
+  font-weight:600;
+  font-size: 14px;
+  word-break: break-word;
+}
+.order-item .fsize{
+  font-size: 12px;
+  color: #777;
+}
+
+.opt-group label.opt-label{
+  display:block;
+  font-size: 12px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing: 0.4px;
+  color: #555;
+  margin-bottom: 8px;
+}
+.opt-group .radio-row{
+  display:flex;
+  flex-direction:column;
+  gap: 6px;
+}
+.opt-group .radio-row label{
+  display:flex;
+  align-items:center;
+  gap: 6px;
+  font-size: 13.5px;
+  cursor:pointer;
+}
+
+.pages-input-wrap label.opt-label{
+  display:block;
+  font-size: 12px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing: 0.4px;
+  color: #555;
+  margin-bottom: 8px;
+}
+.pages-input{
+  width: 80px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid #dde5de;
+  font-family:'Poppins';
+  font-size: 14px;
+}
+.line-price{
+  font-weight:700;
+  font-size: 15px;
+  color: var(--green-dark);
+  text-align:right;
+}
+
+.price-summary{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  background: var(--info-bg);
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  padding: 18px 24px;
+  font-size: 18px;
+  font-weight:700;
+  margin: 20px 0;
+}
+
+/* ---------------- Payment page ---------------- */
+.payment-card{
+  background:#fff;
+  max-width: 420px;
+  margin: 0 auto;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+.payment-amount{
+  font-size: 16px;
+  font-weight:600;
+  margin: 0 0 6px;
+  text-align:center;
+}
+.payment-row{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.payment-note{
+  font-size: 11.5px;
+  color: #888;
+  margin: 16px 0 0;
+  line-height:1.4;
+}
+
+/* ---------------- Confirmation page ---------------- */
+.confirm-card{
+  background:#fff;
+  max-width: 520px;
+  margin: 0 auto;
+  border-radius: 20px;
+  padding: 36px;
+  text-align:center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+.confirm-label{
+  font-size: 13px;
+  color:#777;
+  margin:0;
+}
+.confirm-token{
+  font-family:'Caveat', cursive;
+  font-size: 48px;
+  font-weight:700;
+  color: var(--green-dark);
+  margin: 4px 0 6px;
+}
+.confirm-sub{
+  font-size: 12.5px;
+  color:#888;
+  margin: 0 0 24px;
+}
+#confirm-items{
+  text-align:left;
+  margin-bottom: 10px;
+}
+#confirm-items .confirm-line{
+  display:flex;
+  justify-content:space-between;
+  font-size: 13.5px;
+  padding: 6px 0;
+  border-bottom: 1px dashed #e0e0e0;
+}
+.confirm-actions{
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* ---------------- Track Order page ---------------- */
+.track-card{
+  background:#fff;
+  max-width: 480px;
+  margin: 0 auto;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+.track-input-row{
+  display:flex;
+  gap: 10px;
+  align-items:flex-start;
+}
+.track-input-row .auth-input{ flex:1; }
+.track-input-row .upload-btn{
+  padding: 12px 20px;
+  font-size: 14px;
+  white-space:nowrap;
+}
+#track-result{ margin-top: 20px; }
+.status-badge{
+  display:inline-block;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight:700;
+  background: var(--info-bg);
+  color: var(--green-dark);
+  border: 1.5px solid var(--teal);
+  margin-bottom: 14px;
+}
+.track-order-id{
+  font-family:'Caveat', cursive;
+  font-size: 30px;
+  font-weight:700;
+  margin: 0 0 4px;
+}

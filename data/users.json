@@ -1,0 +1,10 @@
+[
+  {
+    "id": "a0917905d678f44e",
+    "name": "Sumit",
+    "email": "sumit345jangra@gmail.com",
+    "salt": "f3ec8aa8d1e42e230a2b20fae493a626",
+    "passwordHash": "8d49e83eebb564ec9bc6f4daca34cc9bae08dce71039a9ab6c317da7e1082dc0eabd38a7f026ae355e269414c15ed9fdc1c64bfb6571754bda924a36d263d56c",
+    "createdAt": "2026-09-01T13:14:11.719Z"
+  }
+]

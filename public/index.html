@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xerox Centre — AIT Pune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- DASHBOARD PAGE -->
+<div class="page active" id="dashboard">
+  <header>
+    <div class="logo"><img src="logo.gif" alt="AIT Pune Logo"></div>
+    <input class="search" type="text" placeholder="Search projects, reports, or assets...">
+    <div class="spacer"></div>
+    <div class="brand">
+      <div class="title">XEROX CENTRE</div>
+      <div class="sub">AIT, PUNE</div>
+    </div>
+    <button class="icon-btn" aria-label="Notifications">🔔</button>
+    <button class="track-link" data-target="trackorder">Track Order</button>
+    <span class="welcome-name" id="welcome-name"></span>
+    <button class="signin" id="auth-btn">Sign In</button>
+  </header>
+
+  <h1 class="page-title">Dashboard</h1>
+
+  <div class="dock">
+    <button class="card teal" data-target="printcentre">
+      <div class="card-title">Print Centre</div>
+      <div class="card-desc">Upload your document here.</div>
+    </button>
+    <button class="card blue" data-alert="Assignments page coming soon!">
+      <div class="card-title">Assignments</div>
+      <div class="card-desc">Check for upcoming assignment.</div>
+    </button>
+    <button class="card pink" data-alert="About Us page coming soon!">
+      <div class="card-title">About Us</div>
+      <div class="card-desc"></div>
+    </button>
+  </div>
+</div>
+
+<!-- PRINT CENTRE PAGE -->
+<div class="page" id="printcentre">
+  <header class="light">
+    <h2 class="centre-title">Print Centre</h2>
+  </header>
+
+  <button class="back-btn" data-target="dashboard">← Back to Dashboard</button>
+
+  <div class="pc-grid">
+    <div class="dropzone" id="dropzone">
+      <svg viewBox="0 0 300 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="90" y="70" width="120" height="80" rx="10" fill="#e9e9e9" stroke="#16211c" stroke-width="4"/>
+        <rect x="80" y="58" width="120" height="80" rx="10" fill="#f4f4f4" stroke="#16211c" stroke-width="4"/>
+        <rect x="70" y="46" width="120" height="80" rx="10" fill="#ffffff" stroke="#16211c" stroke-width="4"/>
+        <circle cx="130" cy="86" r="7" fill="#cfcfcf" stroke="#16211c" stroke-width="3"/>
+        <path d="M20 150 L95 100 L100 108 L28 158 Z" fill="#ffffff" stroke="#16211c" stroke-width="4" stroke-linejoin="round"/>
+        <rect x="185" y="150" width="70" height="55" rx="8" fill="none" stroke="#16211c" stroke-width="3" stroke-dasharray="6 6"/>
+        <path d="M220 165 V190 M210 180 L220 192 L230 180" stroke="#16211c" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <p id="dz-text">Drag and drop your files here</p>
+      <button class="upload-btn" id="upload-trigger">Upload Your Files</button>
+      <input type="file" class="file-input" id="file-input" multiple>
+      <p class="upload-status" id="upload-status"></p>
+      <div class="file-list" id="file-list"></div>
+    </div>
+
+    <div class="info-box">
+      <p>We support all popular formats like PDF, JPG, PNG, JPEG etc</p>
+      <p>Maximum upload file size: 50 MB<br>Maximum files: 15</p>
+    </div>
+  </div>
+
+  <div class="proceed-wrap" id="proceed-wrap" style="display:none;">
+    <button class="upload-btn" id="proceed-btn">Proceed to Print Options →</button>
+  </div>
+</div>
+
+<!-- PRINT OPTIONS PAGE -->
+<div class="page" id="printoptions">
+  <header class="light">
+    <h2 class="centre-title">Print Options</h2>
+  </header>
+
+  <button class="back-btn" data-target="printcentre">← Back to Print Centre</button>
+
+  <div id="order-items"></div>
+
+  <div class="price-summary">
+    <span>Total Amount</span>
+    <span id="order-total">₹0</span>
+  </div>
+
+  <p class="auth-error" id="order-error"></p>
+
+  <button class="upload-btn" id="submit-order-btn">Proceed to Payment →</button>
+</div>
+
+<!-- PAYMENT PAGE -->
+<div class="page" id="payment">
+  <header class="light">
+    <h2 class="centre-title">Payment</h2>
+  </header>
+
+  <button class="back-btn" data-target="printoptions">← Back to Print Options</button>
+
+  <div class="payment-card">
+    <p class="payment-amount">Amount to pay: <span id="payment-total">₹0</span></p>
+
+    <label class="auth-label">Name on Card</label>
+    <input class="auth-input" type="text" id="pay-name" placeholder="Your name">
+
+    <label class="auth-label">Card Number</label>
+    <input class="auth-input" type="text" id="pay-card" placeholder="1234 5678 9012 3456" maxlength="19">
+
+    <div class="payment-row">
+      <div>
+        <label class="auth-label">Expiry</label>
+        <input class="auth-input" type="text" id="pay-expiry" placeholder="MM/YY" maxlength="5">
+      </div>
+      <div>
+        <label class="auth-label">CVV</label>
+        <input class="auth-input" type="text" id="pay-cvv" placeholder="123" maxlength="3">
+      </div>
+    </div>
+
+    <p class="payment-note">This is a demo payment form — no real transaction happens, and no real card details are sent anywhere.</p>
+
+    <button class="upload-btn" id="pay-btn">Pay <span id="pay-btn-amount">₹0</span></button>
+  </div>
+</div>
+
+<!-- CONFIRMATION PAGE -->
+<div class="page" id="confirmation">
+  <header class="light">
+    <h2 class="centre-title">Order Confirmed 🎉</h2>
+  </header>
+
+  <div class="confirm-card">
+    <p class="confirm-label">Your Order ID</p>
+    <p class="confirm-token" id="confirm-token">ORD-XXXXXX</p>
+    <p class="confirm-sub">Save this ID — you'll need it to track your order.</p>
+
+    <div id="confirm-items"></div>
+
+    <div class="price-summary">
+      <span>Total Paid</span>
+      <span id="confirm-total">₹0</span>
+    </div>
+
+    <div class="confirm-actions">
+      <button class="upload-btn" id="track-this-btn">Track This Order</button>
+      <button class="back-btn" data-target="dashboard">← Back to Dashboard</button>
+    </div>
+  </div>
+</div>
+
+<!-- TRACK ORDER PAGE -->
+<div class="page" id="trackorder">
+  <header class="light">
+    <h2 class="centre-title">Track Your Order</h2>
+  </header>
+
+  <button class="back-btn" data-target="dashboard">← Back to Dashboard</button>
+
+  <div class="track-card">
+    <label class="auth-label">Enter Order ID</label>
+    <div class="track-input-row">
+      <input class="auth-input" type="text" id="track-input" placeholder="ORD-XXXXXX">
+      <button class="upload-btn" id="track-btn">Track</button>
+    </div>
+    <p class="auth-error" id="track-error"></p>
+
+    <div id="track-result"></div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
