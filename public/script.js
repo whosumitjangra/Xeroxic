@@ -22,21 +22,30 @@ async function checkAuth() {
         window.location.href = 'login.html';
       };
     }
-    if (data.role === 'admin') {
+    if (data.role === 'admin' || data.role === 'superadmin') {
       let adminLink = document.getElementById('admin-portal-link');
       if (!adminLink) {
         adminLink = document.createElement('button');
         adminLink.id = 'admin-portal-link';
         adminLink.className = 'signin secondary-btn';
         adminLink.style.marginRight = '8px';
-        adminLink.textContent = '🛡️ Admin Portal';
-        adminLink.onclick = () => window.location.href = 'admin.html';
+        if (data.role === 'superadmin') {
+          adminLink.style.background = '#7c3aed';
+          adminLink.style.color = '#fff';
+          adminLink.textContent = '👑 Super Admin';
+          adminLink.onclick = () => window.location.href = '/super-admin';
+        } else {
+          adminLink.textContent = '🛡️ Admin Portal';
+          adminLink.onclick = () => window.location.href = '/admin/dashboard';
+        }
         const header = document.querySelector('header');
         if (header && authBtn) {
           header.insertBefore(adminLink, authBtn);
         }
       }
     }
+    fetchLivePricing();
+    loadMyOrders();
     return data;
   } catch (err) {
     window.location.href = 'login.html';
@@ -65,6 +74,8 @@ function showPage(pageId) {
     loadAssignments();
   } else if (pageId === 'payment') {
     initPaymentPage();
+  } else if (pageId === 'trackorder') {
+    loadMyOrders();
   }
 }
 
@@ -277,12 +288,24 @@ function renderFiles(files) {
 // PRINT OPTIONS / ORDER FLOW
 // ===================================================================
 
-const PRICE_TABLE = {
+let PRICE_TABLE = {
   'bw-single': 2,
   'bw-double': 3,
   'color-single': 5,
   'color-double': 8
 };
+
+async function fetchLivePricing() {
+  try {
+    const res = await fetch('/api/pricing');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data === 'object') {
+        Object.assign(PRICE_TABLE, data);
+      }
+    }
+  } catch (err) {}
+}
 
 let orderDraft = []; // built when Print Options page loads
 
@@ -407,15 +430,19 @@ function initPaymentPage() {
     intentLink.href = upiUri;
   }
 
-  // Render QR Code
+  // Render Google Pay QR Code
   const qrContainer = document.getElementById('upi-qr-container');
   if (qrContainer) {
-    const encoded = encodeURIComponent(upiUri);
     qrContainer.innerHTML = `
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encoded}&color=16211c"
-           alt="UPI Payment QR Code"
-           class="upi-qr-img"
-           onerror="this.onerror=null; this.src='https://chart.googleapis.com/chart?cht=qr&chs=180x180&chl=${encoded}';">
+      <div style="display:flex; flex-direction:column; align-items:center;">
+        <img src="gpay-qr.jpg"
+             alt="Google Pay UPI QR Code"
+             class="upi-qr-img"
+             style="max-width:200px; width:100%; border-radius:12px; border:1.5px solid #dce5dc; box-shadow:0 4px 14px rgba(0,0,0,0.06);">
+        <div style="margin-top:8px; font-size:12px; color:#2b7a2b; font-weight:600; text-align:center;">
+          ⚡ Scan to Pay ₹${total} via Google Pay or Any UPI App
+        </div>
+      </div>
     `;
   }
 
@@ -550,11 +577,34 @@ document.getElementById('track-btn')?.addEventListener('click', () => {
   trackOrder(id);
 });
 
+function formatStudentStatus(status) {
+  if (status === 'Ready for Collection' || status === 'Ready for Pickup') {
+    return {
+      label: '🎉 Printed — You can come and collect!',
+      sub: 'Your document has been printed and is ready at the Xerox counter! Please collect it at your convenience.',
+      style: 'background:#e8f8f0; color:#059669; border:1.5px solid #a7f3d0;'
+    };
+  }
+  if (status === 'Collected' || status === 'Completed') {
+    return {
+      label: '✅ Collected',
+      sub: 'This order has been picked up from the counter. Thank you!',
+      style: 'background:#f3f4f6; color:#4b5563; border:1.5px solid #e5e7eb;'
+    };
+  }
+  // Default for New, Accepted, Printing, Order Received, Printing in Progress
+  return {
+    label: '⏳ Waiting',
+    sub: 'Your order is currently in queue / being printed. Please wait.',
+    style: 'background:#fff8e7; color:#d97706; border:1.5px solid #fde68a;'
+  };
+}
+
 async function trackOrder(orderId) {
   const errorEl = document.getElementById('track-error');
   const resultEl = document.getElementById('track-result');
   errorEl.textContent = '';
-  resultEl.innerHTML = 'Looking up order...';
+  resultEl.innerHTML = '<div style="color:#6c8072; font-size:14px;">Looking up order details...</div>';
 
   try {
     const res = await fetch('/api/orders/' + encodeURIComponent(orderId));
@@ -562,22 +612,28 @@ async function trackOrder(orderId) {
 
     if (!res.ok) {
       resultEl.innerHTML = '';
-      errorEl.textContent = data.error || 'Order not found.';
+      errorEl.textContent = data.error || 'Order not found. Please verify Order ID.';
       return;
     }
 
     let itemsHTML = '';
-    data.items.forEach(i => {
-      itemsHTML += `<div class="confirm-line"><span>${i.originalName} (${i.pages}p, ${i.sides}, ${i.color})</span><span>₹${i.price}</span></div>`;
+    (data.items || []).forEach(i => {
+      const specs = `${i.color === 'color' ? 'Color' : 'B&W'}, ${i.sides === 'double' ? 'Double-sided' : 'Single-sided'}, ${i.pages}p`;
+      itemsHTML += `<div class="confirm-line"><span>${i.originalName} (${specs})</span><span>₹${i.price}</span></div>`;
     });
 
+    const studentStatus = formatStudentStatus(data.status);
+
     resultEl.innerHTML = `
-      <div class="status-badge">${data.status}</div>
-      <p class="track-order-id">${data.orderId}</p>
-      <p class="fsize">Placed on ${new Date(data.createdAt).toLocaleString()}</p>
+      <div class="status-badge" style="${studentStatus.style}; font-size:14px; padding:8px 14px; display:inline-block; border-radius:12px; margin-bottom:10px;">
+        ${studentStatus.label}
+      </div>
+      <p style="font-size:13.5px; color:#4a5e50; margin:0 0 14px 0;">${studentStatus.sub}</p>
+      <p class="track-order-id" style="font-size:18px; font-weight:700; margin:0 0 4px 0;">${data.orderId}</p>
+      <p class="fsize" style="color:#7b9183; font-size:12px; margin:0 0 14px 0;">Placed on ${new Date(data.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p>
       <div style="margin-top:14px;">${itemsHTML}</div>
       <div class="price-summary" style="margin-top:14px;">
-        <span>Total</span><span>₹${data.total}</span>
+        <span>Total Paid</span><span>₹${data.total}</span>
       </div>
     `;
   } catch (err) {
@@ -585,6 +641,82 @@ async function trackOrder(orderId) {
     errorEl.textContent = 'Could not reach the server.';
   }
 }
+
+// ---------- Load Student's Previous Orders ----------
+async function loadMyOrders() {
+  const loadingEl = document.getElementById('my-orders-loading');
+  const listEl = document.getElementById('my-orders-list');
+  const emptyEl = document.getElementById('my-orders-empty');
+  if (!listEl) return;
+
+  if (loadingEl) loadingEl.style.display = 'block';
+  listEl.innerHTML = '';
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/orders');
+    if (!res.ok) throw new Error('Failed to fetch orders');
+    const data = await res.json();
+    const orders = data.orders || [];
+
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    if (orders.length === 0) {
+      if (emptyEl) emptyEl.style.display = 'block';
+      return;
+    }
+
+    orders.forEach(o => {
+      const card = document.createElement('div');
+      card.style.padding = '12px 14px';
+      card.style.background = '#f9fbf9';
+      card.style.borderRadius = '12px';
+      card.style.border = '1px solid #e0eae1';
+      card.style.display = 'flex';
+      card.style.justifyContent = 'space-between';
+      card.style.alignItems = 'center';
+      card.style.flexWrap = 'wrap';
+      card.style.gap = '10px';
+      card.style.cursor = 'pointer';
+      card.style.transition = 'all 0.15s ease';
+
+      card.onmouseenter = () => card.style.borderColor = '#5cb85c';
+      card.onmouseleave = () => card.style.borderColor = '#e0eae1';
+
+      const studentStatus = formatStudentStatus(o.status);
+
+      card.innerHTML = `
+        <div style="flex:1; min-width:180px;">
+          <div style="font-weight:700; font-size:14px; color:var(--ink);">${o.orderId} — ₹${o.total}</div>
+          <div style="font-size:12px; color:#6c8072; margin-top:2px;">📅 ${new Date(o.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:12px; font-weight:600; padding:4px 10px; border-radius:12px; ${studentStatus.style}">${studentStatus.label}</span>
+          <button type="button" style="background:#e8f8f0; color:#059669; border:none; border-radius:6px; padding:5px 10px; font-size:12px; font-weight:600; cursor:pointer;">Track →</button>
+        </div>
+      `;
+
+      card.addEventListener('click', () => {
+        const trackInput = document.getElementById('track-input');
+        if (trackInput) trackInput.value = o.orderId;
+        trackOrder(o.orderId);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+
+      listEl.appendChild(card);
+    });
+  } catch (err) {
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (emptyEl) {
+      emptyEl.textContent = 'Could not load previous orders.';
+      emptyEl.style.display = 'block';
+    }
+  }
+}
+
+document.getElementById('btn-refresh-my-orders')?.addEventListener('click', () => {
+  loadMyOrders();
+});
 
 // ---------- Blur-on-hover for dashboard cards ----------
 const dockCards = document.querySelectorAll('.dock .card');

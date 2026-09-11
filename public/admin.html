@@ -20,6 +20,7 @@
     </div>
     <div class="spacer"></div>
     <span class="welcome-name" id="admin-welcome-name">Loading...</span>
+    <button class="signin" id="btn-goto-superadmin" style="display:none; background:#7c3aed; color:#fff;" onclick="window.location.href='/super-admin'">👑 Super Admin</button>
     <button class="signin secondary-btn" id="student-view-btn" onclick="window.location.href='index.html'">🎓 Student View</button>
     <button class="signin" id="admin-logout-btn">Sign Out</button>
   </header>
@@ -58,14 +59,14 @@
           <div class="stat-icon">⏳</div>
           <div class="stat-info">
             <div class="stat-value" id="stat-pending-orders">0</div>
-            <div class="stat-label">In Progress / Received</div>
+            <div class="stat-label">In Queue / Printing</div>
           </div>
         </div>
         <div class="stat-card stat-ready">
           <div class="stat-icon">📦</div>
           <div class="stat-info">
             <div class="stat-value" id="stat-ready-orders">0</div>
-            <div class="stat-label">Ready for Pickup</div>
+            <div class="stat-label">Ready for Collection</div>
           </div>
         </div>
         <div class="stat-card stat-revenue">
@@ -85,10 +86,11 @@
         </div>
         <div class="status-filter-pills" id="status-filters">
           <button type="button" class="filter-pill active" data-filter="all">All Orders</button>
-          <button type="button" class="filter-pill" data-filter="Order Received">Received</button>
-          <button type="button" class="filter-pill" data-filter="Printing in Progress">Printing</button>
-          <button type="button" class="filter-pill" data-filter="Ready for Pickup">Ready for Pickup</button>
-          <button type="button" class="filter-pill" data-filter="Completed">Completed</button>
+          <button type="button" class="filter-pill" data-filter="New">New</button>
+          <button type="button" class="filter-pill" data-filter="Accepted">Accepted</button>
+          <button type="button" class="filter-pill" data-filter="Printing">Printing</button>
+          <button type="button" class="filter-pill" data-filter="Ready for Collection">Ready for Collection</button>
+          <button type="button" class="filter-pill" data-filter="Collected">Collected</button>
         </div>
       </div>
 

@@ -1,5 +1,15 @@
 [
   {
+    "id": "superadmin_ait_01",
+    "name": "Super Admin",
+    "email": "superadmin@aitpune.edu.in",
+    "role": "superadmin",
+    "disabled": false,
+    "salt": "1531e9ecc7de96ba79a854554f25ec4c",
+    "passwordHash": "8b37991ae29ee335da886fb5a35fee9e6c68fa11abeaf10c0c50ac90d77467db05708b70996d379803c9a33ea60713bfac47f7c59fbd35727b71ff5e7806d617",
+    "createdAt": "2026-09-11T18:24:56.022Z"
+  },
+  {
     "id": "admin_ait_pune_01",
     "name": "Xerox Admin",
     "email": "admin@aitpune.edu.in",

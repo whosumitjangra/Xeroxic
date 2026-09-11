@@ -15,6 +15,18 @@
   ],
   "rewrites": [
     {
+      "source": "/admin",
+      "destination": "/admin-login.html"
+    },
+    {
+      "source": "/admin/dashboard",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/super-admin",
+      "destination": "/super-admin.html"
+    },
+    {
       "source": "/api",
       "destination": "/api/index.js"
     },

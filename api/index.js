@@ -23,6 +23,12 @@ const {
   saveAssignments,
   createAssignment,
   deleteAssignment,
+  getPricing,
+  savePricing,
+  getStaffUsers,
+  createAdminUser,
+  toggleUserDisabled,
+  resetUserPassword,
   saveUploadedFile,
   getUploadedFileBuffer,
   deleteUploadedFile,
@@ -31,7 +37,7 @@ const {
 
 const PUBLIC_DIR = path.join(REPO_ROOT, 'public');
 
-// Pricing rules (₹ per page)
+// Fallback pricing rules (₹ per page)
 const PRICE_TABLE = {
   'bw-single': 2,
   'bw-double': 3,
@@ -39,17 +45,23 @@ const PRICE_TABLE = {
   'color-double': 8
 };
 
-// Order status helper (supports manual admin status or fallback to elapsed time)
+// Order status helper (supports 5-stage workflow: New → Accepted → Printing → Ready for Collection → Collected)
 function computeOrderStatus(orderOrDate) {
   if (typeof orderOrDate === 'object' && orderOrDate && orderOrDate.status) {
-    return orderOrDate.status;
+    const s = orderOrDate.status;
+    if (s === 'Order Received') return 'New';
+    if (s === 'Printing in Progress') return 'Printing';
+    if (s === 'Ready for Pickup') return 'Ready for Collection';
+    if (s === 'Completed') return 'Collected';
+    return s;
   }
   const createdAt = typeof orderOrDate === 'object' && orderOrDate ? orderOrDate.createdAt : orderOrDate;
   const minutesElapsed = (Date.now() - new Date(createdAt).getTime()) / 60000;
-  if (minutesElapsed < 1) return 'Order Received';
-  if (minutesElapsed < 3) return 'Printing in Progress';
-  if (minutesElapsed < 6) return 'Ready for Pickup';
-  return 'Completed';
+  if (minutesElapsed < 1) return 'New';
+  if (minutesElapsed < 3) return 'Accepted';
+  if (minutesElapsed < 6) return 'Printing';
+  if (minutesElapsed < 15) return 'Ready for Collection';
+  return 'Collected';
 }
 
 // MIME dictionary
@@ -255,18 +267,33 @@ async function handler(req, res) {
       if (hash !== user.passwordHash) {
         return sendJSON(res, 401, { error: 'Invalid email or password.' });
       }
+
+      // Check if account is disabled by Super Admin
+      if (user.disabled) {
+        return sendJSON(res, 403, { error: 'This account has been disabled by Super Admin.' });
+      }
+
       const userRole = user.role || 'user';
-      if (role === 'admin' && userRole !== 'admin') {
+      if (role === 'admin' && userRole !== 'admin' && userRole !== 'superadmin') {
         return sendJSON(res, 403, { error: 'This account does not have Admin access. Please sign in as Student.' });
       }
+
       const token = createSessionToken(user);
       res.setHeader('Set-Cookie', `session=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=604800`);
+
+      let redirect = 'index.html';
+      if (userRole === 'superadmin') {
+        redirect = 'super-admin.html';
+      } else if (userRole === 'admin') {
+        redirect = 'admin.html';
+      }
+
       return sendJSON(res, 200, {
         success: true,
         name: user.name,
         email: user.email,
         role: userRole,
-        redirect: userRole === 'admin' ? 'admin.html' : 'index.html'
+        redirect
       });
     }
 
@@ -348,6 +375,7 @@ async function handler(req, res) {
         return sendJSON(res, 400, { error: 'No items in this order.' });
       }
 
+      const pricing = await getPricing();
       let total = 0;
       const cleanItems = [];
       for (const item of items) {
@@ -357,7 +385,7 @@ async function handler(req, res) {
         if (!pages || pages < 1) {
           return sendJSON(res, 400, { error: `Invalid page count for ${item.originalName || 'a file'}.` });
         }
-        const rate = PRICE_TABLE[`${color}-${sides}`] || 2;
+        const rate = (pricing && pricing[`${color}-${sides}`]) ? Number(pricing[`${color}-${sides}`]) : (PRICE_TABLE[`${color}-${sides}`] || 2);
         const linePrice = rate * pages;
         total += linePrice;
         cleanItems.push({
@@ -381,6 +409,7 @@ async function handler(req, res) {
         total,
         paymentMethod: paymentMethod || 'UPI',
         utr: utr || null,
+        status: 'New',
         createdAt: new Date().toISOString()
       };
       orders.push(order);
@@ -401,10 +430,17 @@ async function handler(req, res) {
           total: o.total,
           paymentMethod: o.paymentMethod || 'UPI',
           createdAt: o.createdAt,
-          status: computeOrderStatus(o)
+          status: computeOrderStatus(o),
+          items: o.items || []
         }))
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       return sendJSON(res, 200, { orders: mine });
+    }
+
+    // ---------------- PRICING: PUBLIC GET PRICING ----------------
+    if (pathname === '/api/pricing' && req.method === 'GET') {
+      const pricing = await getPricing();
+      return sendJSON(res, 200, pricing || PRICE_TABLE);
     }
 
     // ---------------- ORDERS: TRACK / GET ONE ----------------
@@ -429,7 +465,7 @@ async function handler(req, res) {
     // ---------------- ADMIN: GET ALL ORDERS / DOCUMENT REQUESTS ----------------
     if (pathname === '/api/admin/orders' && req.method === 'GET') {
       const session = getSessionFromReq(req);
-      if (!session || session.role !== 'admin') {
+      if (!session || (session.role !== 'admin' && session.role !== 'superadmin')) {
         return sendJSON(res, 403, { error: 'Forbidden: Admin access required.' });
       }
       const orders = await getOrders();
@@ -467,15 +503,15 @@ async function handler(req, res) {
     // ---------------- ADMIN: UPDATE ORDER STATUS ----------------
     if (pathname.startsWith('/api/admin/orders/') && pathname.endsWith('/status') && (req.method === 'PATCH' || req.method === 'POST')) {
       const session = getSessionFromReq(req);
-      if (!session || session.role !== 'admin') {
+      if (!session || (session.role !== 'admin' && session.role !== 'superadmin')) {
         return sendJSON(res, 403, { error: 'Forbidden: Admin access required.' });
       }
       const parts = pathname.split('/');
       const orderId = decodeURIComponent(parts[parts.length - 2]);
       const { status } = await readJSONBody(req);
-      const validStatuses = ['Order Received', 'Printing in Progress', 'Ready for Pickup', 'Completed'];
+      const validStatuses = ['New', 'Accepted', 'Printing', 'Ready for Collection', 'Collected', 'Order Received', 'Printing in Progress', 'Ready for Pickup', 'Completed'];
       if (!status || !validStatuses.includes(status)) {
-        return sendJSON(res, 400, { error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+        return sendJSON(res, 400, { error: `Invalid status. Must be one of: New, Accepted, Printing, Ready for Collection, Collected` });
       }
       const updated = await updateOrderStatus(orderId, status);
       if (!updated) return sendJSON(res, 404, { error: 'Order not found.' });
@@ -485,29 +521,163 @@ async function handler(req, res) {
     // ---------------- ADMIN: GET STATS ----------------
     if (pathname === '/api/admin/stats' && req.method === 'GET') {
       const session = getSessionFromReq(req);
-      if (!session || session.role !== 'admin') {
+      if (!session || (session.role !== 'admin' && session.role !== 'superadmin')) {
         return sendJSON(res, 403, { error: 'Forbidden: Admin access required.' });
       }
       const orders = await getOrders();
       let totalRevenue = 0;
-      let inProgressCount = 0;
+      let newCount = 0;
+      let acceptedCount = 0;
+      let printingCount = 0;
       let readyCount = 0;
-      let completedCount = 0;
+      let collectedCount = 0;
 
       for (const o of orders) {
         totalRevenue += (o.total || 0);
         const st = computeOrderStatus(o);
-        if (st === 'Printing in Progress' || st === 'Order Received') inProgressCount++;
-        else if (st === 'Ready for Pickup') readyCount++;
-        else if (st === 'Completed') completedCount++;
+        if (st === 'New') newCount++;
+        else if (st === 'Accepted') acceptedCount++;
+        else if (st === 'Printing') printingCount++;
+        else if (st === 'Ready for Collection') readyCount++;
+        else if (st === 'Collected') collectedCount++;
       }
 
       return sendJSON(res, 200, {
         totalOrders: orders.length,
-        inProgressCount,
+        newCount,
+        acceptedCount,
+        printingCount,
         readyCount,
-        completedCount,
+        collectedCount,
+        inProgressCount: newCount + acceptedCount + printingCount,
         totalRevenue
+      });
+    }
+
+    // ===================================================================
+    // SUPER ADMIN SPECIFIC ENDPOINTS
+    // ===================================================================
+
+    // ---------------- SUPER ADMIN: GET STAFF LIST ----------------
+    if (pathname === '/api/superadmin/staff' && req.method === 'GET') {
+      const session = getSessionFromReq(req);
+      if (!session || session.role !== 'superadmin') {
+        return sendJSON(res, 403, { error: 'Forbidden: Super Admin access required.' });
+      }
+      const staff = await getStaffUsers();
+      return sendJSON(res, 200, { success: true, staff });
+    }
+
+    // ---------------- SUPER ADMIN: CREATE STAFF ACCOUNT ----------------
+    if (pathname === '/api/superadmin/staff' && req.method === 'POST') {
+      const session = getSessionFromReq(req);
+      if (!session || session.role !== 'superadmin') {
+        return sendJSON(res, 403, { error: 'Forbidden: Super Admin access required.' });
+      }
+      const { name, email, password, role = 'admin' } = await readJSONBody(req);
+      if (!name || !email || !password) {
+        return sendJSON(res, 400, { error: 'Name, email and password are required.' });
+      }
+      try {
+        const newStaff = await createAdminUser({ name, email, password, role });
+        return sendJSON(res, 201, { success: true, staff: newStaff });
+      } catch (err) {
+        return sendJSON(res, 400, { error: err.message });
+      }
+    }
+
+    // ---------------- SUPER ADMIN: TOGGLE STAFF ACTIVE/DISABLED ----------------
+    if (pathname.startsWith('/api/superadmin/staff/') && pathname.endsWith('/status') && (req.method === 'PATCH' || req.method === 'POST')) {
+      const session = getSessionFromReq(req);
+      if (!session || session.role !== 'superadmin') {
+        return sendJSON(res, 403, { error: 'Forbidden: Super Admin access required.' });
+      }
+      const parts = pathname.split('/');
+      const staffId = decodeURIComponent(parts[parts.length - 2]);
+      if (staffId === session.userId) {
+        return sendJSON(res, 400, { error: 'Cannot disable your own Super Admin account.' });
+      }
+      const { disabled } = await readJSONBody(req);
+      const updated = await toggleUserDisabled(staffId, Boolean(disabled));
+      if (!updated) return sendJSON(res, 404, { error: 'Staff account not found.' });
+      return sendJSON(res, 200, { success: true, staff: updated });
+    }
+
+    // ---------------- SUPER ADMIN: RESET STAFF PASSWORD ----------------
+    if (pathname.startsWith('/api/superadmin/staff/') && pathname.endsWith('/reset-password') && req.method === 'POST') {
+      const session = getSessionFromReq(req);
+      if (!session || session.role !== 'superadmin') {
+        return sendJSON(res, 403, { error: 'Forbidden: Super Admin access required.' });
+      }
+      const parts = pathname.split('/');
+      const staffId = decodeURIComponent(parts[parts.length - 2]);
+      const { newPassword } = await readJSONBody(req);
+      if (!newPassword || newPassword.length < 6) {
+        return sendJSON(res, 400, { error: 'New password must be at least 6 characters long.' });
+      }
+      const updated = await resetUserPassword(staffId, newPassword);
+      if (!updated) return sendJSON(res, 404, { error: 'Staff account not found.' });
+      return sendJSON(res, 200, { success: true, message: 'Password reset successfully.' });
+    }
+
+    // ---------------- SUPER ADMIN: GET PRICING ----------------
+    if (pathname === '/api/superadmin/pricing' && req.method === 'GET') {
+      const session = getSessionFromReq(req);
+      if (!session || session.role !== 'superadmin') {
+        return sendJSON(res, 403, { error: 'Forbidden: Super Admin access required.' });
+      }
+      const pricing = await getPricing();
+      return sendJSON(res, 200, { success: true, pricing });
+    }
+
+    // ---------------- SUPER ADMIN: UPDATE PRICING ----------------
+    if (pathname === '/api/superadmin/pricing' && req.method === 'POST') {
+      const session = getSessionFromReq(req);
+      if (!session || session.role !== 'superadmin') {
+        return sendJSON(res, 403, { error: 'Forbidden: Super Admin access required.' });
+      }
+      const body = await readJSONBody(req);
+      const newPricing = {
+        'bw-single': Number(body['bw-single']) || 2,
+        'bw-double': Number(body['bw-double']) || 3,
+        'color-single': Number(body['color-single']) || 5,
+        'color-double': Number(body['color-double']) || 8
+      };
+      await savePricing(newPricing);
+      return sendJSON(res, 200, { success: true, pricing: newPricing });
+    }
+
+    // ---------------- SUPER ADMIN: GET SYSTEM STATS ----------------
+    if (pathname === '/api/superadmin/stats' && req.method === 'GET') {
+      const session = getSessionFromReq(req);
+      if (!session || session.role !== 'superadmin') {
+        return sendJSON(res, 403, { error: 'Forbidden: Super Admin access required.' });
+      }
+      const orders = await getOrders();
+      const staffList = await getStaffUsers();
+      const users = await getUsers();
+      let totalRevenue = 0;
+      const statusCounts = {
+        'New': 0,
+        'Accepted': 0,
+        'Printing': 0,
+        'Ready for Collection': 0,
+        'Collected': 0
+      };
+
+      for (const o of orders) {
+        totalRevenue += (o.total || 0);
+        const st = computeOrderStatus(o);
+        if (statusCounts[st] !== undefined) statusCounts[st]++;
+      }
+
+      return sendJSON(res, 200, {
+        success: true,
+        totalOrders: orders.length,
+        totalRevenue,
+        totalStaff: staffList.length,
+        totalStudents: users.filter(u => u.role === 'user').length,
+        statusCounts
       });
     }
 
@@ -534,10 +704,10 @@ async function handler(req, res) {
       return sendJSON(res, 200, { success: true, assignments: sanitized });
     }
 
-    // ---------------- ASSIGNMENTS: CREATE (ADMIN ONLY) ----------------
+    // ---------------- ASSIGNMENTS: CREATE (ADMIN & SUPER ADMIN) ----------------
     if (pathname === '/api/admin/assignments' && req.method === 'POST') {
       const session = getSessionFromReq(req);
-      if (!session || session.role !== 'admin') {
+      if (!session || (session.role !== 'admin' && session.role !== 'superadmin')) {
         return sendJSON(res, 403, { error: 'Forbidden: Admin access required.' });
       }
 
@@ -571,10 +741,10 @@ async function handler(req, res) {
       return sendJSON(res, 201, { success: true, assignment: newAssignment });
     }
 
-    // ---------------- ASSIGNMENTS: DELETE (ADMIN ONLY) ----------------
+    // ---------------- ASSIGNMENTS: DELETE (ADMIN & SUPER ADMIN) ----------------
     if (pathname.startsWith('/api/admin/assignments/') && req.method === 'DELETE') {
       const session = getSessionFromReq(req);
-      if (!session || session.role !== 'admin') {
+      if (!session || (session.role !== 'admin' && session.role !== 'superadmin')) {
         return sendJSON(res, 403, { error: 'Forbidden: Admin access required.' });
       }
 
@@ -630,10 +800,10 @@ async function handler(req, res) {
       const record = filesDb.find(f => f.id === id);
       if (!record) return sendJSON(res, 404, { error: 'File not found.' });
 
-      // Permission check: owner or admin can download/preview
+      // Permission check: owner, admin, or superadmin can download/preview
       const isOwner = record.ownerId === session.userId;
-      const isAdmin = session.role === 'admin';
-      if (!isOwner && !isAdmin) {
+      const isStaff = session.role === 'admin' || session.role === 'superadmin';
+      if (!isOwner && !isStaff) {
         return sendJSON(res, 403, { error: 'Forbidden: You do not have permission to access this file.' });
       }
 
@@ -653,6 +823,17 @@ async function handler(req, res) {
         'Content-Length': fileBuffer.length
       });
       return res.end(fileBuffer);
+    }
+
+    // ---------------- ROUTE SHORTCUTS FOR CLEAN URLS ----------------
+    if (pathname === '/admin' || pathname === '/admin/') {
+      return sendFile(res, path.join(PUBLIC_DIR, 'admin-login.html'), MIME['.html']);
+    }
+    if (pathname === '/admin/dashboard' || pathname === '/admin/dashboard/') {
+      return sendFile(res, path.join(PUBLIC_DIR, 'admin.html'), MIME['.html']);
+    }
+    if (pathname === '/super-admin' || pathname === '/super-admin/') {
+      return sendFile(res, path.join(PUBLIC_DIR, 'super-admin.html'), MIME['.html']);
     }
 
     // ---------------- STATIC FILES (Fallback for local dev & direct invocation) ----------------

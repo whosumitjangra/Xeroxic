@@ -12,24 +12,30 @@ async function checkAdminAuth() {
   try {
     const res = await fetch('/api/me');
     if (!res.ok) {
-      window.location.href = 'login.html';
+      window.location.href = '/admin';
       return;
     }
     const user = await res.json();
-    if (user.role !== 'admin') {
+    if (user.role !== 'admin' && user.role !== 'superadmin') {
       alert('Access Denied: This portal is reserved for Xerox Staff & Admins.');
-      window.location.href = 'index.html';
+      window.location.href = '/';
       return;
     }
 
     const nameEl = document.getElementById('admin-welcome-name');
-    if (nameEl) nameEl.textContent = `Hi, ${user.name} (Staff)`;
+    if (user.role === 'superadmin') {
+      if (nameEl) nameEl.textContent = `Hi, ${user.name} (Super Admin)`;
+      const superBtn = document.getElementById('btn-goto-superadmin');
+      if (superBtn) superBtn.style.display = 'inline-flex';
+    } else {
+      if (nameEl) nameEl.textContent = `Hi, ${user.name} (Staff)`;
+    }
     
     // Load dashboard data
     loadDashboardData();
     loadAdminAssignments();
   } catch (err) {
-    window.location.href = 'login.html';
+    window.location.href = '/admin';
   }
 }
 
@@ -38,7 +44,7 @@ const logoutBtn = document.getElementById('admin-logout-btn');
 if (logoutBtn) {
   logoutBtn.addEventListener('click', async () => {
     await fetch('/api/logout', { method: 'POST' });
-    window.location.href = 'login.html';
+    window.location.href = '/admin';
   });
 }
 
@@ -94,17 +100,20 @@ function updateStatsUI(stats) {
 }
 
 function computeStatsFromOrders(orders) {
-  let inProgress = 0;
+  let pending = 0;
   let ready = 0;
   let revenue = 0;
   for (const o of orders) {
     revenue += (o.total || 0);
-    if (o.status === 'Ready for Pickup') ready++;
-    else if (o.status !== 'Completed') inProgress++;
+    if (o.status === 'Ready for Collection' || o.status === 'Ready for Pickup') {
+      ready++;
+    } else if (o.status !== 'Collected' && o.status !== 'Completed') {
+      pending++;
+    }
   }
   updateStatsUI({
     totalOrders: orders.length,
-    inProgressCount: inProgress,
+    inProgressCount: pending,
     readyCount: ready,
     totalRevenue: revenue
   });
@@ -118,8 +127,15 @@ function renderOrders() {
 
   const filtered = allOrders.filter(order => {
     // Status filter
-    if (activeFilter !== 'all' && order.status !== activeFilter) {
-      return false;
+    if (activeFilter !== 'all') {
+      if (order.status !== activeFilter) {
+        // Handle legacy equivalent mapping
+        if (activeFilter === 'New' && order.status === 'Order Received') return true;
+        if (activeFilter === 'Printing' && order.status === 'Printing in Progress') return true;
+        if (activeFilter === 'Ready for Collection' && order.status === 'Ready for Pickup') return true;
+        if (activeFilter === 'Collected' && order.status === 'Completed') return true;
+        return false;
+      }
     }
     // Search query filter
     if (searchQuery) {
@@ -185,6 +201,12 @@ function renderOrders() {
       `;
     });
 
+    const isNew = order.status === 'New' || order.status === 'Order Received';
+    const isAccepted = order.status === 'Accepted';
+    const isPrinting = order.status === 'Printing' || order.status === 'Printing in Progress';
+    const isReady = order.status === 'Ready for Collection' || order.status === 'Ready for Pickup';
+    const isCollected = order.status === 'Collected' || order.status === 'Completed';
+
     card.innerHTML = `
       <div class="admin-order-header">
         <div class="admin-order-meta">
@@ -214,10 +236,11 @@ function renderOrders() {
         <div class="admin-status-controller">
           <label class="admin-control-label">Update Status:</label>
           <select class="admin-status-select" data-order-id="${order.orderId}">
-            <option value="Order Received" ${order.status === 'Order Received' ? 'selected' : ''}>🟡 Order Received</option>
-            <option value="Printing in Progress" ${order.status === 'Printing in Progress' ? 'selected' : ''}>🔵 Printing in Progress</option>
-            <option value="Ready for Pickup" ${order.status === 'Ready for Pickup' ? 'selected' : ''}>🟢 Ready for Pickup</option>
-            <option value="Completed" ${order.status === 'Completed' ? 'selected' : ''}>🟣 Completed</option>
+            <option value="New" ${isNew ? 'selected' : ''}>🟡 New</option>
+            <option value="Accepted" ${isAccepted ? 'selected' : ''}>🔵 Accepted</option>
+            <option value="Printing" ${isPrinting ? 'selected' : ''}>🖨️ Printing</option>
+            <option value="Ready for Collection" ${isReady ? 'selected' : ''}>🟢 Ready for Collection</option>
+            <option value="Collected" ${isCollected ? 'selected' : ''}>✅ Collected</option>
           </select>
         </div>
       </div>
@@ -267,10 +290,11 @@ async function updateOrderStatusOnServer(orderId, newStatus) {
 }
 
 function getStatusClass(status) {
-  if (status === 'Order Received') return 'badge-received';
-  if (status === 'Printing in Progress') return 'badge-printing';
-  if (status === 'Ready for Pickup') return 'badge-ready';
-  if (status === 'Completed') return 'badge-completed';
+  if (status === 'New' || status === 'Order Received') return 'badge-received';
+  if (status === 'Accepted') return 'badge-received';
+  if (status === 'Printing' || status === 'Printing in Progress') return 'badge-printing';
+  if (status === 'Ready for Collection' || status === 'Ready for Pickup') return 'badge-ready';
+  if (status === 'Collected' || status === 'Completed') return 'badge-completed';
   return 'badge-received';
 }
 

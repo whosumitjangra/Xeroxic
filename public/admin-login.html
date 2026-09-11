@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin &amp; Staff Login — Xerox Centre (AIT Pune)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .admin-login-shield {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(43, 122, 43, 0.1);
+    color: #2b7a2b;
+    border: 1px solid rgba(43, 122, 43, 0.25);
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .admin-return-link {
+    margin-top: 18px;
+    font-size: 14px;
+    color: #556b5e;
+    display: block;
+    text-align: center;
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+  .admin-return-link:hover {
+    color: #1a4d1a;
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo"><img src="logo.gif" alt="AIT Pune Logo"></div>
+    <div style="text-align:center;">
+      <span class="admin-login-shield">🛡️ Authorized Staff Only</span>
+    </div>
+    <h1 class="auth-title">Admin Portal Sign In</h1>
+    <p class="auth-sub">Sign in with your staff or super admin credentials to manage printing requests and orders.</p>
+
+    <form id="admin-login-form">
+      <label class="auth-label" for="admin-email">Staff Email</label>
+      <input class="auth-input" type="email" id="admin-email" placeholder="staff@aitpune.edu.in" required autocomplete="username">
+
+      <label class="auth-label" for="admin-password">Password</label>
+      <input class="auth-input" type="password" id="admin-password" placeholder="••••••••" required autocomplete="current-password">
+
+      <p class="auth-error" id="error-msg"></p>
+
+      <button type="submit" class="auth-btn" id="login-submit-btn" style="background: linear-gradient(135deg, #2b7a2b, #1e5a1e);">
+        Sign In to Admin Portal →
+      </button>
+    </form>
+
+    <a href="index.html" class="admin-return-link">← Return to Student Website</a>
+  </div>
+</div>
+
+<script>
+const loginForm = document.getElementById('admin-login-form');
+const emailInput = document.getElementById('admin-email');
+const passwordInput = document.getElementById('admin-password');
+const submitBtn = document.getElementById('login-submit-btn');
+const errorMsg = document.getElementById('error-msg');
+
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+  errorMsg.textContent = '';
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Verifying Credentials...';
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, role: 'admin' })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errorMsg.textContent = data.error || 'Login failed. Please check credentials.';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Sign In to Admin Portal →';
+      return;
+    }
+
+    // Role-based redirect
+    if (data.role === 'superadmin') {
+      window.location.href = '/super-admin';
+    } else if (data.role === 'admin') {
+      window.location.href = '/admin/dashboard';
+    } else {
+      errorMsg.textContent = 'Access restricted: Student accounts cannot access the staff portal.';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Sign In to Admin Portal →';
+    }
+  } catch (err) {
+    errorMsg.textContent = 'Could not reach the server. Please verify connection.';
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Sign In to Admin Portal →';
+  }
+});
+</script>
+
+</body>
+</html>

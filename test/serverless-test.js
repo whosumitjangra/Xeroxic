@@ -231,8 +231,8 @@ async function runTests() {
   const trackData = trackRes.json();
   assert.strictEqual(trackData.orderId, createdOrderId);
   assert.strictEqual(trackData.total, 30);
-  assert.strictEqual(trackData.status, 'Order Received');
-  console.log('   ✅ Order tracking passed');
+  assert.strictEqual(trackData.status, 'New');
+  console.log('   ✅ Order tracking passed (initial status: New)');
 
   // Test 11: Logout via POST /api/logout
   console.log('11. Testing POST /api/logout...');
@@ -294,17 +294,19 @@ async function runTests() {
   assert(adminOrdersData.orders.some(o => o.orderId === createdOrderId));
   console.log(`   ✅ Admin successfully retrieved all ${adminOrdersData.orders.length} document requests`);
 
-  // Test 16: Admin updating order status
-  console.log('16. Testing Admin PATCH /api/admin/orders/:id/status...');
-  const updateStatusRes = await invokeHandler({
-    method: 'PATCH',
-    url: `/api/admin/orders/${createdOrderId}/status`,
-    headers: { cookie: adminCookie },
-    body: { status: 'Ready for Pickup' }
-  });
-  assert.strictEqual(updateStatusRes.statusCode, 200);
-  assert.strictEqual(updateStatusRes.json().status, 'Ready for Pickup');
-  console.log('   ✅ Admin order status updated to "Ready for Pickup"');
+  // Test 16: Admin updating order status through 5 stages
+  console.log('16. Testing 5-stage Order Status Workflow (New → Accepted → Printing → Ready for Collection → Collected)...');
+  for (const st of ['Accepted', 'Printing', 'Ready for Collection', 'Collected']) {
+    const updateStatusRes = await invokeHandler({
+      method: 'PATCH',
+      url: `/api/admin/orders/${createdOrderId}/status`,
+      headers: { cookie: adminCookie },
+      body: { status: st }
+    });
+    assert.strictEqual(updateStatusRes.statusCode, 200, `Failed to update status to ${st}`);
+    assert.strictEqual(updateStatusRes.json().status, st);
+  }
+  console.log('   ✅ 5-stage status workflow passed (Accepted → Printing → Ready for Collection → Collected)');
 
   // Test 17: Admin downloading student document
   console.log('17. Testing Admin document download permission (GET /api/download/:id)...');
@@ -416,7 +418,145 @@ async function runTests() {
   assert.strictEqual(deleteAsgnRes.json().success, true);
   console.log('   ✅ Admin successfully deleted assignment');
 
-  console.log('\n🎉 ALL 23 TESTS PASSED SUCCESSFULLY! Backend is ready.\n');
+  // Test 24: Super Admin Login
+  console.log('24. Testing Super Admin Login (superadmin@aitpune.edu.in)...');
+  const superLoginRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/login',
+    body: { email: 'superadmin@aitpune.edu.in', password: 'superadmin123', role: 'admin' }
+  });
+  assert.strictEqual(superLoginRes.statusCode, 200, `Super admin login failed: ${superLoginRes.text()}`);
+  const superLoginData = superLoginRes.json();
+  assert.strictEqual(superLoginData.role, 'superadmin');
+  assert.strictEqual(superLoginData.redirect, 'super-admin.html');
+  const superCookie = superLoginRes.headers['set-cookie'].split(';')[0];
+  console.log('   ✅ Super Admin login passed (role: superadmin, redirect: super-admin.html)');
+
+  // Test 25: Normal Admin blocked from Super Admin endpoint (403)
+  console.log('25. Testing Super Admin Role Protection (Admin rejected with 403)...');
+  const adminBlockedRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/superadmin/staff',
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(adminBlockedRes.statusCode, 403, 'Normal admin must be rejected from superadmin routes with 403');
+  console.log('   ✅ Role isolation passed: Admin rejected from Super Admin endpoint with 403');
+
+  // Test 26: Super Admin creating a new staff account
+  console.log('26. Testing Super Admin POST /api/superadmin/staff & GET /api/superadmin/staff...');
+  const tempStaffEmail = `staff_${Date.now()}@aitpune.edu.in`;
+  const createStaffRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/superadmin/staff',
+    headers: { cookie: superCookie },
+    body: {
+      name: 'Pooja Sharma',
+      email: tempStaffEmail,
+      password: 'password123',
+      role: 'admin'
+    }
+  });
+  assert.strictEqual(createStaffRes.statusCode, 201, `Failed to create staff: ${createStaffRes.text()}`);
+  const createdStaff = createStaffRes.json().staff;
+  assert.strictEqual(createdStaff.email, tempStaffEmail);
+  assert.strictEqual(createdStaff.role, 'admin');
+  assert.strictEqual(createdStaff.disabled, false);
+
+  const getStaffRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/superadmin/staff',
+    headers: { cookie: superCookie }
+  });
+  assert.strictEqual(getStaffRes.statusCode, 200);
+  assert(getStaffRes.json().staff.some(s => s.id === createdStaff.id));
+  console.log('   ✅ Super Admin staff creation & listing passed');
+
+  // Test 27: Super Admin disabling staff account & verifying blocked login
+  console.log('27. Testing Staff Disable & Blocked Login...');
+  const disableRes = await invokeHandler({
+    method: 'PATCH',
+    url: `/api/superadmin/staff/${createdStaff.id}/status`,
+    headers: { cookie: superCookie },
+    body: { disabled: true }
+  });
+  assert.strictEqual(disableRes.statusCode, 200);
+  assert.strictEqual(disableRes.json().staff.disabled, true);
+
+  // Attempt login with disabled account -> must return 403
+  const disabledLoginRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/login',
+    body: { email: tempStaffEmail, password: 'password123', role: 'admin' }
+  });
+  assert.strictEqual(disabledLoginRes.statusCode, 403, 'Disabled account must be blocked from logging in with 403');
+  console.log('   ✅ Disabled staff account successfully blocked with 403');
+
+  // Test 28: Super Admin resetting staff password and re-enabling
+  console.log('28. Testing Super Admin password reset and re-enabling staff account...');
+  const resetPwdRes = await invokeHandler({
+    method: 'POST',
+    url: `/api/superadmin/staff/${createdStaff.id}/reset-password`,
+    headers: { cookie: superCookie },
+    body: { newPassword: 'newSecretPassword2026' }
+  });
+  assert.strictEqual(resetPwdRes.statusCode, 200);
+
+  // Re-enable
+  await invokeHandler({
+    method: 'PATCH',
+    url: `/api/superadmin/staff/${createdStaff.id}/status`,
+    headers: { cookie: superCookie },
+    body: { disabled: false }
+  });
+
+  // Login with new password
+  const newPwdLoginRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/login',
+    body: { email: tempStaffEmail, password: 'newSecretPassword2026', role: 'admin' }
+  });
+  assert.strictEqual(newPwdLoginRes.statusCode, 200, 'Login with reset password failed');
+  console.log('   ✅ Staff password reset & re-enabled login passed');
+
+  // Test 29: Dynamic Pricing Management
+  console.log('29. Testing Dynamic Pricing Management (GET /api/pricing & POST /api/superadmin/pricing)...');
+  const initialPricingRes = await invokeHandler({ method: 'GET', url: '/api/pricing' });
+  assert.strictEqual(initialPricingRes.statusCode, 200);
+
+  const updatedPricingRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/superadmin/pricing',
+    headers: { cookie: superCookie },
+    body: {
+      'bw-single': 2.5,
+      'bw-double': 3.5,
+      'color-single': 6,
+      'color-double': 9
+    }
+  });
+  assert.strictEqual(updatedPricingRes.statusCode, 200);
+  assert.strictEqual(updatedPricingRes.json().pricing['bw-single'], 2.5);
+
+  const verifyPricingRes = await invokeHandler({ method: 'GET', url: '/api/pricing' });
+  assert.strictEqual(verifyPricingRes.json()['bw-single'], 2.5);
+  console.log('   ✅ Dynamic pricing update and public retrieval verified');
+
+  // Test 30: Clean URL Routing (/admin, /admin/dashboard, /super-admin)
+  console.log('30. Testing Clean URL Routing (/admin, /admin/dashboard, /super-admin)...');
+  const adminPageRes = await invokeHandler({ method: 'GET', url: '/admin' });
+  assert.strictEqual(adminPageRes.statusCode, 200);
+  assert(adminPageRes.text().includes('Admin Portal Sign In'));
+
+  const adminDashRes = await invokeHandler({ method: 'GET', url: '/admin/dashboard' });
+  assert.strictEqual(adminDashRes.statusCode, 200);
+  assert(adminDashRes.text().includes('Print Document Requests'));
+
+  const superAdminPageRes = await invokeHandler({ method: 'GET', url: '/super-admin' });
+  assert.strictEqual(superAdminPageRes.statusCode, 200);
+  assert(superAdminPageRes.text().includes('Super Admin Control Centre'));
+  console.log('   ✅ Clean URL routing passed (/admin, /admin/dashboard, /super-admin)');
+
+  console.log('\n🎉 ALL 30 TESTS PASSED SUCCESSFULLY! Full admin & super-admin system verified.\n');
 }
 
 runTests().catch(err => {
