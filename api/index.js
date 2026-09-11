@@ -1071,6 +1071,15 @@ async function handler(req, res) {
       return res.end('Forbidden');
     }
 
+    // Fallback: If asset requested with subpath (e.g. /admin/style.css, /super-admin/style.css), check root of PUBLIC_DIR
+    if (!fs.existsSync(filePath) && (pathname.startsWith('/admin/') || pathname.startsWith('/super-admin/'))) {
+      const assetName = path.basename(pathname);
+      const rootAssetPath = path.join(PUBLIC_DIR, assetName);
+      if (fs.existsSync(rootAssetPath) && fs.statSync(rootAssetPath).isFile()) {
+        filePath = rootAssetPath;
+      }
+    }
+
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
       const ext = path.extname(filePath).toLowerCase();
       return sendFile(res, filePath, MIME[ext] || 'application/octet-stream');

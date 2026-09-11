@@ -34,10 +34,15 @@ async function checkAdminAuth() {
     loadDashboardData();
     loadAdminAssignments();
 
-    // Start 8-second reliable polling for real-time incoming requests
+    // Request desktop notification permissions if supported
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+
+    // Start 4-second responsive polling for real-time incoming requests
     setInterval(() => {
       loadDashboardData(true);
-    }, 8000);
+    }, 4000);
   } catch (err) {
     window.location.href = '/admin';
   }
@@ -52,7 +57,119 @@ if (logoutBtn) {
   });
 }
 
-// Load stats and orders from server (supports silent 8s background polling)
+// State for real-time incoming notification detection
+let knownOrderIds = new Set();
+let titleFlashInterval = null;
+const originalDocTitle = document.title || 'Admin Portal — Xerox Centre';
+
+// Web Audio API synthesized two-tone notification chime (100% reliable, zero network dependency)
+function playNotificationChime() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+
+    // Tone 1: 880Hz (A5)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(880, ctx.currentTime);
+    gain1.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(ctx.currentTime);
+    osc1.stop(ctx.currentTime + 0.25);
+
+    // Tone 2: 1320Hz (E6)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1320, ctx.currentTime + 0.12);
+    gain2.gain.setValueAtTime(0.35, ctx.currentTime + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(ctx.currentTime + 0.12);
+    osc2.stop(ctx.currentTime + 0.55);
+  } catch (e) {
+    console.warn('Audio chime warning:', e);
+  }
+}
+
+// Trigger real-time alert (sound + banner + title flash + highlight)
+function triggerNewOrderNotification(newOrders) {
+  if (!newOrders || newOrders.length === 0) return;
+  const latest = newOrders[0];
+
+  // 1. Play alert chime
+  playNotificationChime();
+
+  // 2. Top notification banner
+  const banner = document.getElementById('admin-incoming-alert');
+  const alertText = document.getElementById('incoming-alert-text');
+  const viewBtn = document.getElementById('btn-view-incoming');
+  const dismissBtn = document.getElementById('btn-dismiss-incoming');
+
+  if (banner && alertText) {
+    const docsCount = latest.items?.length || 1;
+    alertText.innerHTML = `<strong>⚡ NEW PRINT REQUEST!</strong> Order <code>#${latest.orderId}</code> from <strong>${latest.ownerName}</strong> (${docsCount} file(s) • ₹${latest.total})`;
+    banner.style.display = 'flex';
+
+    if (viewBtn) {
+      viewBtn.onclick = () => {
+        banner.style.display = 'none';
+        const card = document.getElementById(`order-card-${latest.orderId}`);
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          card.classList.add('new-order-pulse');
+          setTimeout(() => card.classList.remove('new-order-pulse'), 6000);
+        }
+      };
+    }
+
+    if (dismissBtn) {
+      dismissBtn.onclick = () => {
+        banner.style.display = 'none';
+      };
+    }
+
+    setTimeout(() => {
+      if (banner) banner.style.display = 'none';
+    }, 25000);
+  }
+
+  // 3. Flashing browser tab title
+  if (titleFlashInterval) clearInterval(titleFlashInterval);
+  let isAlertTitle = false;
+  titleFlashInterval = setInterval(() => {
+    document.title = isAlertTitle ? originalDocTitle : `🔔 (NEW REQUEST!) ${latest.orderId}`;
+    isAlertTitle = !isAlertTitle;
+  }, 1000);
+
+  // 4. Desktop Notification (if permitted)
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification('⚡ New Print Request Received!', {
+        body: `Order ${latest.orderId} from ${latest.ownerName} (${latest.items?.length || 1} file(s) • ₹${latest.total})`,
+        icon: '/logo.gif'
+      });
+    } catch (e) {}
+  }
+
+  showToast(`⚡ New print request arrived: ${latest.orderId}`, 'success');
+}
+
+// Clear title flash on window focus
+window.addEventListener('focus', () => {
+  if (titleFlashInterval) {
+    clearInterval(titleFlashInterval);
+    titleFlashInterval = null;
+    document.title = originalDocTitle;
+  }
+});
+
+// Load stats and orders from server (supports silent 4s background polling)
 async function loadDashboardData(isPolling = false) {
   const loadingEl = document.getElementById('orders-loading');
   const containerEl = document.getElementById('orders-container');
@@ -73,7 +190,21 @@ async function loadDashboardData(isPolling = false) {
     if (!ordersRes.ok) throw new Error('Failed to load orders');
 
     const ordersData = await ordersRes.json();
-    allOrders = ordersData.orders || [];
+    const fetchedOrders = ordersData.orders || [];
+
+    if (!isPolling) {
+      // First load: record initial known orders
+      knownOrderIds = new Set(fetchedOrders.map(o => o.orderId));
+    } else {
+      // Background poll: check for brand new incoming requests
+      const newlyArrived = fetchedOrders.filter(o => !knownOrderIds.has(o.orderId));
+      if (newlyArrived.length > 0) {
+        newlyArrived.forEach(o => knownOrderIds.add(o.orderId));
+        triggerNewOrderNotification(newlyArrived);
+      }
+    }
+
+    allOrders = fetchedOrders;
     const tabReqCount = document.getElementById('tab-req-count');
     if (tabReqCount) tabReqCount.textContent = allOrders.length;
 

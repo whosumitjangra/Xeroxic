@@ -531,6 +531,8 @@ document.getElementById('submit-order-btn')?.addEventListener('click', async () 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         items: orderDraft,
+        copies: parseInt(document.getElementById('order-copies')?.value || '1', 10),
+        pageRange: document.getElementById('page-range')?.value || 'all',
         paymentMethod: 'UPI'
       })
     });

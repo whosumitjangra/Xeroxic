@@ -49,13 +49,11 @@ document.getElementById('superadmin-logout-btn')?.addEventListener('click', asyn
   window.location.href = '/admin';
 });
 
-// ---------------- TABS SWITCHER ----------------
+// ---------------- TABS SWITCHER (Admin Accounts & Pricing Only) ----------------
 function setupTabs() {
   const tabs = [
-    { btn: 'tab-btn-overview', view: 'view-overview' },
     { btn: 'tab-btn-staff', view: 'view-staff' },
-    { btn: 'tab-btn-pricing', view: 'view-pricing' },
-    { btn: 'tab-btn-allorders', view: 'view-allorders' }
+    { btn: 'tab-btn-pricing', view: 'view-pricing' }
   ];
 
   tabs.forEach(t => {
@@ -73,52 +71,18 @@ function setupTabs() {
 
       if (t.view === 'view-staff') loadStaff();
       if (t.view === 'view-pricing') loadPricing();
-      if (t.view === 'view-allorders') loadOrders();
     });
   });
 }
 
 function loadAllData() {
-  loadOverviewStats();
   loadStaff();
   loadPricing();
-  loadOrders();
 }
 
-// ===================================================================
-// TAB 1: SYSTEM OVERVIEW & STATS
-// ===================================================================
-async function loadOverviewStats() {
-  try {
-    const res = await fetch('/api/superadmin/stats');
-    if (!res.ok) throw new Error('Could not fetch stats');
-    const data = await res.json();
-
-    document.getElementById('stat-total-orders').textContent = data.totalOrders || 0;
-    document.getElementById('stat-total-revenue').textContent = `₹${data.totalRevenue || 0}`;
-    document.getElementById('stat-total-staff').textContent = data.totalStaff || 0;
-    document.getElementById('stat-total-students').textContent = data.totalStudents || 0;
-
-    const counts = data.statusCounts || {};
-    document.getElementById('count-new').textContent = counts['New'] || 0;
-    document.getElementById('count-accepted').textContent = counts['Accepted'] || 0;
-    document.getElementById('count-printing').textContent = counts['Printing'] || 0;
-    document.getElementById('count-ready').textContent = counts['Ready for Collection'] || 0;
-    document.getElementById('count-collected').textContent = counts['Collected'] || 0;
-
-    const tabOrdersCount = document.getElementById('tab-orders-count');
-    if (tabOrdersCount) tabOrdersCount.textContent = data.totalOrders || 0;
-    const tabStaffCount = document.getElementById('tab-staff-count');
-    if (tabStaffCount) tabStaffCount.textContent = data.totalStaff || 0;
-  } catch (err) {
-    console.error('Failed to load stats:', err);
-  }
+function setupEventListeners() {
+  // Empty as all-orders was removed to keep superadmin strictly limited to staff & pricing
 }
-
-document.getElementById('refresh-overview-btn')?.addEventListener('click', () => {
-  loadOverviewStats();
-  showToast('Statistics refreshed', 'info');
-});
 
 // ===================================================================
 // TAB 2: STAFF ACCOUNTS
@@ -339,227 +303,6 @@ document.getElementById('pricing-form')?.addEventListener('submit', async (e) =>
     submitBtn.textContent = '💾 Save New Pricing Table';
   }
 });
-
-// ===================================================================
-// TAB 4: ALL PRINT ORDERS MASTER LOG
-// ===================================================================
-async function loadOrders() {
-  const loadingEl = document.getElementById('so-orders-loading');
-  const containerEl = document.getElementById('so-orders-container');
-  const emptyEl = document.getElementById('so-orders-empty');
-
-  if (loadingEl) loadingEl.style.display = 'block';
-  if (containerEl) containerEl.style.display = 'none';
-  if (emptyEl) emptyEl.style.display = 'none';
-
-  try {
-    const res = await fetch('/api/admin/orders');
-    if (!res.ok) throw new Error('Could not fetch orders');
-    const data = await res.json();
-    allOrders = data.orders || [];
-
-    const tabOrdersCount = document.getElementById('tab-orders-count');
-    if (tabOrdersCount) tabOrdersCount.textContent = allOrders.length;
-
-    renderMasterOrders();
-  } catch (err) {
-    console.error('Error loading all orders:', err);
-    showToast('Failed to load orders: ' + err.message, 'error');
-  } finally {
-    if (loadingEl) loadingEl.style.display = 'none';
-  }
-}
-
-document.getElementById('refresh-allorders-btn')?.addEventListener('click', () => {
-  loadOrders();
-  showToast('Orders refreshed', 'info');
-});
-
-function setupEventListeners() {
-  // Search orders
-  const searchInput = document.getElementById('so-search-input');
-  if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
-      orderSearchQuery = e.target.value.trim();
-      renderMasterOrders();
-    });
-  }
-
-  // Filter pills
-  const pills = document.querySelectorAll('#so-status-filters .filter-pill');
-  pills.forEach(pill => {
-    pill.addEventListener('click', () => {
-      pills.forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
-      activeOrderFilter = pill.getAttribute('data-filter');
-      renderMasterOrders();
-    });
-  });
-}
-
-function renderMasterOrders() {
-  const containerEl = document.getElementById('so-orders-container');
-  const emptyEl = document.getElementById('so-orders-empty');
-  if (!containerEl) return;
-
-  const filtered = allOrders.filter(order => {
-    if (activeOrderFilter !== 'all') {
-      if (order.status !== activeOrderFilter) {
-        if (activeOrderFilter === 'New' && order.status === 'Order Received') return true;
-        if (activeOrderFilter === 'Printing' && order.status === 'Printing in Progress') return true;
-        if (activeOrderFilter === 'Ready for Collection' && order.status === 'Ready for Pickup') return true;
-        if (activeOrderFilter === 'Collected' && order.status === 'Completed') return true;
-        return false;
-      }
-    }
-    if (orderSearchQuery) {
-      const q = orderSearchQuery.toLowerCase();
-      const matchId = (order.orderId || '').toLowerCase().includes(q);
-      const matchName = (order.ownerName || '').toLowerCase().includes(q);
-      const matchEmail = (order.ownerEmail || '').toLowerCase().includes(q);
-      const matchDoc = (order.items || []).some(item => (item.originalName || '').toLowerCase().includes(q));
-      if (!matchId && !matchName && !matchEmail && !matchDoc) return false;
-    }
-    return true;
-  });
-
-  if (filtered.length === 0) {
-    containerEl.style.display = 'none';
-    if (emptyEl) emptyEl.style.display = 'block';
-    return;
-  }
-
-  if (emptyEl) emptyEl.style.display = 'none';
-  containerEl.style.display = 'flex';
-  containerEl.innerHTML = '';
-
-  filtered.forEach(order => {
-    const card = document.createElement('div');
-    card.className = 'admin-order-card';
-    card.id = `so-card-${order.orderId}`;
-
-    const formattedDate = order.createdAt
-      ? new Date(order.createdAt).toLocaleString('en-IN', {
-          dateStyle: 'medium',
-          timeStyle: 'short'
-        })
-      : 'N/A';
-
-    const statusClass = getStatusClass(order.status);
-
-    let itemsHtml = '';
-    (order.items || []).forEach(item => {
-      const printSpecs = `${item.color === 'color' ? '🎨 Color' : '⬛ B&W'} • ${item.sides === 'double' ? 'Double-sided' : 'Single'} • ${item.pages} page${item.pages > 1 ? 's' : ''}`;
-      itemsHtml += `
-        <div class="admin-doc-item">
-          <div class="admin-doc-info">
-            <div class="admin-doc-icon">📄</div>
-            <div>
-              <div class="admin-doc-name">${item.originalName}</div>
-              <div class="admin-doc-specs">${printSpecs} — <strong>₹${item.price}</strong></div>
-            </div>
-          </div>
-          <div class="admin-doc-actions">
-            ${item.fileId ? `
-              <a href="/api/download/${item.fileId}?inline=1" target="_blank" class="admin-btn-action admin-btn-preview">👁 Preview</a>
-              <a href="/api/download/${item.fileId}" download="${item.originalName}" class="admin-btn-action admin-btn-download">⬇ Download</a>
-            ` : '<span class="admin-no-file">No File</span>'}
-          </div>
-        </div>
-      `;
-    });
-
-    const isNew = order.status === 'New' || order.status === 'Order Received';
-    const isAccepted = order.status === 'Accepted';
-    const isPrinting = order.status === 'Printing' || order.status === 'Printing in Progress';
-    const isReady = order.status === 'Ready for Collection' || order.status === 'Ready for Pickup';
-    const isCollected = order.status === 'Collected' || order.status === 'Completed';
-
-    card.innerHTML = `
-      <div class="admin-order-header">
-        <div class="admin-order-meta">
-          <span class="admin-order-id">${order.orderId}</span>
-          <span class="admin-order-date">📅 ${formattedDate}</span>
-          <span class="admin-customer-info">👤 <strong>${order.ownerName}</strong> (${order.ownerEmail})</span>
-        </div>
-        <div class="admin-order-badge-wrap">
-          <span class="admin-status-badge ${statusClass}" id="so-badge-${order.orderId}">
-            ${order.status}
-          </span>
-        </div>
-      </div>
-
-      <div class="admin-order-body">
-        <div class="admin-docs-list">
-          ${itemsHtml || '<p class="admin-no-docs">No items in this order.</p>'}
-        </div>
-      </div>
-
-      <div class="admin-order-footer">
-        <div class="admin-order-total">
-          <span>Total:</span>
-          <strong>₹${order.total}</strong>
-        </div>
-
-        <div class="admin-status-controller">
-          <label class="admin-control-label">Update Status:</label>
-          <select class="admin-status-select so-status-select" data-order-id="${order.orderId}">
-            <option value="New" ${isNew ? 'selected' : ''}>🟡 New</option>
-            <option value="Accepted" ${isAccepted ? 'selected' : ''}>🔵 Accepted</option>
-            <option value="Printing" ${isPrinting ? 'selected' : ''}>🖨️ Printing</option>
-            <option value="Ready for Collection" ${isReady ? 'selected' : ''}>🟢 Ready for Collection</option>
-            <option value="Collected" ${isCollected ? 'selected' : ''}>✅ Collected</option>
-          </select>
-        </div>
-      </div>
-    `;
-
-    containerEl.appendChild(card);
-  });
-
-  document.querySelectorAll('.so-status-select').forEach(select => {
-    select.addEventListener('change', async (e) => {
-      const orderId = e.target.getAttribute('data-order-id');
-      const newStatus = e.target.value;
-      await updateOrderStatusFromSuper(orderId, newStatus);
-    });
-  });
-}
-
-async function updateOrderStatusFromSuper(orderId, newStatus) {
-  try {
-    const res = await fetch(`/api/admin/orders/${encodeURIComponent(orderId)}/status`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Status update failed');
-
-    const order = allOrders.find(o => o.orderId === orderId);
-    if (order) order.status = newStatus;
-
-    const badgeEl = document.getElementById(`so-badge-${orderId}`);
-    if (badgeEl) {
-      badgeEl.textContent = newStatus;
-      badgeEl.className = `admin-status-badge ${getStatusClass(newStatus)}`;
-    }
-
-    loadOverviewStats();
-    showToast(`Order ${orderId} updated to "${newStatus}"!`, 'success');
-  } catch (err) {
-    showToast('Failed to update status: ' + err.message, 'error');
-  }
-}
-
-function getStatusClass(status) {
-  if (status === 'New' || status === 'Order Received') return 'badge-received';
-  if (status === 'Accepted') return 'badge-received';
-  if (status === 'Printing' || status === 'Printing in Progress') return 'badge-printing';
-  if (status === 'Ready for Collection' || status === 'Ready for Pickup') return 'badge-ready';
-  if (status === 'Collected' || status === 'Completed') return 'badge-completed';
-  return 'badge-received';
-}
 
 function showToast(msg, type = 'info') {
   const toast = document.getElementById('super-toast');

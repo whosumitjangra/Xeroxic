@@ -27,6 +27,14 @@
       "destination": "/super-admin.html"
     },
     {
+      "source": "/admin/:file((?!dashboard$).*\\..*)",
+      "destination": "/:file"
+    },
+    {
+      "source": "/super-admin/:file(.*\\..*)",
+      "destination": "/:file"
+    },
+    {
       "source": "/api",
       "destination": "/api/index.js"
     },

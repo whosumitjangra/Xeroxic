@@ -6,7 +6,7 @@
 <title>Super Admin Portal — Xerox Centre (AIT Pune)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="/style.css">
 <style>
   .super-badge {
     display: inline-block;
@@ -184,7 +184,7 @@
 <div class="admin-wrapper">
   <!-- Top Header -->
   <header class="admin-header">
-    <div class="logo"><img src="logo.gif" alt="AIT Pune Logo"></div>
+    <div class="logo"><img src="/logo.gif" alt="AIT Pune Logo"></div>
     <div class="brand">
       <div class="title">XEROX CENTRE</div>
       <div class="sub">AIT, PUNE <span class="super-badge">👑 SUPER ADMIN</span></div>
@@ -195,105 +195,18 @@
   </header>
 
   <main class="admin-main">
-    <!-- Super Admin Navigation Tabs -->
+    <!-- Super Admin Navigation Tabs (Limited to Admin Accounts & Pricing only) -->
     <div class="admin-tabs-nav">
-      <button type="button" class="admin-nav-tab active" id="tab-btn-overview">
-        <span>📊</span> System Overview &amp; Stats
-      </button>
-      <button type="button" class="admin-nav-tab" id="tab-btn-staff">
-        <span>👥</span> Staff Accounts (<span id="tab-staff-count">0</span>)
+      <button type="button" class="admin-nav-tab active" id="tab-btn-staff">
+        <span>👥</span> Admin / Staff Accounts (<span id="tab-staff-count">0</span>)
       </button>
       <button type="button" class="admin-nav-tab" id="tab-btn-pricing">
         <span>🏷️</span> Pricing Table
       </button>
-      <button type="button" class="admin-nav-tab" id="tab-btn-allorders">
-        <span>📦</span> All Print Orders (<span id="tab-orders-count">0</span>)
-      </button>
     </div>
 
-    <!-- ================= TAB 1: OVERVIEW & STATS ================= -->
-    <div id="view-overview">
-      <div class="admin-top-bar">
-        <div>
-          <h1 class="page-title" style="margin:0 0 6px 0; font-size:26px;">Super Admin Control Centre</h1>
-          <p class="admin-subtext">Comprehensive management of Xerox Centre printing operations, staff credentials, rates, and revenue analytics.</p>
-        </div>
-        <button class="refresh-btn" id="refresh-overview-btn">🔄 Refresh Data</button>
-      </div>
-
-      <!-- Stats Summary Cards -->
-      <div class="admin-stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon">📄</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-total-orders">0</div>
-            <div class="stat-label">Total Student Orders</div>
-          </div>
-        </div>
-        <div class="stat-card stat-revenue">
-          <div class="stat-icon">💰</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-total-revenue">₹0</div>
-            <div class="stat-label">Total Revenue</div>
-          </div>
-        </div>
-        <div class="stat-card stat-ready">
-          <div class="stat-icon">🛡️</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-total-staff">0</div>
-            <div class="stat-label">Staff Accounts</div>
-          </div>
-        </div>
-        <div class="stat-card stat-pending">
-          <div class="stat-icon">🎓</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-total-students">0</div>
-            <div class="stat-label">Registered Students</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Order Status Breakdown Card -->
-      <div class="card-section">
-        <h3 class="card-section-title">📊 Live Order Pipeline Breakdown</h3>
-        <p class="card-section-sub">Current distribution of student print orders across the 5 stages.</p>
-        <div class="admin-stats-grid" id="status-breakdown-grid">
-          <div class="stat-card">
-            <div class="stat-info">
-              <div class="stat-value" id="count-new">0</div>
-              <div class="stat-label">🟡 New Orders</div>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-info">
-              <div class="stat-value" id="count-accepted">0</div>
-              <div class="stat-label">🔵 Accepted</div>
-            </div>
-          </div>
-          <div class="stat-card stat-pending">
-            <div class="stat-info">
-              <div class="stat-value" id="count-printing">0</div>
-              <div class="stat-label">🖨️ Printing</div>
-            </div>
-          </div>
-          <div class="stat-card stat-ready">
-            <div class="stat-info">
-              <div class="stat-value" id="count-ready">0</div>
-              <div class="stat-label">🟢 Ready for Collection</div>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-info">
-              <div class="stat-value" id="count-collected">0</div>
-              <div class="stat-label">✅ Collected</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ================= TAB 2: STAFF MANAGEMENT ================= -->
-    <div id="view-staff" style="display:none;">
+    <!-- ================= TAB 1: STAFF MANAGEMENT ================= -->
+    <div id="view-staff">
       <div class="admin-top-bar">
         <div>
           <h1 class="page-title" style="margin:0 0 6px 0; font-size:26px;">Staff &amp; Admin Accounts</h1>
@@ -419,44 +332,6 @@
         </form>
       </div>
     </div>
-
-    <!-- ================= TAB 4: ALL PRINT ORDERS ================= -->
-    <div id="view-allorders" style="display:none;">
-      <div class="admin-top-bar">
-        <div>
-          <h1 class="page-title" style="margin:0 0 6px 0; font-size:26px;">All Print Orders Master Log</h1>
-          <p class="admin-subtext">View, filter, download, or change status for any student order.</p>
-        </div>
-        <button class="refresh-btn" id="refresh-allorders-btn">🔄 Refresh Orders</button>
-      </div>
-
-      <!-- Controls -->
-      <div class="admin-controls-card">
-        <div class="admin-search-wrap">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="so-search-input" class="admin-search-input" placeholder="Search orders by ID, Student Name, Email, or Doc Name...">
-        </div>
-        <div class="status-filter-pills" id="so-status-filters">
-          <button type="button" class="filter-pill active" data-filter="all">All</button>
-          <button type="button" class="filter-pill" data-filter="New">New</button>
-          <button type="button" class="filter-pill" data-filter="Accepted">Accepted</button>
-          <button type="button" class="filter-pill" data-filter="Printing">Printing</button>
-          <button type="button" class="filter-pill" data-filter="Ready for Collection">Ready for Collection</button>
-          <button type="button" class="filter-pill" data-filter="Collected">Collected</button>
-        </div>
-      </div>
-
-      <div id="so-orders-loading" class="admin-loading-state">
-        <div class="spinner"></div>
-        <p>Loading all orders...</p>
-      </div>
-
-      <div id="so-orders-container" class="admin-orders-list" style="display:none;"></div>
-      <div id="so-orders-empty" class="admin-empty-state" style="display:none;">
-        <div class="empty-icon">📭</div>
-        <h3>No Print Orders Found</h3>
-      </div>
-    </div>
   </main>
 </div>
 
@@ -484,6 +359,6 @@
 
 <div id="super-toast" class="admin-toast"></div>
 
-<script src="super-admin.js"></script>
+<script src="/super-admin.js"></script>
 </body>
 </html>

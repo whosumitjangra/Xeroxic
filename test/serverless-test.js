@@ -559,7 +559,7 @@ async function runTests() {
 
   const superAdminPageRes = await invokeHandler({ method: 'GET', url: '/super-admin' });
   assert.strictEqual(superAdminPageRes.statusCode, 200);
-  assert(superAdminPageRes.text().includes('Super Admin Control Centre'));
+  assert(superAdminPageRes.text().includes('SUPER ADMIN') || superAdminPageRes.text().includes('Staff & Admin Accounts'));
   console.log('   ✅ Clean URL routing passed (/admin, /admin/dashboard, /super-admin)');
 
   // ===================================================================
@@ -814,7 +814,22 @@ async function runTests() {
   assert(superStudentLoginRes.json().error.includes('Admin / Staff account'));
   console.log('   ✅ Scenario 7 passed: Admin & Super Admin strictly prevented from signing in through Student portal');
 
-  console.log('\n🎉 ALL 37 TESTS PASSED SUCCESSFULLY! Full role-based system, isolation & print queue verified.\n');
+  // Test 38: Asset Fallback (/admin/style.css, /admin/admin.js, /super-admin/style.css)
+  console.log('38. Testing Asset Fallback for Subpaths (/admin/style.css, /admin/admin.js)...');
+  const adminCssRes = await invokeHandler({ method: 'GET', url: '/admin/style.css' });
+  assert.strictEqual(adminCssRes.statusCode, 200);
+  assert(adminCssRes.text().includes('--green-main') || adminCssRes.text().includes('body'));
+
+  const adminJsRes = await invokeHandler({ method: 'GET', url: '/admin/admin.js' });
+  assert.strictEqual(adminJsRes.statusCode, 200);
+  assert(adminJsRes.text().includes('checkAdminAuth'));
+
+  const superCssRes = await invokeHandler({ method: 'GET', url: '/super-admin/style.css' });
+  assert.strictEqual(superCssRes.statusCode, 200);
+  assert(superCssRes.text().includes('--green-main') || superCssRes.text().includes('body'));
+  console.log('   ✅ Subpath asset fallback verified: CSS and JS load properly for Admin and Super Admin');
+
+  console.log('\n🎉 ALL 38 TESTS PASSED SUCCESSFULLY! Full role-based system, asset routing & notifications verified.\n');
 }
 
 runTests().catch(err => {

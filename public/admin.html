@@ -6,14 +6,14 @@
 <title>Admin Portal — Xerox Centre (AIT Pune)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
 <div class="admin-wrapper">
   <!-- Top Header -->
   <header class="admin-header">
-    <div class="logo"><img src="logo.gif" alt="AIT Pune Logo"></div>
+    <div class="logo"><img src="/logo.gif" alt="AIT Pune Logo"></div>
     <div class="brand">
       <div class="title">XEROX CENTRE</div>
       <div class="sub">AIT, PUNE <span class="admin-badge">ADMIN PORTAL</span></div>
@@ -22,6 +22,18 @@
     <span class="welcome-name" id="admin-welcome-name">Loading...</span>
     <button class="signin" id="admin-logout-btn">Sign Out</button>
   </header>
+
+  <!-- Top Notification Banner for Live Incoming Print Requests -->
+  <div id="admin-incoming-alert" class="admin-incoming-banner" style="display:none;">
+    <div class="incoming-alert-content">
+      <span class="incoming-alert-icon">⚡🔔</span>
+      <span id="incoming-alert-text" class="incoming-alert-text">New Print Request Received!</span>
+    </div>
+    <div class="incoming-alert-actions">
+      <button type="button" class="alert-view-btn" id="btn-view-incoming">View Request ↓</button>
+      <button type="button" class="alert-dismiss-btn" id="btn-dismiss-incoming">✕</button>
+    </div>
+  </div>
 
   <main class="admin-main">
     <!-- Admin Navigation Tabs -->
@@ -226,6 +238,6 @@
 <!-- Notification Toast -->
 <div id="admin-toast" class="admin-toast"></div>
 
-<script src="admin.js"></script>
+<script src="/admin.js"></script>
 </body>
 </html>
