@@ -14,6 +14,8 @@
       }
     ],
     "total": 345,
+    "paymentStatus": "PAID",
+    "status": "REQUEST_RECEIVED",
     "createdAt": "2026-09-08T10:01:01.167Z"
   }
 ]

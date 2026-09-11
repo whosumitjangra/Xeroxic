@@ -96,13 +96,16 @@
         </div>
         <div class="status-filter-pills" id="status-filters">
           <button type="button" class="filter-pill active" data-filter="all">All Orders</button>
+          <button type="button" class="filter-pill" data-filter="pending" id="filter-pill-pending">
+            Pending <span class="badge-count" id="pill-pending-count" style="display:none; background:#d97706; color:#fff; padding:1px 6px; border-radius:999px; font-size:11px; margin-left:4px;">0</span>
+          </button>
           <button type="button" class="filter-pill" data-filter="New" id="filter-pill-new">
             New Requests <span class="badge-count" id="pill-new-count" style="display:none; background:#b45309; color:#fff; padding:1px 6px; border-radius:999px; font-size:11px; margin-left:4px;">0</span>
           </button>
           <button type="button" class="filter-pill" data-filter="Accepted">Accepted</button>
           <button type="button" class="filter-pill" data-filter="Printing">Printing</button>
           <button type="button" class="filter-pill" data-filter="Ready for Collection">Ready for Collection</button>
-          <button type="button" class="filter-pill" data-filter="Collected">Collected</button>
+          <button type="button" class="filter-pill" data-filter="Collected" id="filter-pill-completed">Completed</button>
         </div>
       </div>
 

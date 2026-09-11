@@ -957,7 +957,197 @@ async function runTests() {
   assert(cc.includes('no-cache'), 'API response must contain Cache-Control: no-cache');
   console.log('   ✅ Strict Cache-Control: no-store, no-cache verified on API responses');
 
-  console.log('\n🎉 ALL 42 TESTS PASSED SUCCESSFULLY! Persistent notifications, assignment tombstoning, and role isolation fully verified.\n');
+  // ===================================================================
+  // AUDIT VERIFICATION TESTS: 8 REQUIRED SCENARIOS
+  // ===================================================================
+
+  // Test 43: Audit Scenario 1 — Complete/Review an item -> multiple query cycles -> confirm it never reappears in pending
+  console.log('43. Testing Audit Scenario 1: Review/Complete item & verify it never reappears in pending across polling cycles...');
+  const initAudit1 = await invokeHandler({
+    method: 'POST',
+    url: '/api/orders/initiate',
+    headers: { cookie: sessionCookie },
+    body: {
+      items: [{ fileId: uploadedFileId, originalName: 'AuditDoc1.pdf', pages: 2, sides: 'single', color: 'bw' }],
+      copies: 1
+    }
+  });
+  const audit1OrderId = initAudit1.json().orderId;
+  await invokeHandler({
+    method: 'POST',
+    url: '/api/payments/verify',
+    headers: { cookie: sessionCookie },
+    body: { orderId: audit1OrderId, simulationStatus: 'SUCCESS' }
+  });
+
+  // Admin marks completed
+  const markDoneRes = await invokeHandler({
+    method: 'PATCH',
+    url: `/api/admin/orders/${audit1OrderId}/status`,
+    headers: { cookie: adminCookie },
+    body: { status: 'COMPLETED' }
+  });
+  assert.strictEqual(markDoneRes.statusCode, 200);
+
+  // Poll 5 times (simulating polling intervals) and verify status is strictly COMPLETED and never reverts to REQUEST_RECEIVED
+  for (let cycle = 1; cycle <= 5; cycle++) {
+    const pollRes = await invokeHandler({
+      method: 'GET',
+      url: `/api/admin/orders?orderId=${audit1OrderId}`,
+      headers: { cookie: adminCookie }
+    });
+    const foundOrder = pollRes.json().orders[0];
+    assert.strictEqual(foundOrder.status, 'COMPLETED', `Cycle ${cycle}: Order status must remain COMPLETED and not revert`);
+  }
+  console.log('   ✅ Scenario 1 passed: Reviewed item permanently completed and never reverts to pending');
+
+  // Test 44: Audit Scenario 2 — Filter changes (All, Pending, Completed) consistency
+  console.log('44. Testing Audit Scenario 2: Filter consistency across All, Pending, Completed...');
+  const allOrdersRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/orders',
+    headers: { cookie: adminCookie }
+  });
+  const pendingOrdersRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/orders?status=pending',
+    headers: { cookie: adminCookie }
+  });
+  const completedOrdersRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/orders?status=completed',
+    headers: { cookie: adminCookie }
+  });
+
+  const pendingList = pendingOrdersRes.json().orders;
+  const completedList = completedOrdersRes.json().orders;
+  assert(!pendingList.some(o => o.orderId === audit1OrderId), 'Completed order must NOT be in pending filter list');
+  assert(completedList.some(o => o.orderId === audit1OrderId), 'Completed order must be in completed filter list');
+  console.log('   ✅ Scenario 2 passed: Filters strictly partition pending vs completed items');
+
+  // Test 45: Audit Scenario 3 — Multiple payment-pending orders produce exactly 1 notification each (no duplicates)
+  console.log('45. Testing Audit Scenario 3: Multiple payment-pending orders emit exactly 1 notification each...');
+  const initPendingA = await invokeHandler({
+    method: 'POST',
+    url: '/api/orders/initiate',
+    headers: { cookie: sessionCookie },
+    body: { items: [{ fileId: uploadedFileId, originalName: 'DocA.pdf', pages: 1, sides: 'single', color: 'bw' }] }
+  });
+  const idPendingA = initPendingA.json().orderId;
+
+  const notifsCheck1 = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/notifications',
+    headers: { cookie: adminCookie }
+  });
+  const notifsForA = notifsCheck1.json().notifications.filter(n => n.orderId === idPendingA);
+  assert.strictEqual(notifsForA.length, 1, 'Exactly one notification must exist for pending order');
+  assert.strictEqual(notifsForA[0].paymentStatus, 'PENDING_PAYMENT');
+  console.log('   ✅ Scenario 3 passed: Exactly one payment-pending notification created without duplicates');
+
+  // Test 46: Audit Scenario 4 — Payment confirmation updates notification in-place without duplication
+  console.log('46. Testing Audit Scenario 4: Payment confirmation updates notification to PAID in-place...');
+  await invokeHandler({
+    method: 'POST',
+    url: '/api/payments/verify',
+    headers: { cookie: sessionCookie },
+    body: { orderId: idPendingA, simulationStatus: 'SUCCESS' }
+  });
+
+  const notifsCheck2 = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/notifications',
+    headers: { cookie: adminCookie }
+  });
+  const notifsForAAfterPay = notifsCheck2.json().notifications.filter(n => n.orderId === idPendingA);
+  assert.strictEqual(notifsForAAfterPay.length, 1, 'Still exactly one notification must exist (no duplicate created on payment)');
+  assert.strictEqual(notifsForAAfterPay[0].paymentStatus, 'PAID');
+  console.log('   ✅ Scenario 4 passed: Notification updated to PAID smoothly without duplication');
+
+  // Test 47: Audit Scenario 5 — Tap notification resolves exact order by canonical ID even if not on active page
+  console.log('47. Testing Audit Scenario 5: Notification click resolves exact canonical order record...');
+  const singleOrderRes = await invokeHandler({
+    method: 'GET',
+    url: `/api/orders/${idPendingA}`,
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(singleOrderRes.statusCode, 200);
+  assert.strictEqual(singleOrderRes.json().orderId, idPendingA);
+  assert.strictEqual(singleOrderRes.json().paymentStatus, 'PAID');
+  console.log('   ✅ Scenario 5 passed: Exact order record retrieved by canonical ID');
+
+  // Test 48: Audit Scenario 6 — Tap notification for non-existent order returns 404
+  console.log('48. Testing Audit Scenario 6: Non-existent order request returns clean 404...');
+  const missingOrderRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/orders/ORD-NONEXISTENT999',
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(missingOrderRes.statusCode, 404);
+  assert(missingOrderRes.json().error.includes('No order found'));
+  console.log('   ✅ Scenario 6 passed: Non-existent order returns clean 404');
+
+  // Test 49: Audit Scenario 7 — User identity integrity across multiple distinct student accounts
+  console.log('49. Testing Audit Scenario 7: User identity integrity (real registered names displayed)...');
+  const userPriyaRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/signup',
+    body: { name: 'Priya Sharma', email: `priya_${Date.now()}@aitpune.edu.in`, password: 'password123' }
+  });
+  const priyaCookie = userPriyaRes.headers['set-cookie'].split(';')[0];
+  const priyaOrderRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/orders/initiate',
+    headers: { cookie: priyaCookie },
+    body: { items: [{ fileId: uploadedFileId, originalName: 'PriyaReport.pdf', pages: 3, sides: 'single', color: 'color' }] }
+  });
+  const priyaOrderId = priyaOrderRes.json().orderId;
+
+  const adminOrdersCheck = await invokeHandler({
+    method: 'GET',
+    url: `/api/admin/orders?orderId=${priyaOrderId}`,
+    headers: { cookie: adminCookie }
+  });
+  const priyaFetched = adminOrdersCheck.json().orders[0];
+  assert.strictEqual(priyaFetched.ownerName, 'Priya Sharma', 'Admin dashboard must display canonical user name');
+  console.log('   ✅ Scenario 7 passed: Real user name "Priya Sharma" correctly displayed on admin dashboard');
+
+  // Test 50: Audit Scenario 8 — Item options fidelity between submission and admin dashboard
+  console.log('50. Testing Audit Scenario 8: Print options fidelity (copies, sides, color, pageRange)...');
+  const optionsOrderRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/orders/initiate',
+    headers: { cookie: priyaCookie },
+    body: {
+      items: [{
+        fileId: uploadedFileId,
+        originalName: 'ComplexDoc.pdf',
+        pages: 5,
+        sides: 'double',
+        color: 'color',
+        copies: 3,
+        pageRange: '1-5'
+      }],
+      copies: 3,
+      pageRange: '1-5'
+    }
+  });
+  const optionsOrderId = optionsOrderRes.json().orderId;
+  const optionsAdminRes = await invokeHandler({
+    method: 'GET',
+    url: `/api/admin/orders?orderId=${optionsOrderId}`,
+    headers: { cookie: adminCookie }
+  });
+  const verifiedOptionsOrder = optionsAdminRes.json().orders[0];
+  const verifiedItem = verifiedOptionsOrder.items[0];
+  assert.strictEqual(verifiedItem.copies, 3);
+  assert.strictEqual(verifiedItem.sides, 'double');
+  assert.strictEqual(verifiedItem.color, 'color');
+  assert.strictEqual(verifiedItem.pageRange, '1-5');
+  assert.strictEqual(verifiedOptionsOrder.pageRange, '1-5');
+  console.log('   ✅ Scenario 8 passed: 100% options fidelity verified on admin dashboard');
+
+  console.log('\n🎉 ALL 50 TESTS PASSED SUCCESSFULLY! All 8 admin workflow audit scenarios verified.\n');
 }
 
 runTests().catch(err => {

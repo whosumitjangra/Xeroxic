@@ -31,6 +31,7 @@ const {
   getNotifications,
   saveNotifications,
   createNotification,
+  updateNotificationByOrderId,
   acknowledgeNotification,
   acknowledgeAllNotifications,
   getUnreadNotifications,
@@ -75,23 +76,32 @@ function checkRoleAccess(session, allowedRoles, res) {
 
 // Order status helper (supports 5-stage workflow: REQUEST_RECEIVED → ACCEPTED → PRINTING → READY → COMPLETED)
 function computeOrderStatus(orderOrDate) {
-  if (typeof orderOrDate === 'object' && orderOrDate && orderOrDate.status) {
-    const s = String(orderOrDate.status);
-    if (s === 'Order Received' || s === 'New' || s === 'REQUEST_RECEIVED') return 'REQUEST_RECEIVED';
-    if (s === 'Accepted' || s === 'ACCEPTED') return 'ACCEPTED';
-    if (s === 'Printing in Progress' || s === 'Printing' || s === 'PRINTING') return 'PRINTING';
-    if (s === 'Ready for Pickup' || s === 'Ready for Collection' || s === 'READY') return 'READY';
-    if (s === 'Completed' || s === 'Collected' || s === 'COMPLETED') return 'COMPLETED';
-    if (s === 'Cancelled' || s === 'CANCELLED') return 'CANCELLED';
-    return s;
+  if (typeof orderOrDate === 'object' && orderOrDate) {
+    const raw = orderOrDate.status || orderOrDate.requestStatus;
+    if (raw) {
+      const s = String(raw).trim();
+      const upper = s.toUpperCase();
+      if (upper === 'ORDER RECEIVED' || upper === 'NEW' || upper === 'REQUEST_RECEIVED') return 'REQUEST_RECEIVED';
+      if (upper === 'ACCEPTED') return 'ACCEPTED';
+      if (upper === 'PRINTING IN PROGRESS' || upper === 'PRINTING') return 'PRINTING';
+      if (upper === 'READY FOR PICKUP' || upper === 'READY FOR COLLECTION' || upper === 'READY') return 'READY';
+      if (upper === 'COMPLETED' || upper === 'COLLECTED') return 'COMPLETED';
+      if (upper === 'CANCELLED') return 'CANCELLED';
+      return s;
+    }
+    return 'REQUEST_RECEIVED';
   }
-  const createdAt = typeof orderOrDate === 'object' && orderOrDate ? orderOrDate.createdAt : orderOrDate;
-  const minutesElapsed = (Date.now() - new Date(createdAt).getTime()) / 60000;
-  if (minutesElapsed < 1) return 'REQUEST_RECEIVED';
-  if (minutesElapsed < 3) return 'ACCEPTED';
-  if (minutesElapsed < 6) return 'PRINTING';
-  if (minutesElapsed < 15) return 'READY';
-  return 'COMPLETED';
+  if (typeof orderOrDate === 'string') {
+    const upper = orderOrDate.trim().toUpperCase();
+    if (upper === 'ORDER RECEIVED' || upper === 'NEW' || upper === 'REQUEST_RECEIVED') return 'REQUEST_RECEIVED';
+    if (upper === 'ACCEPTED') return 'ACCEPTED';
+    if (upper === 'PRINTING IN PROGRESS' || upper === 'PRINTING') return 'PRINTING';
+    if (upper === 'READY FOR PICKUP' || upper === 'READY FOR COLLECTION' || upper === 'READY') return 'READY';
+    if (upper === 'COMPLETED' || upper === 'COLLECTED') return 'COMPLETED';
+    if (upper === 'CANCELLED') return 'CANCELLED';
+    return orderOrDate;
+  }
+  return 'REQUEST_RECEIVED';
 }
 
 // MIME dictionary
@@ -451,13 +461,20 @@ async function handler(req, res) {
         });
       }
 
+      const users = await getUsers();
+      const currentUser = users.find(u => u.id === session.userId);
+      const canonicalName = (currentUser && currentUser.name) ? currentUser.name : (session.name || 'Student');
+      const canonicalEmail = (currentUser && currentUser.email) ? currentUser.email : (session.email || 'N/A');
+
       const orders = await getOrders();
       const orderId = 'ORD-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+      const paymentId = utr || ('PAY-' + crypto.randomBytes(4).toString('hex').toUpperCase());
       const order = {
         orderId,
+        paymentId,
         ownerId: session.userId,
-        ownerName: session.name,
-        ownerEmail: session.email,
+        ownerName: canonicalName,
+        ownerEmail: canonicalEmail,
         items: cleanItems,
         copies: numCopies,
         pageRange: pageRange || 'all',
@@ -472,21 +489,33 @@ async function handler(req, res) {
       orders.push(order);
       await saveOrders(orders);
 
+      console.log('[Order Submission] Mapped IDs:', {
+        orderId: order.orderId,
+        userId: order.ownerId,
+        userName: order.ownerName,
+        paymentId: order.paymentId,
+        total: order.total,
+        itemsCount: cleanItems.length
+      });
+
       // Immediately queue persistent notification for admin
       try {
         await createNotification({
           orderId: order.orderId,
-          studentName: session.name,
-          studentEmail: session.email,
+          type: 'PAYMENT_PENDING',
+          paymentStatus: 'PENDING_PAYMENT',
+          studentName: canonicalName,
+          studentEmail: canonicalEmail,
           amount: order.total,
           fileCount: cleanItems.length,
-          message: `New Print Request #${order.orderId} from ${session.name}`
+          message: `Payment Pending: Order #${order.orderId} from ${canonicalName}`
         });
       } catch (e) {}
 
       return sendJSON(res, 200, {
         success: true,
         orderId,
+        paymentId,
         amount: total,
         total,
         copies: numCopies,
@@ -533,8 +562,8 @@ async function handler(req, res) {
         const printRequest = await createPrintRequest({
           orderId: order.orderId,
           studentId: session.userId,
-          studentName: session.name,
-          studentEmail: session.email,
+          studentName: order.ownerName,
+          studentEmail: order.ownerEmail,
           items: order.items,
           copies: order.copies || 1,
           pageRange: order.pageRange || 'all',
@@ -542,6 +571,16 @@ async function handler(req, res) {
           paymentStatus: 'PAID',
           requestStatus: 'REQUEST_RECEIVED'
         });
+
+        // Update notification smoothly to PAID
+        try {
+          await updateNotificationByOrderId(order.orderId, {
+            type: 'NEW_PRINT_REQUEST',
+            paymentStatus: 'PAID',
+            status: 'UNREAD',
+            message: `New Print Request #${order.orderId} from ${order.ownerName} (Paid)`
+          });
+        } catch (e) {}
 
         return sendJSON(res, 200, {
           success: true,
@@ -554,8 +593,18 @@ async function handler(req, res) {
         });
       } else if (statusToProcess === 'CANCELLED') {
         order.paymentStatus = 'CANCELLED';
+        order.status = 'CANCELLED';
         order.updatedAt = new Date().toISOString();
         await saveOrders(orders);
+
+        try {
+          await updateNotificationByOrderId(order.orderId, {
+            type: 'PAYMENT_CANCELLED',
+            paymentStatus: 'CANCELLED',
+            status: 'ACKNOWLEDGED',
+            message: `Order #${order.orderId} from ${order.ownerName} was CANCELLED by student`
+          });
+        } catch (e) {}
 
         return sendJSON(res, 200, {
           success: false,
@@ -568,6 +617,15 @@ async function handler(req, res) {
         order.paymentStatus = 'FAILED';
         order.updatedAt = new Date().toISOString();
         await saveOrders(orders);
+
+        try {
+          await updateNotificationByOrderId(order.orderId, {
+            type: 'PAYMENT_FAILED',
+            paymentStatus: 'FAILED',
+            status: 'ACKNOWLEDGED',
+            message: `Order #${order.orderId} payment failed`
+          });
+        } catch (e) {}
 
         return sendJSON(res, 400, {
           success: false,
@@ -621,12 +679,31 @@ async function handler(req, res) {
         return sendJSON(res, 403, { error: 'Forbidden: You do not have access to view this order.' });
       }
 
+      const users = await getUsers();
+      const filesDb = await getFiles();
+      const owner = users.find(u => u.id === order.ownerId);
+      const canonicalName = (owner && owner.name) ? owner.name : (order.ownerName || 'Student');
+      const canonicalEmail = (owner && owner.email) ? owner.email : (order.ownerEmail || 'N/A');
+
+      const enrichedItems = (order.items || []).map(item => {
+        const fileRecord = filesDb.find(f => f.id === item.fileId);
+        return {
+          ...item,
+          storedName: fileRecord ? fileRecord.storedName : null,
+          size: fileRecord ? fileRecord.size : null
+        };
+      });
+
       return sendJSON(res, 200, {
         orderId: order.orderId,
+        paymentId: order.paymentId || order.utr || null,
+        ownerId: order.ownerId,
+        ownerName: canonicalName,
+        ownerEmail: canonicalEmail,
         studentId: order.ownerId,
-        studentName: order.ownerName,
-        studentEmail: order.ownerEmail,
-        items: order.items,
+        studentName: canonicalName,
+        studentEmail: canonicalEmail,
+        items: enrichedItems,
         copies: order.copies || 1,
         pageRange: order.pageRange || 'all',
         total: order.total,
@@ -708,34 +785,6 @@ async function handler(req, res) {
       const session = getSessionFromReq(req);
       if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
 
-      // Self-healing check: Ensure any active REQUEST_RECEIVED/New order has an unread notification
-      try {
-        const orders = await getOrders();
-        const existingNotifs = await getNotifications();
-        const existingOrderIds = new Set(existingNotifs.map(n => n.orderId ? n.orderId.toUpperCase() : ''));
-
-        for (const o of orders) {
-          const st = String(o.status || '').toUpperCase();
-          const paySt = String(o.paymentStatus || '').toUpperCase();
-          if ((st === 'REQUEST_RECEIVED' || o.status === 'New' || o.status === 'Order Received') &&
-              paySt !== 'CANCELLED' && paySt !== 'FAILED') {
-            if (!existingOrderIds.has(o.orderId.toUpperCase())) {
-              await createNotification({
-                orderId: o.orderId,
-                studentName: o.ownerName || 'Student',
-                studentEmail: o.ownerEmail || 'N/A',
-                amount: o.total || 0,
-                fileCount: (o.items || []).length,
-                message: `New Print Request #${o.orderId} from ${o.ownerName || 'Student'}`
-              });
-              existingOrderIds.add(o.orderId.toUpperCase());
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Sync unnotified orders warning:', e.message);
-      }
-
       const allNotifs = await getNotifications();
       const unread = allNotifs.filter(n => n.status === 'UNREAD');
 
@@ -813,11 +862,17 @@ async function handler(req, res) {
             size: fileRecord ? fileRecord.size : null
           };
         });
+        const canonicalOwnerName = (owner && owner.name) ? owner.name : (o.ownerName || 'Student');
+        const canonicalOwnerEmail = (owner && owner.email) ? owner.email : (o.ownerEmail || 'N/A');
         return {
           orderId: o.orderId,
+          paymentId: o.paymentId || o.utr || null,
           ownerId: o.ownerId,
-          ownerName: o.ownerName || owner.name || 'Student',
-          ownerEmail: owner.email || 'N/A',
+          ownerName: canonicalOwnerName,
+          ownerEmail: canonicalOwnerEmail,
+          studentId: o.ownerId,
+          studentName: canonicalOwnerName,
+          studentEmail: canonicalOwnerEmail,
           items,
           copies: o.copies || 1,
           pageRange: o.pageRange || 'all',
@@ -829,7 +884,26 @@ async function handler(req, res) {
         };
       }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      return sendJSON(res, 200, { success: true, orders: enriched });
+      const filterStatus = parsed.searchParams.get('status');
+      const filterOrderId = parsed.searchParams.get('orderId');
+
+      let resultOrders = enriched;
+      if (filterOrderId) {
+        resultOrders = resultOrders.filter(o => o.orderId.toLowerCase() === filterOrderId.trim().toLowerCase());
+      }
+      if (filterStatus) {
+        const fs = filterStatus.trim().toLowerCase();
+        if (fs === 'pending') {
+          resultOrders = resultOrders.filter(o => {
+            const st = (o.status || '').toUpperCase();
+            return st !== 'COMPLETED' && st !== 'CANCELLED';
+          });
+        } else {
+          resultOrders = resultOrders.filter(o => (o.status || '').toLowerCase() === fs);
+        }
+      }
+
+      return sendJSON(res, 200, { success: true, orders: resultOrders });
     }
 
     // ---------------- ADMIN: UPDATE ORDER STATUS ----------------
@@ -856,8 +930,19 @@ async function handler(req, res) {
       if (status === 'Ready for Collection' || status === 'Ready for Pickup') normStatus = 'READY';
       if (status === 'Collected' || status === 'Completed') normStatus = 'COMPLETED';
 
+      const orders = await getOrders();
+      const existingOrder = orders.find(o => o.orderId.toLowerCase() === orderId.toLowerCase());
+      const previousStatus = existingOrder ? existingOrder.status : 'UNKNOWN';
+
       const updated = await updateOrderStatus(orderId, normStatus);
       await updatePrintRequestStatus(orderId, normStatus);
+
+      console.log('[Admin Review Action] Status update:', {
+        orderId,
+        previousStatus,
+        nextStatus: normStatus,
+        adminUser: session.email
+      });
 
       if (!updated) return sendJSON(res, 404, { error: 'Order not found.' });
       return sendJSON(res, 200, { success: true, orderId: updated.orderId, status: updated.status });

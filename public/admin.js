@@ -145,10 +145,13 @@ async function loadAdminNotifications(isPolling = false) {
     const data = await res.json();
     const unread = data.unread || [];
 
+    console.log('[Admin Notification Sync] Received unread count:', unread.length);
+
     // Check for brand new incoming requests not yet chimed
     const brandNew = unread.filter(n => !playedNotifIds.has(n.id));
     if (brandNew.length > 0) {
       brandNew.forEach(n => playedNotifIds.add(n.id));
+      console.log('[Admin Notification Sync] Brand new incoming requests:', brandNew.map(n => n.orderId));
       playNotificationChime();
       startTitleFlash(brandNew[0].orderId);
       triggerDesktopNotification(brandNew[0]);
@@ -204,7 +207,7 @@ function renderNotificationBanner() {
       renderNotificationBanner();
 
       // 3. Open the exact related print request card
-      openRelatedPrintRequest(notif.orderId);
+      await openRelatedPrintRequest(notif.orderId, notif);
     };
   }
 
@@ -223,9 +226,11 @@ function renderNotificationBanner() {
   }
 }
 
-// Open exact related print request and smoothly focus it
-function openRelatedPrintRequest(orderId) {
+// Open exact related print request and smoothly focus it (fetches on-demand if missing)
+async function openRelatedPrintRequest(orderId, notifPayload = null) {
   if (!orderId) return;
+
+  console.log('[Admin Notification Click] Click payload:', { orderId, notif: notifPayload });
 
   // 1. Switch to Print Document Requests tab if on Subject Assignments
   const tabBtnRequests = document.getElementById('tab-btn-requests');
@@ -240,7 +245,37 @@ function openRelatedPrintRequest(orderId) {
     if (tabAssignmentsView) tabAssignmentsView.style.display = 'none';
   }
 
-  // 2. Reset filters & clear search to guarantee the card is not hidden
+  // 2. Check if the order is already in allOrders; if not, fetch it from backend by canonical ID
+  let order = allOrders.find(o => o.orderId && o.orderId.toLowerCase() === String(orderId).toLowerCase());
+  if (!order) {
+    try {
+      const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}`);
+      if (res.ok) {
+        const remoteOrder = await res.json();
+        if (remoteOrder && remoteOrder.orderId) {
+          allOrders.unshift(remoteOrder);
+          order = remoteOrder;
+          console.log('[Admin Notification Click] Fetched missing order from backend:', { orderId });
+        }
+      } else {
+        console.warn('[Admin Notification Click] Target record not found in backend:', { orderId, status: res.status });
+        showToast(`Order #${orderId} not found or has been removed.`, 'error');
+        return;
+      }
+    } catch (e) {
+      console.error('[Admin Notification Click] Failed to fetch order from backend:', e);
+      showToast(`Order #${orderId} not found or has been removed.`, 'error');
+      return;
+    }
+  }
+
+  console.log('[Admin Notification Click] Target record resolved:', {
+    orderId,
+    foundInLocalState: !!order,
+    status: order ? order.status : null
+  });
+
+  // 3. Reset filters & clear search to guarantee the card is not hidden
   const statusFilters = document.getElementById('status-filters');
   if (statusFilters) {
     statusFilters.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
@@ -250,15 +285,15 @@ function openRelatedPrintRequest(orderId) {
   activeFilter = 'all';
 
   const searchInput = document.getElementById('admin-search-input');
-  if (searchInput && searchQuery) {
+  if (searchInput) {
     searchInput.value = '';
     searchQuery = '';
   }
 
-  // 3. Force re-render to ensure card is populated
+  // 4. Force re-render to ensure card is populated
   renderOrders(true);
 
-  // 4. Smoothly scroll into view and pulse
+  // 5. Smoothly scroll into view and pulse
   setTimeout(() => {
     const card = document.getElementById(`order-card-${orderId}`);
     if (card) {
@@ -268,7 +303,7 @@ function openRelatedPrintRequest(orderId) {
     } else {
       showToast(`Order #${orderId} loaded in queue.`, 'info');
     }
-  }, 100);
+  }, 120);
 }
 
 // Load stats and orders from server (supports silent 4s background polling)
@@ -293,6 +328,8 @@ async function loadDashboardData(isPolling = false) {
 
     const ordersData = await ordersRes.json();
     allOrders = ordersData.orders || [];
+
+    console.log('[Admin Poll/Sync] Received orders count:', allOrders.length, 'Filter:', activeFilter);
 
     const tabReqCount = document.getElementById('tab-req-count');
     if (tabReqCount) tabReqCount.textContent = allOrders.length;
@@ -332,6 +369,14 @@ function updateStatsUI(stats) {
     const cnt = stats.newCount || stats.newRequestsCount || 0;
     newPillCount.textContent = cnt;
     newPillCount.style.display = cnt > 0 ? 'inline-block' : 'none';
+  }
+
+  // Update pending pill counter badge
+  const pendingPillCount = document.getElementById('pill-pending-count');
+  if (pendingPillCount) {
+    const pCnt = stats.inProgressCount || 0;
+    pendingPillCount.textContent = pCnt;
+    pendingPillCount.style.display = pCnt > 0 ? 'inline-block' : 'none';
   }
 }
 
@@ -376,6 +421,9 @@ function renderOrders(force = false) {
       const orderSt = (order.status || '').toUpperCase();
       const filterSt = activeFilter.toUpperCase();
 
+      if (filterSt === 'PENDING') {
+        return orderSt !== 'COMPLETED' && order.status !== 'Collected' && order.status !== 'Completed' && orderSt !== 'CANCELLED' && order.status !== 'Cancelled';
+      }
       if (filterSt === 'NEW' || filterSt === 'REQUEST_RECEIVED') {
         return orderSt === 'REQUEST_RECEIVED' || order.status === 'New' || order.status === 'Order Received';
       }
@@ -572,6 +620,15 @@ function renderOrders(force = false) {
 
 // Update order status on backend
 async function updateOrderStatusOnServer(orderId, newStatus) {
+  const order = allOrders.find(o => o.orderId === orderId);
+  const previousStatus = order ? order.status : 'UNKNOWN';
+
+  console.log('[Admin Review Action] Updating order:', {
+    orderId,
+    previousStatus,
+    nextStatus: newStatus
+  });
+
   try {
     const res = await fetch(`/api/admin/orders/${encodeURIComponent(orderId)}/status`, {
       method: 'PATCH',
@@ -582,10 +639,9 @@ async function updateOrderStatusOnServer(orderId, newStatus) {
     if (!res.ok) throw new Error(data.error || 'Status update failed');
 
     // Update local order
-    const order = allOrders.find(o => o.orderId === orderId);
     if (order) order.status = newStatus;
 
-    // Update badge in DOM
+    // Update badge in DOM if present
     const badgeEl = document.getElementById(`badge-${orderId}`);
     if (badgeEl) {
       badgeEl.textContent = newStatus;
@@ -593,6 +649,10 @@ async function updateOrderStatusOnServer(orderId, newStatus) {
     }
 
     computeStatsFromOrders(allOrders);
+
+    // Immediately re-render orders list so that reviewed/completed items cleanly leave the filtered view
+    renderOrders(true);
+
     showToast(`Order ${orderId} updated to "${newStatus}"!`, 'success');
   } catch (err) {
     console.error('Failed to update status:', err);
