@@ -19,6 +19,11 @@ const {
   getOrders,
   saveOrders,
   updateOrderStatus,
+  normalizeRole,
+  getPrintRequests,
+  savePrintRequests,
+  createPrintRequest,
+  updatePrintRequestStatus,
   getAssignments,
   saveAssignments,
   createAssignment,
@@ -45,23 +50,42 @@ const PRICE_TABLE = {
   'color-double': 8
 };
 
-// Order status helper (supports 5-stage workflow: New → Accepted → Printing → Ready for Collection → Collected)
+// Check if authenticated session role matches one of allowed roles
+function checkRoleAccess(session, allowedRoles, res) {
+  if (!session) {
+    sendJSON(res, 401, { error: 'Authentication required. Please log in.' });
+    return false;
+  }
+  const userRole = normalizeRole(session.role);
+  const normalizedAllowed = allowedRoles.map(r => normalizeRole(r));
+  if (!normalizedAllowed.includes(userRole)) {
+    sendJSON(res, 403, {
+      error: `Forbidden: Access restricted to ${allowedRoles.join('/')}. Current role: ${userRole}`
+    });
+    return false;
+  }
+  return true;
+}
+
+// Order status helper (supports 5-stage workflow: REQUEST_RECEIVED → ACCEPTED → PRINTING → READY → COMPLETED)
 function computeOrderStatus(orderOrDate) {
   if (typeof orderOrDate === 'object' && orderOrDate && orderOrDate.status) {
-    const s = orderOrDate.status;
-    if (s === 'Order Received') return 'New';
-    if (s === 'Printing in Progress') return 'Printing';
-    if (s === 'Ready for Pickup') return 'Ready for Collection';
-    if (s === 'Completed') return 'Collected';
+    const s = String(orderOrDate.status);
+    if (s === 'Order Received' || s === 'New' || s === 'REQUEST_RECEIVED') return 'REQUEST_RECEIVED';
+    if (s === 'Accepted' || s === 'ACCEPTED') return 'ACCEPTED';
+    if (s === 'Printing in Progress' || s === 'Printing' || s === 'PRINTING') return 'PRINTING';
+    if (s === 'Ready for Pickup' || s === 'Ready for Collection' || s === 'READY') return 'READY';
+    if (s === 'Completed' || s === 'Collected' || s === 'COMPLETED') return 'COMPLETED';
+    if (s === 'Cancelled' || s === 'CANCELLED') return 'CANCELLED';
     return s;
   }
   const createdAt = typeof orderOrDate === 'object' && orderOrDate ? orderOrDate.createdAt : orderOrDate;
   const minutesElapsed = (Date.now() - new Date(createdAt).getTime()) / 60000;
-  if (minutesElapsed < 1) return 'New';
-  if (minutesElapsed < 3) return 'Accepted';
-  if (minutesElapsed < 6) return 'Printing';
-  if (minutesElapsed < 15) return 'Ready for Collection';
-  return 'Collected';
+  if (minutesElapsed < 1) return 'REQUEST_RECEIVED';
+  if (minutesElapsed < 3) return 'ACCEPTED';
+  if (minutesElapsed < 6) return 'PRINTING';
+  if (minutesElapsed < 15) return 'READY';
+  return 'COMPLETED';
 }
 
 // MIME dictionary
@@ -213,11 +237,12 @@ async function handler(req, res) {
   try {
     // ---------------- AUTH: SIGNUP ----------------
     if (pathname === '/api/signup' && req.method === 'POST') {
-      const { name, email, password, role = 'user', adminPasscode } = await readJSONBody(req);
+      const { name, email, password, role = 'STUDENT', adminPasscode } = await readJSONBody(req);
       if (!name || !email || !password) {
         return sendJSON(res, 400, { error: 'Name, email and password are required.' });
       }
-      if (role === 'admin') {
+      const targetRole = normalizeRole(role);
+      if (targetRole === 'ADMIN' || targetRole === 'SUPER_ADMIN') {
         const expectedPasscode = process.env.ADMIN_PASSCODE || 'AITXEROX2026';
         if (adminPasscode !== expectedPasscode) {
           return sendJSON(res, 403, { error: 'Invalid Admin Passcode. Contact Xerox in-charge.' });
@@ -233,7 +258,7 @@ async function handler(req, res) {
         id: crypto.randomBytes(8).toString('hex'),
         name,
         email,
-        role: role === 'admin' ? 'admin' : 'user',
+        role: targetRole,
         salt,
         passwordHash,
         createdAt: new Date().toISOString()
@@ -247,8 +272,8 @@ async function handler(req, res) {
         success: true,
         name: newUser.name,
         email: newUser.email,
-        role: newUser.role,
-        redirect: newUser.role === 'admin' ? 'admin.html' : 'index.html'
+        role: targetRole,
+        redirect: targetRole === 'SUPER_ADMIN' ? 'super-admin.html' : (targetRole === 'ADMIN' ? 'admin.html' : 'index.html')
       });
     }
 
@@ -273,18 +298,24 @@ async function handler(req, res) {
         return sendJSON(res, 403, { error: 'This account has been disabled by Super Admin.' });
       }
 
-      const userRole = user.role || 'user';
-      if (role === 'admin' && userRole !== 'admin' && userRole !== 'superadmin') {
-        return sendJSON(res, 403, { error: 'This account does not have Admin access. Please sign in as Student.' });
+      const userRole = normalizeRole(user.role);
+      if (role) {
+        const requestedRole = normalizeRole(role);
+        if (requestedRole === 'ADMIN' && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
+          return sendJSON(res, 403, { error: 'This account does not have Admin access. Please sign in as Student.' });
+        }
+        if (requestedRole === 'SUPER_ADMIN' && userRole !== 'SUPER_ADMIN') {
+          return sendJSON(res, 403, { error: 'This account does not have Super Admin access.' });
+        }
       }
 
       const token = createSessionToken(user);
       res.setHeader('Set-Cookie', `session=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=604800`);
 
       let redirect = 'index.html';
-      if (userRole === 'superadmin') {
+      if (userRole === 'SUPER_ADMIN') {
         redirect = 'super-admin.html';
-      } else if (userRole === 'admin') {
+      } else if (userRole === 'ADMIN') {
         redirect = 'admin.html';
       }
 
@@ -307,13 +338,17 @@ async function handler(req, res) {
     if (pathname === '/api/me' && req.method === 'GET') {
       const session = getSessionFromReq(req);
       if (!session) return sendJSON(res, 401, { error: 'Not logged in.' });
-      return sendJSON(res, 200, { name: session.name, email: session.email, role: session.role || 'user' });
+      return sendJSON(res, 200, {
+        name: session.name,
+        email: session.email,
+        role: normalizeRole(session.role)
+      });
     }
 
-    // ---------------- FILES: UPLOAD ----------------
+    // ---------------- FILES: UPLOAD (STUDENTS ONLY) ----------------
     if (pathname === '/api/upload' && req.method === 'POST') {
       const session = getSessionFromReq(req);
-      if (!session) return sendJSON(res, 401, { error: 'You must be logged in to upload files.' });
+      if (!checkRoleAccess(session, ['STUDENT'], res)) return;
 
       try {
         const { files } = await parseMultipart(req);
@@ -338,10 +373,10 @@ async function handler(req, res) {
       }
     }
 
-    // ---------------- FILES: LIST ----------------
+    // ---------------- FILES: LIST (STUDENTS ONLY) ----------------
     if (pathname === '/api/files' && req.method === 'GET') {
       const session = getSessionFromReq(req);
-      if (!session) return sendJSON(res, 401, { error: 'Not logged in.' });
+      if (!checkRoleAccess(session, ['STUDENT'], res)) return;
       const filesDb = await getFiles();
       const mine = filesDb
         .filter(f => f.ownerId === session.userId)
@@ -349,10 +384,10 @@ async function handler(req, res) {
       return sendJSON(res, 200, { files: mine });
     }
 
-    // ---------------- FILES: DELETE ----------------
+    // ---------------- FILES: DELETE (STUDENTS ONLY) ----------------
     if (pathname.startsWith('/api/files/') && req.method === 'DELETE') {
       const session = getSessionFromReq(req);
-      if (!session) return sendJSON(res, 401, { error: 'Not logged in.' });
+      if (!checkRoleAccess(session, ['STUDENT'], res)) return;
       const id = pathname.split('/').pop();
       const filesDb = await getFiles();
       const idx = filesDb.findIndex(f => f.id === id && f.ownerId === session.userId);
@@ -365,20 +400,24 @@ async function handler(req, res) {
       return sendJSON(res, 200, { success: true });
     }
 
-    // ---------------- ORDERS: CREATE ----------------
-    if (pathname === '/api/orders' && req.method === 'POST') {
+    // ---------------- ORDERS: INITIATE (STUDENTS ONLY) ----------------
+    if ((pathname === '/api/orders/initiate' || pathname === '/api/orders') && req.method === 'POST') {
       const session = getSessionFromReq(req);
-      if (!session) return sendJSON(res, 401, { error: 'You must be logged in to place an order.' });
+      if (!checkRoleAccess(session, ['STUDENT'], res)) return;
 
-      const { items, paymentMethod = 'UPI', utr = '' } = await readJSONBody(req);
+      const { items, copies = 1, pageRange = 'all', paymentMethod = 'UPI', utr = '' } = await readJSONBody(req);
       if (!Array.isArray(items) || items.length === 0) {
         return sendJSON(res, 400, { error: 'No items in this order.' });
       }
 
+      const numCopies = Math.max(1, parseInt(copies, 10) || 1);
       const pricing = await getPricing();
       let total = 0;
       const cleanItems = [];
+
       for (const item of items) {
+        const itemCopies = Math.max(1, parseInt(item.copies, 10) || numCopies);
+        const itemPageRange = item.pageRange || pageRange || 'all';
         const pages = parseInt(item.pages, 10);
         const sides = item.sides === 'double' ? 'double' : 'single';
         const color = item.color === 'color' ? 'color' : 'bw';
@@ -386,7 +425,7 @@ async function handler(req, res) {
           return sendJSON(res, 400, { error: `Invalid page count for ${item.originalName || 'a file'}.` });
         }
         const rate = (pricing && pricing[`${color}-${sides}`]) ? Number(pricing[`${color}-${sides}`]) : (PRICE_TABLE[`${color}-${sides}`] || 2);
-        const linePrice = rate * pages;
+        const linePrice = rate * pages * itemCopies;
         total += linePrice;
         cleanItems.push({
           fileId: item.fileId,
@@ -394,6 +433,8 @@ async function handler(req, res) {
           pages,
           sides,
           color,
+          copies: itemCopies,
+          pageRange: itemPageRange,
           price: linePrice
         });
       }
@@ -406,28 +447,126 @@ async function handler(req, res) {
         ownerName: session.name,
         ownerEmail: session.email,
         items: cleanItems,
+        copies: numCopies,
+        pageRange: pageRange || 'all',
         total,
         paymentMethod: paymentMethod || 'UPI',
         utr: utr || null,
-        status: 'New',
-        createdAt: new Date().toISOString()
+        paymentStatus: 'PENDING_PAYMENT',
+        status: 'REQUEST_RECEIVED',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
       orders.push(order);
       await saveOrders(orders);
 
-      return sendJSON(res, 200, { success: true, orderId, total, paymentMethod: order.paymentMethod });
+      return sendJSON(res, 200, {
+        success: true,
+        orderId,
+        amount: total,
+        total,
+        copies: numCopies,
+        pageRange: order.pageRange,
+        paymentMethod: order.paymentMethod,
+        utr: order.utr,
+        paymentStatus: 'PENDING_PAYMENT',
+        status: 'REQUEST_RECEIVED',
+        testMode: true
+      });
     }
 
-    // ---------------- ORDERS: LIST MY ORDERS ----------------
+    // ---------------- PAYMENTS: VERIFY & CONFIRM (STUDENTS ONLY) ----------------
+    if (pathname === '/api/payments/verify' && req.method === 'POST') {
+      const session = getSessionFromReq(req);
+      if (!checkRoleAccess(session, ['STUDENT'], res)) return;
+
+      const { orderId, paymentStatus, simulationStatus, utr } = await readJSONBody(req);
+      if (!orderId) {
+        return sendJSON(res, 400, { error: 'Order ID is required for payment verification.' });
+      }
+
+      const orders = await getOrders();
+      const order = orders.find(o => o.orderId.toUpperCase() === orderId.trim().toUpperCase());
+      if (!order) {
+        return sendJSON(res, 404, { error: 'Order not found.' });
+      }
+
+      // Security check: Student can only verify their own order
+      if (order.ownerId !== session.userId) {
+        return sendJSON(res, 403, { error: 'Forbidden: You cannot verify payment for another student’s order.' });
+      }
+
+      const statusToProcess = (simulationStatus || paymentStatus || 'SUCCESS').toUpperCase();
+
+      if (statusToProcess === 'SUCCESS' || statusToProcess === 'PAID') {
+        order.paymentStatus = 'PAID';
+        order.status = 'REQUEST_RECEIVED';
+        if (utr) order.utr = utr;
+        order.updatedAt = new Date().toISOString();
+        await saveOrders(orders);
+
+        // Create permanent PrintRequest in print_requests.json
+        const printRequest = await createPrintRequest({
+          orderId: order.orderId,
+          studentId: session.userId,
+          studentName: session.name,
+          studentEmail: session.email,
+          items: order.items,
+          copies: order.copies || 1,
+          pageRange: order.pageRange || 'all',
+          amount: order.total,
+          paymentStatus: 'PAID',
+          requestStatus: 'REQUEST_RECEIVED'
+        });
+
+        return sendJSON(res, 200, {
+          success: true,
+          orderId: order.orderId,
+          amount: order.total,
+          total: order.total,
+          paymentStatus: 'PAID',
+          requestStatus: 'REQUEST_RECEIVED',
+          printRequestId: printRequest.id
+        });
+      } else if (statusToProcess === 'CANCELLED') {
+        order.paymentStatus = 'CANCELLED';
+        order.updatedAt = new Date().toISOString();
+        await saveOrders(orders);
+
+        return sendJSON(res, 200, {
+          success: false,
+          orderId: order.orderId,
+          paymentStatus: 'CANCELLED',
+          message: 'Payment was cancelled by the student. Order is not submitted to Xerox print queue.'
+        });
+      } else {
+        // FAILED or other error
+        order.paymentStatus = 'FAILED';
+        order.updatedAt = new Date().toISOString();
+        await saveOrders(orders);
+
+        return sendJSON(res, 400, {
+          success: false,
+          orderId: order.orderId,
+          paymentStatus: 'FAILED',
+          error: 'Payment transaction failed or was declined by the bank in test mode.'
+        });
+      }
+    }
+
+    // ---------------- ORDERS: LIST MY ORDERS (STUDENTS ONLY) ----------------
     if (pathname === '/api/orders' && req.method === 'GET') {
       const session = getSessionFromReq(req);
-      if (!session) return sendJSON(res, 401, { error: 'Not logged in.' });
+      if (!checkRoleAccess(session, ['STUDENT'], res)) return;
       const orders = await getOrders();
       const mine = orders
         .filter(o => o.ownerId === session.userId)
         .map(o => ({
           orderId: o.orderId,
           total: o.total,
+          copies: o.copies || 1,
+          pageRange: o.pageRange || 'all',
+          paymentStatus: o.paymentStatus || 'PENDING_PAYMENT',
           paymentMethod: o.paymentMethod || 'UPI',
           createdAt: o.createdAt,
           status: computeOrderStatus(o),
@@ -443,31 +582,108 @@ async function handler(req, res) {
       return sendJSON(res, 200, pricing || PRICE_TABLE);
     }
 
-    // ---------------- ORDERS: TRACK / GET ONE ----------------
-    if (pathname.startsWith('/api/orders/') && req.method === 'GET') {
+    // ---------------- ORDERS: TRACK / GET ONE (STUDENT OWNERSHIP CHECK) ----------------
+    if (pathname.startsWith('/api/orders/') && !pathname.endsWith('/status') && req.method === 'GET') {
       const session = getSessionFromReq(req);
       if (!session) return sendJSON(res, 401, { error: 'Not logged in.' });
       const orderId = decodeURIComponent(pathname.split('/').pop());
       const orders = await getOrders();
       const order = orders.find(o => o.orderId.toLowerCase() === orderId.toLowerCase());
       if (!order) return sendJSON(res, 404, { error: 'No order found with that ID.' });
+
+      const userRole = normalizeRole(session.role);
+      // Student security check: Student can only view their own order!
+      if (userRole === 'STUDENT' && order.ownerId !== session.userId) {
+        return sendJSON(res, 403, { error: 'Forbidden: You do not have access to view this order.' });
+      }
+
       return sendJSON(res, 200, {
         orderId: order.orderId,
+        studentId: order.ownerId,
+        studentName: order.ownerName,
+        studentEmail: order.ownerEmail,
         items: order.items,
+        copies: order.copies || 1,
+        pageRange: order.pageRange || 'all',
         total: order.total,
+        amount: order.total,
+        paymentStatus: order.paymentStatus || 'PAID',
         paymentMethod: order.paymentMethod || 'UPI',
         utr: order.utr || null,
         createdAt: order.createdAt,
+        updatedAt: order.updatedAt || order.createdAt,
         status: computeOrderStatus(order)
       });
+    }
+
+    // ---------------- ADMIN: GET PRINT REQUESTS (NEW SECTION) ----------------
+    if (pathname === '/api/admin/requests' && req.method === 'GET') {
+      const session = getSessionFromReq(req);
+      if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
+
+      const requests = await getPrintRequests();
+      const filesDb = await getFiles();
+
+      const enriched = requests.map(r => {
+        const items = (r.items || []).map(item => {
+          const fileRecord = filesDb.find(f => f.id === item.fileId);
+          return {
+            ...item,
+            storedName: fileRecord ? fileRecord.storedName : null,
+            size: fileRecord ? fileRecord.size : null
+          };
+        });
+        return {
+          ...r,
+          items,
+          status: r.requestStatus || 'REQUEST_RECEIVED'
+        };
+      }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      return sendJSON(res, 200, { success: true, requests: enriched });
+    }
+
+    // ---------------- ADMIN: UPDATE PRINT REQUEST STATUS ----------------
+    if (pathname.startsWith('/api/admin/requests/') && pathname.endsWith('/status') && (req.method === 'PATCH' || req.method === 'POST')) {
+      const session = getSessionFromReq(req);
+      if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
+
+      const parts = pathname.split('/');
+      const reqIdOrOrderId = decodeURIComponent(parts[parts.length - 2]);
+      const { status } = await readJSONBody(req);
+      const validStatuses = [
+        'REQUEST_RECEIVED', 'ACCEPTED', 'PRINTING', 'READY', 'COMPLETED', 'CANCELLED',
+        'New', 'Accepted', 'Printing', 'Ready for Collection', 'Collected'
+      ];
+      if (!status || !validStatuses.includes(status)) {
+        return sendJSON(res, 400, { error: 'Invalid status. Must be one of: REQUEST_RECEIVED, ACCEPTED, PRINTING, READY, COMPLETED, CANCELLED' });
+      }
+
+      let normStatus = status;
+      if (status === 'New') normStatus = 'REQUEST_RECEIVED';
+      if (status === 'Accepted') normStatus = 'ACCEPTED';
+      if (status === 'Printing') normStatus = 'PRINTING';
+      if (status === 'Ready for Collection') normStatus = 'READY';
+      if (status === 'Collected') normStatus = 'COMPLETED';
+
+      const updatedReq = await updatePrintRequestStatus(reqIdOrOrderId, normStatus);
+      // Sync corresponding order in orders.json so student tracking reflects stage immediately
+      const orders = await getOrders();
+      const order = orders.find(o => o.orderId === reqIdOrOrderId || (updatedReq && o.orderId === updatedReq.orderId));
+      if (order) {
+        order.status = normStatus;
+        order.updatedAt = new Date().toISOString();
+        await saveOrders(orders);
+      }
+
+      return sendJSON(res, 200, { success: true, request: updatedReq || { id: reqIdOrOrderId, requestStatus: normStatus } });
     }
 
     // ---------------- ADMIN: GET ALL ORDERS / DOCUMENT REQUESTS ----------------
     if (pathname === '/api/admin/orders' && req.method === 'GET') {
       const session = getSessionFromReq(req);
-      if (!session || (session.role !== 'admin' && session.role !== 'superadmin')) {
-        return sendJSON(res, 403, { error: 'Forbidden: Admin access required.' });
-      }
+      if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
+
       const orders = await getOrders();
       const users = await getUsers();
       const filesDb = await getFiles();
@@ -490,7 +706,10 @@ async function handler(req, res) {
           ownerName: o.ownerName || owner.name || 'Student',
           ownerEmail: owner.email || 'N/A',
           items,
+          copies: o.copies || 1,
+          pageRange: o.pageRange || 'all',
           total: o.total,
+          paymentStatus: o.paymentStatus || 'PAID',
           createdAt: o.createdAt,
           status: computeOrderStatus(o),
           updatedAt: o.updatedAt || null
@@ -503,17 +722,30 @@ async function handler(req, res) {
     // ---------------- ADMIN: UPDATE ORDER STATUS ----------------
     if (pathname.startsWith('/api/admin/orders/') && pathname.endsWith('/status') && (req.method === 'PATCH' || req.method === 'POST')) {
       const session = getSessionFromReq(req);
-      if (!session || (session.role !== 'admin' && session.role !== 'superadmin')) {
-        return sendJSON(res, 403, { error: 'Forbidden: Admin access required.' });
-      }
+      if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
+
       const parts = pathname.split('/');
       const orderId = decodeURIComponent(parts[parts.length - 2]);
       const { status } = await readJSONBody(req);
-      const validStatuses = ['New', 'Accepted', 'Printing', 'Ready for Collection', 'Collected', 'Order Received', 'Printing in Progress', 'Ready for Pickup', 'Completed'];
+      const validStatuses = [
+        'REQUEST_RECEIVED', 'ACCEPTED', 'PRINTING', 'READY', 'COMPLETED', 'CANCELLED',
+        'New', 'Accepted', 'Printing', 'Ready for Collection', 'Collected',
+        'Order Received', 'Printing in Progress', 'Ready for Pickup', 'Completed'
+      ];
       if (!status || !validStatuses.includes(status)) {
-        return sendJSON(res, 400, { error: `Invalid status. Must be one of: New, Accepted, Printing, Ready for Collection, Collected` });
+        return sendJSON(res, 400, { error: `Invalid status. Must be one of: REQUEST_RECEIVED, ACCEPTED, PRINTING, READY, COMPLETED, CANCELLED` });
       }
-      const updated = await updateOrderStatus(orderId, status);
+
+      let normStatus = status;
+      if (status === 'New' || status === 'Order Received') normStatus = 'REQUEST_RECEIVED';
+      if (status === 'Accepted') normStatus = 'ACCEPTED';
+      if (status === 'Printing' || status === 'Printing in Progress') normStatus = 'PRINTING';
+      if (status === 'Ready for Collection' || status === 'Ready for Pickup') normStatus = 'READY';
+      if (status === 'Collected' || status === 'Completed') normStatus = 'COMPLETED';
+
+      const updated = await updateOrderStatus(orderId, normStatus);
+      await updatePrintRequestStatus(orderId, normStatus);
+
       if (!updated) return sendJSON(res, 404, { error: 'Order not found.' });
       return sendJSON(res, 200, { success: true, orderId: updated.orderId, status: updated.status });
     }
@@ -521,10 +753,10 @@ async function handler(req, res) {
     // ---------------- ADMIN: GET STATS ----------------
     if (pathname === '/api/admin/stats' && req.method === 'GET') {
       const session = getSessionFromReq(req);
-      if (!session || (session.role !== 'admin' && session.role !== 'superadmin')) {
-        return sendJSON(res, 403, { error: 'Forbidden: Admin access required.' });
-      }
+      if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
+
       const orders = await getOrders();
+      const printRequests = await getPrintRequests();
       let totalRevenue = 0;
       let newCount = 0;
       let acceptedCount = 0;
@@ -533,18 +765,24 @@ async function handler(req, res) {
       let collectedCount = 0;
 
       for (const o of orders) {
-        totalRevenue += (o.total || 0);
+        if (o.paymentStatus !== 'CANCELLED' && o.paymentStatus !== 'FAILED') {
+          totalRevenue += (o.total || 0);
+        }
         const st = computeOrderStatus(o);
-        if (st === 'New') newCount++;
-        else if (st === 'Accepted') acceptedCount++;
-        else if (st === 'Printing') printingCount++;
-        else if (st === 'Ready for Collection') readyCount++;
-        else if (st === 'Collected') collectedCount++;
+        if (st === 'REQUEST_RECEIVED') newCount++;
+        else if (st === 'ACCEPTED') acceptedCount++;
+        else if (st === 'PRINTING') printingCount++;
+        else if (st === 'READY') readyCount++;
+        else if (st === 'COMPLETED') collectedCount++;
       }
+
+      const activeRequests = printRequests.filter(r => r.requestStatus !== 'COMPLETED' && r.requestStatus !== 'CANCELLED');
 
       return sendJSON(res, 200, {
         totalOrders: orders.length,
         newCount,
+        newRequestsCount: newCount,
+        activeRequestsCount: activeRequests.length,
         acceptedCount,
         printingCount,
         readyCount,
@@ -561,9 +799,7 @@ async function handler(req, res) {
     // ---------------- SUPER ADMIN: GET STAFF LIST ----------------
     if (pathname === '/api/superadmin/staff' && req.method === 'GET') {
       const session = getSessionFromReq(req);
-      if (!session || session.role !== 'superadmin') {
-        return sendJSON(res, 403, { error: 'Forbidden: Super Admin access required.' });
-      }
+      if (!checkRoleAccess(session, ['SUPER_ADMIN'], res)) return;
       const staff = await getStaffUsers();
       return sendJSON(res, 200, { success: true, staff });
     }
@@ -571,9 +807,7 @@ async function handler(req, res) {
     // ---------------- SUPER ADMIN: CREATE STAFF ACCOUNT ----------------
     if (pathname === '/api/superadmin/staff' && req.method === 'POST') {
       const session = getSessionFromReq(req);
-      if (!session || session.role !== 'superadmin') {
-        return sendJSON(res, 403, { error: 'Forbidden: Super Admin access required.' });
-      }
+      if (!checkRoleAccess(session, ['SUPER_ADMIN'], res)) return;
       const { name, email, password, role = 'admin' } = await readJSONBody(req);
       if (!name || !email || !password) {
         return sendJSON(res, 400, { error: 'Name, email and password are required.' });
@@ -589,9 +823,7 @@ async function handler(req, res) {
     // ---------------- SUPER ADMIN: TOGGLE STAFF ACTIVE/DISABLED ----------------
     if (pathname.startsWith('/api/superadmin/staff/') && pathname.endsWith('/status') && (req.method === 'PATCH' || req.method === 'POST')) {
       const session = getSessionFromReq(req);
-      if (!session || session.role !== 'superadmin') {
-        return sendJSON(res, 403, { error: 'Forbidden: Super Admin access required.' });
-      }
+      if (!checkRoleAccess(session, ['SUPER_ADMIN'], res)) return;
       const parts = pathname.split('/');
       const staffId = decodeURIComponent(parts[parts.length - 2]);
       if (staffId === session.userId) {
@@ -606,9 +838,7 @@ async function handler(req, res) {
     // ---------------- SUPER ADMIN: RESET STAFF PASSWORD ----------------
     if (pathname.startsWith('/api/superadmin/staff/') && pathname.endsWith('/reset-password') && req.method === 'POST') {
       const session = getSessionFromReq(req);
-      if (!session || session.role !== 'superadmin') {
-        return sendJSON(res, 403, { error: 'Forbidden: Super Admin access required.' });
-      }
+      if (!checkRoleAccess(session, ['SUPER_ADMIN'], res)) return;
       const parts = pathname.split('/');
       const staffId = decodeURIComponent(parts[parts.length - 2]);
       const { newPassword } = await readJSONBody(req);
@@ -623,9 +853,7 @@ async function handler(req, res) {
     // ---------------- SUPER ADMIN: GET PRICING ----------------
     if (pathname === '/api/superadmin/pricing' && req.method === 'GET') {
       const session = getSessionFromReq(req);
-      if (!session || session.role !== 'superadmin') {
-        return sendJSON(res, 403, { error: 'Forbidden: Super Admin access required.' });
-      }
+      if (!checkRoleAccess(session, ['SUPER_ADMIN'], res)) return;
       const pricing = await getPricing();
       return sendJSON(res, 200, { success: true, pricing });
     }
@@ -633,9 +861,7 @@ async function handler(req, res) {
     // ---------------- SUPER ADMIN: UPDATE PRICING ----------------
     if (pathname === '/api/superadmin/pricing' && req.method === 'POST') {
       const session = getSessionFromReq(req);
-      if (!session || session.role !== 'superadmin') {
-        return sendJSON(res, 403, { error: 'Forbidden: Super Admin access required.' });
-      }
+      if (!checkRoleAccess(session, ['SUPER_ADMIN'], res)) return;
       const body = await readJSONBody(req);
       const newPricing = {
         'bw-single': Number(body['bw-single']) || 2,
@@ -650,23 +876,23 @@ async function handler(req, res) {
     // ---------------- SUPER ADMIN: GET SYSTEM STATS ----------------
     if (pathname === '/api/superadmin/stats' && req.method === 'GET') {
       const session = getSessionFromReq(req);
-      if (!session || session.role !== 'superadmin') {
-        return sendJSON(res, 403, { error: 'Forbidden: Super Admin access required.' });
-      }
+      if (!checkRoleAccess(session, ['SUPER_ADMIN'], res)) return;
       const orders = await getOrders();
       const staffList = await getStaffUsers();
       const users = await getUsers();
       let totalRevenue = 0;
       const statusCounts = {
-        'New': 0,
-        'Accepted': 0,
-        'Printing': 0,
-        'Ready for Collection': 0,
-        'Collected': 0
+        'REQUEST_RECEIVED': 0,
+        'ACCEPTED': 0,
+        'PRINTING': 0,
+        'READY': 0,
+        'COMPLETED': 0
       };
 
       for (const o of orders) {
-        totalRevenue += (o.total || 0);
+        if (o.paymentStatus !== 'CANCELLED' && o.paymentStatus !== 'FAILED') {
+          totalRevenue += (o.total || 0);
+        }
         const st = computeOrderStatus(o);
         if (statusCounts[st] !== undefined) statusCounts[st]++;
       }
@@ -676,7 +902,7 @@ async function handler(req, res) {
         totalOrders: orders.length,
         totalRevenue,
         totalStaff: staffList.length,
-        totalStudents: users.filter(u => u.role === 'user').length,
+        totalStudents: users.filter(u => normalizeRole(u.role) === 'STUDENT').length,
         statusCounts
       });
     }
@@ -707,9 +933,7 @@ async function handler(req, res) {
     // ---------------- ASSIGNMENTS: CREATE (ADMIN & SUPER ADMIN) ----------------
     if (pathname === '/api/admin/assignments' && req.method === 'POST') {
       const session = getSessionFromReq(req);
-      if (!session || (session.role !== 'admin' && session.role !== 'superadmin')) {
-        return sendJSON(res, 403, { error: 'Forbidden: Admin access required.' });
-      }
+      if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
 
       const body = await readJSONBody(req);
       const { subject, experimentNo, title, info, submissionGuidelines, deadline, attachment } = body;
@@ -744,9 +968,7 @@ async function handler(req, res) {
     // ---------------- ASSIGNMENTS: DELETE (ADMIN & SUPER ADMIN) ----------------
     if (pathname.startsWith('/api/admin/assignments/') && req.method === 'DELETE') {
       const session = getSessionFromReq(req);
-      if (!session || (session.role !== 'admin' && session.role !== 'superadmin')) {
-        return sendJSON(res, 403, { error: 'Forbidden: Admin access required.' });
-      }
+      if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
 
       const id = pathname.split('/').pop();
       const deleted = await deleteAssignment(id);
@@ -763,7 +985,6 @@ async function handler(req, res) {
       if (!session) return sendJSON(res, 401, { error: 'Not logged in.' });
 
       const parts = pathname.split('/');
-      // /api/assignments/:id/attachment -> parts: ['', 'api', 'assignments', id, 'attachment']
       const id = parts[3];
       const assignments = await getAssignments();
       const assignment = assignments.find(a => a.id === id);
@@ -802,7 +1023,8 @@ async function handler(req, res) {
 
       // Permission check: owner, admin, or superadmin can download/preview
       const isOwner = record.ownerId === session.userId;
-      const isStaff = session.role === 'admin' || session.role === 'superadmin';
+      const userRole = normalizeRole(session.role);
+      const isStaff = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
       if (!isOwner && !isStaff) {
         return sendJSON(res, 403, { error: 'Forbidden: You do not have permission to access this file.' });
       }

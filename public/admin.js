@@ -16,14 +16,15 @@ async function checkAdminAuth() {
       return;
     }
     const user = await res.json();
-    if (user.role !== 'admin' && user.role !== 'superadmin') {
+    const userRole = (user.role || '').toUpperCase();
+    if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN' && userRole !== 'SUPERADMIN') {
       alert('Access Denied: This portal is reserved for Xerox Staff & Admins.');
       window.location.href = '/';
       return;
     }
 
     const nameEl = document.getElementById('admin-welcome-name');
-    if (user.role === 'superadmin') {
+    if (userRole === 'SUPER_ADMIN' || userRole === 'SUPERADMIN') {
       if (nameEl) nameEl.textContent = `Hi, ${user.name} (Super Admin)`;
       const superBtn = document.getElementById('btn-goto-superadmin');
       if (superBtn) superBtn.style.display = 'inline-flex';
@@ -34,6 +35,11 @@ async function checkAdminAuth() {
     // Load dashboard data
     loadDashboardData();
     loadAdminAssignments();
+
+    // Start 8-second reliable polling for real-time incoming requests
+    setInterval(() => {
+      loadDashboardData(true);
+    }, 8000);
   } catch (err) {
     window.location.href = '/admin';
   }
@@ -48,15 +54,17 @@ if (logoutBtn) {
   });
 }
 
-// Load stats and orders from server
-async function loadDashboardData() {
+// Load stats and orders from server (supports silent 8s background polling)
+async function loadDashboardData(isPolling = false) {
   const loadingEl = document.getElementById('orders-loading');
   const containerEl = document.getElementById('orders-container');
   const emptyEl = document.getElementById('orders-empty');
 
-  if (loadingEl) loadingEl.style.display = 'block';
-  if (containerEl) containerEl.style.display = 'none';
-  if (emptyEl) emptyEl.style.display = 'none';
+  if (!isPolling) {
+    if (loadingEl) loadingEl.style.display = 'block';
+    if (containerEl) containerEl.style.display = 'none';
+    if (emptyEl) emptyEl.style.display = 'none';
+  }
 
   try {
     const [ordersRes, statsRes] = await Promise.all([
@@ -80,8 +88,10 @@ async function loadDashboardData() {
 
     renderOrders();
   } catch (err) {
-    console.error('Error loading admin data:', err);
-    showToast('Failed to load orders: ' + err.message, 'error');
+    if (!isPolling) {
+      console.error('Error loading admin data:', err);
+      showToast('Failed to load orders: ' + err.message, 'error');
+    }
   } finally {
     if (loadingEl) loadingEl.style.display = 'none';
   }
@@ -97,29 +107,46 @@ function updateStatsUI(stats) {
   if (pendingEl) pendingEl.textContent = stats.inProgressCount || 0;
   if (readyEl) readyEl.textContent = stats.readyCount || 0;
   if (revenueEl) revenueEl.textContent = `₹${stats.totalRevenue || 0}`;
+
+  // Update new requests pill counter badge
+  const newPillCount = document.getElementById('pill-new-count');
+  if (newPillCount) {
+    const cnt = stats.newCount || stats.newRequestsCount || 0;
+    newPillCount.textContent = cnt;
+    newPillCount.style.display = cnt > 0 ? 'inline-block' : 'none';
+  }
 }
 
 function computeStatsFromOrders(orders) {
   let pending = 0;
   let ready = 0;
   let revenue = 0;
+  let newCount = 0;
   for (const o of orders) {
-    revenue += (o.total || 0);
-    if (o.status === 'Ready for Collection' || o.status === 'Ready for Pickup') {
+    if (o.paymentStatus !== 'CANCELLED' && o.paymentStatus !== 'FAILED') {
+      revenue += (o.total || 0);
+    }
+    const st = (o.status || '').toUpperCase();
+    if (st === 'REQUEST_RECEIVED' || o.status === 'New' || o.status === 'Order Received') {
+      newCount++;
+      pending++;
+    } else if (st === 'READY' || o.status === 'Ready for Collection' || o.status === 'Ready for Pickup') {
       ready++;
-    } else if (o.status !== 'Collected' && o.status !== 'Completed') {
+    } else if (st !== 'COMPLETED' && o.status !== 'Collected' && o.status !== 'Completed' && st !== 'CANCELLED') {
       pending++;
     }
   }
   updateStatsUI({
     totalOrders: orders.length,
+    newCount,
+    newRequestsCount: newCount,
     inProgressCount: pending,
     readyCount: ready,
     totalRevenue: revenue
   });
 }
 
-// Render filtered orders list
+// Render filtered orders list with quick actions & live stage progression
 function renderOrders() {
   const containerEl = document.getElementById('orders-container');
   const emptyEl = document.getElementById('orders-empty');
@@ -128,14 +155,25 @@ function renderOrders() {
   const filtered = allOrders.filter(order => {
     // Status filter
     if (activeFilter !== 'all') {
-      if (order.status !== activeFilter) {
-        // Handle legacy equivalent mapping
-        if (activeFilter === 'New' && order.status === 'Order Received') return true;
-        if (activeFilter === 'Printing' && order.status === 'Printing in Progress') return true;
-        if (activeFilter === 'Ready for Collection' && order.status === 'Ready for Pickup') return true;
-        if (activeFilter === 'Collected' && order.status === 'Completed') return true;
-        return false;
+      const orderSt = (order.status || '').toUpperCase();
+      const filterSt = activeFilter.toUpperCase();
+
+      if (filterSt === 'NEW' || filterSt === 'REQUEST_RECEIVED') {
+        return orderSt === 'REQUEST_RECEIVED' || order.status === 'New' || order.status === 'Order Received';
       }
+      if (filterSt === 'ACCEPTED') {
+        return orderSt === 'ACCEPTED' || order.status === 'Accepted';
+      }
+      if (filterSt === 'PRINTING') {
+        return orderSt === 'PRINTING' || order.status === 'Printing' || order.status === 'Printing in Progress';
+      }
+      if (filterSt === 'READY' || filterSt === 'READY FOR COLLECTION') {
+        return orderSt === 'READY' || order.status === 'Ready for Collection' || order.status === 'Ready for Pickup';
+      }
+      if (filterSt === 'COLLECTED' || filterSt === 'COMPLETED') {
+        return orderSt === 'COMPLETED' || order.status === 'Collected' || order.status === 'Completed';
+      }
+      if (order.status !== activeFilter) return false;
     }
     // Search query filter
     if (searchQuery) {
@@ -172,11 +210,18 @@ function renderOrders() {
       : 'N/A';
 
     const statusClass = getStatusClass(order.status);
+    const isNew = order.status === 'New' || order.status === 'Order Received' || order.status === 'REQUEST_RECEIVED';
+    const isAccepted = order.status === 'Accepted' || order.status === 'ACCEPTED';
+    const isPrinting = order.status === 'Printing' || order.status === 'Printing in Progress' || order.status === 'PRINTING';
+    const isReady = order.status === 'Ready for Collection' || order.status === 'Ready for Pickup' || order.status === 'READY';
+    const isCollected = order.status === 'Collected' || order.status === 'Completed' || order.status === 'COMPLETED';
+    const isCancelled = order.status === 'Cancelled' || order.status === 'CANCELLED';
 
     let itemsHtml = '';
     (order.items || []).forEach(item => {
       const sizeStr = item.size ? ` (${formatBytes(item.size)})` : '';
-      const printSpecs = `${item.color === 'color' ? '🎨 Color' : '⬛ Black & White'} • ${item.sides === 'double' ? 'Double-sided' : 'Single-sided'} • ${item.pages} page${item.pages > 1 ? 's' : ''}`;
+      const copiesStr = (item.copies && item.copies > 1) ? ` • <strong>${item.copies} copies</strong>` : '';
+      const printSpecs = `${item.color === 'color' ? '🎨 Color' : '⬛ Black & White'} • ${item.sides === 'double' ? 'Double-sided' : 'Single-sided'} • ${item.pages} page${item.pages > 1 ? 's' : ''}${copiesStr}`;
 
       itemsHtml += `
         <div class="admin-doc-item">
@@ -201,16 +246,49 @@ function renderOrders() {
       `;
     });
 
-    const isNew = order.status === 'New' || order.status === 'Order Received';
-    const isAccepted = order.status === 'Accepted';
-    const isPrinting = order.status === 'Printing' || order.status === 'Printing in Progress';
-    const isReady = order.status === 'Ready for Collection' || order.status === 'Ready for Pickup';
-    const isCollected = order.status === 'Collected' || order.status === 'Completed';
+    // Quick action buttons based on stage progression
+    let quickActionsHtml = '';
+    if (isNew) {
+      quickActionsHtml = `
+        <button type="button" class="btn-action-sm" onclick="updateOrderStatusOnServer('${order.orderId}', 'ACCEPTED')" style="background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; border-radius:8px; padding:6px 14px; font-weight:600; font-size:12.5px; cursor:pointer;">
+          🔵 Accept Order
+        </button>
+        <button type="button" class="btn-action-sm" onclick="updateOrderStatusOnServer('${order.orderId}', 'CANCELLED')" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; border-radius:8px; padding:6px 14px; font-weight:600; font-size:12.5px; cursor:pointer;">
+          🚫 Reject
+        </button>
+      `;
+    } else if (isAccepted) {
+      quickActionsHtml = `
+        <button type="button" class="btn-action-sm" onclick="updateOrderStatusOnServer('${order.orderId}', 'PRINTING')" style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; border-radius:8px; padding:6px 14px; font-weight:600; font-size:12.5px; cursor:pointer;">
+          🖨️ Start Printing
+        </button>
+        <button type="button" class="btn-action-sm" onclick="updateOrderStatusOnServer('${order.orderId}', 'CANCELLED')" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; border-radius:8px; padding:6px 14px; font-weight:600; font-size:12.5px; cursor:pointer;">
+          🚫 Reject
+        </button>
+      `;
+    } else if (isPrinting) {
+      quickActionsHtml = `
+        <button type="button" class="btn-action-sm" onclick="updateOrderStatusOnServer('${order.orderId}', 'READY')" style="background:#e8f8f0; color:#059669; border:1px solid #a7f3d0; border-radius:8px; padding:6px 14px; font-weight:600; font-size:12.5px; cursor:pointer;">
+          🟢 Mark Ready for Collection
+        </button>
+      `;
+    } else if (isReady) {
+      quickActionsHtml = `
+        <button type="button" class="btn-action-sm" onclick="updateOrderStatusOnServer('${order.orderId}', 'COMPLETED')" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; border-radius:8px; padding:6px 14px; font-weight:600; font-size:12.5px; cursor:pointer;">
+          ✅ Mark Collected / Done
+        </button>
+      `;
+    }
+
+    const newBadgeHtml = isNew
+      ? `<span class="badge-new-pulse" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; margin-left:10px;">⚡ NEW REQUEST</span>`
+      : '';
 
     card.innerHTML = `
       <div class="admin-order-header">
         <div class="admin-order-meta">
           <span class="admin-order-id">${order.orderId}</span>
+          ${newBadgeHtml}
           <span class="admin-order-date">📅 ${formattedDate}</span>
           <span class="admin-customer-info">👤 <strong>${order.ownerName}</strong> (${order.ownerEmail})</span>
         </div>
@@ -227,20 +305,27 @@ function renderOrders() {
         </div>
       </div>
 
-      <div class="admin-order-footer">
+      <div class="admin-order-footer" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
         <div class="admin-order-total">
           <span>Order Total:</span>
           <strong>₹${order.total}</strong>
+          <span style="font-size:12px; color:#2b7a2b; font-weight:600; margin-left:8px;">(${order.paymentStatus || 'PAID'})</span>
+        </div>
+
+        <!-- Quick Action Buttons -->
+        <div class="admin-quick-actions-bar" style="display:flex; gap:8px; align-items:center;">
+          ${quickActionsHtml}
         </div>
 
         <div class="admin-status-controller">
-          <label class="admin-control-label">Update Status:</label>
+          <label class="admin-control-label">Change Status:</label>
           <select class="admin-status-select" data-order-id="${order.orderId}">
-            <option value="New" ${isNew ? 'selected' : ''}>🟡 New</option>
-            <option value="Accepted" ${isAccepted ? 'selected' : ''}>🔵 Accepted</option>
-            <option value="Printing" ${isPrinting ? 'selected' : ''}>🖨️ Printing</option>
-            <option value="Ready for Collection" ${isReady ? 'selected' : ''}>🟢 Ready for Collection</option>
-            <option value="Collected" ${isCollected ? 'selected' : ''}>✅ Collected</option>
+            <option value="REQUEST_RECEIVED" ${isNew ? 'selected' : ''}>🟡 Request Received</option>
+            <option value="ACCEPTED" ${isAccepted ? 'selected' : ''}>🔵 Accepted</option>
+            <option value="PRINTING" ${isPrinting ? 'selected' : ''}>🖨️ Printing</option>
+            <option value="READY" ${isReady ? 'selected' : ''}>🟢 Ready for Collection</option>
+            <option value="COMPLETED" ${isCollected ? 'selected' : ''}>✅ Collected / Done</option>
+            <option value="CANCELLED" ${isCancelled ? 'selected' : ''}>🚫 Cancelled</option>
           </select>
         </div>
       </div>
@@ -290,11 +375,13 @@ async function updateOrderStatusOnServer(orderId, newStatus) {
 }
 
 function getStatusClass(status) {
-  if (status === 'New' || status === 'Order Received') return 'badge-received';
-  if (status === 'Accepted') return 'badge-received';
-  if (status === 'Printing' || status === 'Printing in Progress') return 'badge-printing';
-  if (status === 'Ready for Collection' || status === 'Ready for Pickup') return 'badge-ready';
-  if (status === 'Collected' || status === 'Completed') return 'badge-completed';
+  const s = (status || '').toUpperCase();
+  if (s === 'REQUEST_RECEIVED' || status === 'New' || status === 'Order Received') return 'badge-received';
+  if (s === 'ACCEPTED' || status === 'Accepted') return 'badge-received';
+  if (s === 'PRINTING' || status === 'Printing' || status === 'Printing in Progress') return 'badge-printing';
+  if (s === 'READY' || status === 'Ready for Collection' || status === 'Ready for Pickup') return 'badge-ready';
+  if (s === 'COMPLETED' || status === 'Collected' || status === 'Completed') return 'badge-completed';
+  if (s === 'CANCELLED' || status === 'Cancelled') return 'badge-cancelled';
   return 'badge-received';
 }
 

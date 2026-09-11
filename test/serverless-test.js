@@ -231,8 +231,8 @@ async function runTests() {
   const trackData = trackRes.json();
   assert.strictEqual(trackData.orderId, createdOrderId);
   assert.strictEqual(trackData.total, 30);
-  assert.strictEqual(trackData.status, 'New');
-  console.log('   ✅ Order tracking passed (initial status: New)');
+  assert.strictEqual(trackData.status, 'REQUEST_RECEIVED');
+  console.log('   ✅ Order tracking passed (initial status: REQUEST_RECEIVED)');
 
   // Test 11: Logout via POST /api/logout
   console.log('11. Testing POST /api/logout...');
@@ -266,10 +266,10 @@ async function runTests() {
   });
   assert.strictEqual(adminLoginRes.statusCode, 200, `Admin login failed: ${adminLoginRes.text()}`);
   const adminLoginData = adminLoginRes.json();
-  assert.strictEqual(adminLoginData.role, 'admin');
+  assert.strictEqual(adminLoginData.role, 'ADMIN');
   assert.strictEqual(adminLoginData.redirect, 'admin.html');
   const adminCookie = adminLoginRes.headers['set-cookie'].split(';')[0];
-  console.log('   ✅ Admin login passed (role: admin, redirect: admin.html)');
+  console.log('   ✅ Admin login passed (role: ADMIN, redirect: admin.html)');
 
   // Test 14: Non-admin student blocked from Admin endpoint (403)
   console.log('14. Testing Role Protection (Student rejected from Admin endpoint with 403)...');
@@ -295,7 +295,13 @@ async function runTests() {
   console.log(`   ✅ Admin successfully retrieved all ${adminOrdersData.orders.length} document requests`);
 
   // Test 16: Admin updating order status through 5 stages
-  console.log('16. Testing 5-stage Order Status Workflow (New → Accepted → Printing → Ready for Collection → Collected)...');
+  console.log('16. Testing 5-stage Order Status Workflow (REQUEST_RECEIVED → ACCEPTED → PRINTING → READY → COMPLETED)...');
+  const expectedNorm = {
+    'Accepted': 'ACCEPTED',
+    'Printing': 'PRINTING',
+    'Ready for Collection': 'READY',
+    'Collected': 'COMPLETED'
+  };
   for (const st of ['Accepted', 'Printing', 'Ready for Collection', 'Collected']) {
     const updateStatusRes = await invokeHandler({
       method: 'PATCH',
@@ -304,9 +310,9 @@ async function runTests() {
       body: { status: st }
     });
     assert.strictEqual(updateStatusRes.statusCode, 200, `Failed to update status to ${st}`);
-    assert.strictEqual(updateStatusRes.json().status, st);
+    assert.strictEqual(updateStatusRes.json().status, expectedNorm[st]);
   }
-  console.log('   ✅ 5-stage status workflow passed (Accepted → Printing → Ready for Collection → Collected)');
+  console.log('   ✅ 5-stage status workflow passed (ACCEPTED → PRINTING → READY → COMPLETED)');
 
   // Test 17: Admin downloading student document
   console.log('17. Testing Admin document download permission (GET /api/download/:id)...');
@@ -427,10 +433,10 @@ async function runTests() {
   });
   assert.strictEqual(superLoginRes.statusCode, 200, `Super admin login failed: ${superLoginRes.text()}`);
   const superLoginData = superLoginRes.json();
-  assert.strictEqual(superLoginData.role, 'superadmin');
+  assert.strictEqual(superLoginData.role, 'SUPER_ADMIN');
   assert.strictEqual(superLoginData.redirect, 'super-admin.html');
   const superCookie = superLoginRes.headers['set-cookie'].split(';')[0];
-  console.log('   ✅ Super Admin login passed (role: superadmin, redirect: super-admin.html)');
+  console.log('   ✅ Super Admin login passed (role: SUPER_ADMIN, redirect: super-admin.html)');
 
   // Test 25: Normal Admin blocked from Super Admin endpoint (403)
   console.log('25. Testing Super Admin Role Protection (Admin rejected with 403)...');
@@ -556,7 +562,240 @@ async function runTests() {
   assert(superAdminPageRes.text().includes('Super Admin Control Centre'));
   console.log('   ✅ Clean URL routing passed (/admin, /admin/dashboard, /super-admin)');
 
-  console.log('\n🎉 ALL 30 TESTS PASSED SUCCESSFULLY! Full admin & super-admin system verified.\n');
+  // ===================================================================
+  // STAGE 2 HARDENING TESTS (31 - 36): RBAC, 2-STEP PAYMENT & REQUEST QUEUE
+  // ===================================================================
+
+  // Test 31: Scenario 1 — Order Initiation -> Verify SUCCESS -> Order marked PAID -> Permanent PrintRequest created -> Admin Queue
+  console.log('31. Testing Scenario 1: Order Initiation -> Verify SUCCESS -> Order marked PAID & PrintRequest created...');
+  const initRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/orders/initiate',
+    headers: { cookie: sessionCookie },
+    body: {
+      items: [{ fileId: uploadedFileId, originalName: 'sample-notes.txt', pages: 3, sides: 'single', color: 'bw' }],
+      copies: 2,
+      pageRange: '1-3',
+      paymentMethod: 'UPI'
+    }
+  });
+  assert.strictEqual(initRes.statusCode, 200);
+  const initData = initRes.json();
+  assert(initData.orderId, 'Must return orderId');
+  assert.strictEqual(initData.paymentStatus, 'PENDING_PAYMENT');
+  assert.strictEqual(initData.status, 'REQUEST_RECEIVED');
+  assert.strictEqual(initData.copies, 2);
+  assert.strictEqual(initData.pageRange, '1-3');
+  // bw-single was updated to 2.5 in Test 29. 3 pages * 2 copies * 2.5 = 15
+  assert.strictEqual(initData.total, 15);
+  const orderIdScenario1 = initData.orderId;
+
+  // Verify payment with SUCCESS simulation
+  const verifySuccessRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/payments/verify',
+    headers: { cookie: sessionCookie },
+    body: {
+      orderId: orderIdScenario1,
+      simulationStatus: 'SUCCESS',
+      utr: 'UTR_TEST_31_9999'
+    }
+  });
+  assert.strictEqual(verifySuccessRes.statusCode, 200);
+  const verifyData = verifySuccessRes.json();
+  assert.strictEqual(verifyData.success, true);
+  assert.strictEqual(verifyData.paymentStatus, 'PAID');
+  assert.strictEqual(verifyData.requestStatus, 'REQUEST_RECEIVED');
+  assert(verifyData.printRequestId, 'Must return printRequestId');
+
+  // Verify that Admin can see this in GET /api/admin/requests
+  const adminReqsRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/requests',
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(adminReqsRes.statusCode, 200);
+  const adminReqs = adminReqsRes.json().requests;
+  assert(Array.isArray(adminReqs));
+  const foundReq = adminReqs.find(r => r.orderId === orderIdScenario1);
+  assert(foundReq, 'Order must be present in admin requests queue');
+  assert.strictEqual(foundReq.paymentStatus, 'PAID');
+  assert.strictEqual(foundReq.requestStatus, 'REQUEST_RECEIVED');
+  assert.strictEqual(foundReq.copies, 2);
+  assert.strictEqual(foundReq.pageRange, '1-3');
+
+  // Admin updates request status: REQUEST_RECEIVED -> ACCEPTED
+  const updateReqRes = await invokeHandler({
+    method: 'PATCH',
+    url: `/api/admin/requests/${foundReq.id}/status`,
+    headers: { cookie: adminCookie },
+    body: { status: 'ACCEPTED' }
+  });
+  assert.strictEqual(updateReqRes.statusCode, 200);
+  assert.strictEqual(updateReqRes.json().success, true);
+
+  // Student checks order status -> should now be ACCEPTED
+  const studentTrackRes = await invokeHandler({
+    method: 'GET',
+    url: `/api/orders/${orderIdScenario1}`,
+    headers: { cookie: sessionCookie }
+  });
+  assert.strictEqual(studentTrackRes.statusCode, 200);
+  assert.strictEqual(studentTrackRes.json().status, 'ACCEPTED');
+  console.log('   ✅ Scenario 1 passed: Order initiated, verified SUCCESS, saved to PrintRequests, and updated by admin');
+
+  // Test 32: Scenario 2 — Order Initiation -> Verify CANCELLED -> Order marked CANCELLED -> No PrintRequest created
+  console.log('32. Testing Scenario 2: Order Initiation -> Verify CANCELLED -> Order CANCELLED & no PrintRequest...');
+  const initCancelRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/orders/initiate',
+    headers: { cookie: sessionCookie },
+    body: {
+      items: [{ fileId: uploadedFileId, originalName: 'sample-notes.txt', pages: 1, sides: 'single', color: 'bw' }],
+      copies: 1,
+      paymentMethod: 'UPI'
+    }
+  });
+  assert.strictEqual(initCancelRes.statusCode, 200);
+  const cancelOrderId = initCancelRes.json().orderId;
+
+  const verifyCancelRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/payments/verify',
+    headers: { cookie: sessionCookie },
+    body: {
+      orderId: cancelOrderId,
+      simulationStatus: 'CANCELLED'
+    }
+  });
+  assert.strictEqual(verifyCancelRes.statusCode, 200);
+  assert.strictEqual(verifyCancelRes.json().success, false);
+  assert.strictEqual(verifyCancelRes.json().paymentStatus, 'CANCELLED');
+
+  // Check admin requests queue -> must NOT contain this cancelled order
+  const checkCancelReqsRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/requests',
+    headers: { cookie: adminCookie }
+  });
+  const cancelReqFound = checkCancelReqsRes.json().requests.find(r => r.orderId === cancelOrderId);
+  assert.strictEqual(cancelReqFound, undefined, 'Cancelled payment order must not produce a PrintRequest');
+  console.log('   ✅ Scenario 2 passed: Cancelled payment handled cleanly without print request creation');
+
+  // Test 33: Scenario 3 — Order Initiation -> Verify FAILED -> 400 error -> No PrintRequest created
+  console.log('33. Testing Scenario 3: Order Initiation -> Verify FAILED -> 400 error & no PrintRequest...');
+  const initFailRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/orders/initiate',
+    headers: { cookie: sessionCookie },
+    body: {
+      items: [{ fileId: uploadedFileId, originalName: 'sample-notes.txt', pages: 2, sides: 'single', color: 'bw' }],
+      copies: 1,
+      paymentMethod: 'UPI'
+    }
+  });
+  assert.strictEqual(initFailRes.statusCode, 200);
+  const failOrderId = initFailRes.json().orderId;
+
+  const verifyFailRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/payments/verify',
+    headers: { cookie: sessionCookie },
+    body: {
+      orderId: failOrderId,
+      simulationStatus: 'FAILED'
+    }
+  });
+  assert.strictEqual(verifyFailRes.statusCode, 400);
+  assert.strictEqual(verifyFailRes.json().success, false);
+  assert.strictEqual(verifyFailRes.json().paymentStatus, 'FAILED');
+
+  // Check admin requests queue -> must NOT contain this failed order
+  const checkFailReqsRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/requests',
+    headers: { cookie: adminCookie }
+  });
+  const failReqFound = checkFailReqsRes.json().requests.find(r => r.orderId === failOrderId);
+  assert.strictEqual(failReqFound, undefined, 'Failed payment order must not produce a PrintRequest');
+  console.log('   ✅ Scenario 3 passed: Failed payment returned 400 and created no print request');
+
+  // Test 34: Scenario 4 — Admin Role Security: Admin rejected with 403 on Student-only endpoints
+  console.log('34. Testing Scenario 4: Admin Role Security (403 Forbidden on Student endpoints)...');
+  const adminUploadRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/upload',
+    headers: { cookie: adminCookie },
+    body: 'dummy'
+  });
+  assert.strictEqual(adminUploadRes.statusCode, 403);
+  assert(adminUploadRes.json().error.includes('Forbidden'));
+
+  const adminInitRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/orders/initiate',
+    headers: { cookie: adminCookie },
+    body: { items: [] }
+  });
+  assert.strictEqual(adminInitRes.statusCode, 403);
+  assert(adminInitRes.json().error.includes('Forbidden'));
+
+  const adminFilesRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/files',
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(adminFilesRes.statusCode, 403);
+  console.log('   ✅ Scenario 4 passed: Admin blocked with 403 on all student-only endpoints');
+
+  // Test 35: Scenario 5 — Super Admin Role Security: Super Admin rejected with 403 on Student endpoints
+  console.log('35. Testing Scenario 5: Super Admin Role Security (403 Forbidden on Student endpoints)...');
+  const superUploadRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/upload',
+    headers: { cookie: superCookie },
+    body: 'dummy'
+  });
+  assert.strictEqual(superUploadRes.statusCode, 403);
+  assert(superUploadRes.json().error.includes('Forbidden'));
+
+  const superInitRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/orders/initiate',
+    headers: { cookie: superCookie },
+    body: { items: [] }
+  });
+  assert.strictEqual(superInitRes.statusCode, 403);
+  assert(superInitRes.json().error.includes('Forbidden'));
+
+  const superFilesRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/files',
+    headers: { cookie: superCookie }
+  });
+  assert.strictEqual(superFilesRes.statusCode, 403);
+  console.log('   ✅ Scenario 5 passed: Super Admin blocked with 403 on all student-only endpoints');
+
+  // Test 36: Scenario 6 — Student Order Ownership Security: Student B cannot view Student A's order
+  console.log('36. Testing Scenario 6: Student Order Ownership Security (403 Forbidden for other students)...');
+  const signupBRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/signup',
+    body: { name: 'Student B', email: `studentB_${Date.now()}@aitpune.edu.in`, password: 'password123' }
+  });
+  assert.strictEqual(signupBRes.statusCode, 200);
+  const studentBCookie = signupBRes.headers['set-cookie'].split(';')[0];
+
+  const studentBAccessRes = await invokeHandler({
+    method: 'GET',
+    url: `/api/orders/${orderIdScenario1}`,
+    headers: { cookie: studentBCookie }
+  });
+  assert.strictEqual(studentBAccessRes.statusCode, 403);
+  assert(studentBAccessRes.json().error.includes('Forbidden'));
+  console.log('   ✅ Scenario 6 passed: Student B correctly blocked with 403 when accessing Student A order');
+
+  console.log('\n🎉 ALL 36 TESTS PASSED SUCCESSFULLY! Full role-based system, 2-step payment & print queue verified.\n');
 }
 
 runTests().catch(err => {
