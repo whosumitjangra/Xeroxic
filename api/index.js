@@ -307,6 +307,9 @@ async function handler(req, res) {
         if (requestedRole === 'SUPER_ADMIN' && userRole !== 'SUPER_ADMIN') {
           return sendJSON(res, 403, { error: 'This account does not have Super Admin access.' });
         }
+        if (requestedRole === 'STUDENT' && userRole !== 'STUDENT') {
+          return sendJSON(res, 403, { error: 'This is an Admin / Staff account. Please sign in via the Admin Portal at /admin.' });
+        }
       }
 
       const token = createSessionToken(user);

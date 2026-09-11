@@ -29,9 +29,10 @@ async function checkSuperAdminAuth() {
       return;
     }
     const user = await res.json();
-    if (user.role !== 'superadmin') {
+    const roleUpper = (user.role || '').toUpperCase();
+    if (roleUpper !== 'SUPER_ADMIN' && roleUpper !== 'SUPERADMIN') {
       alert('Access Restricted: Super Admin credentials required.');
-      window.location.href = user.role === 'admin' ? '/admin/dashboard' : '/';
+      window.location.href = (roleUpper === 'ADMIN') ? '/admin/dashboard' : '/admin';
       return;
     }
     currentUser = user;
@@ -147,7 +148,8 @@ async function loadStaff() {
       const statusBadge = isDisabled
         ? '<span class="staff-badge-disabled">Disabled</span>'
         : '<span class="staff-badge-active">Active</span>';
-      const roleBadge = s.role === 'superadmin'
+      const sRole = (s.role || '').toUpperCase();
+      const roleBadge = (sRole === 'SUPER_ADMIN' || sRole === 'SUPERADMIN')
         ? '<span class="super-badge">👑 Super Admin</span>'
         : '<span class="staff-role-badge">🛡️ Staff</span>';
 

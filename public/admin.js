@@ -26,8 +26,6 @@ async function checkAdminAuth() {
     const nameEl = document.getElementById('admin-welcome-name');
     if (userRole === 'SUPER_ADMIN' || userRole === 'SUPERADMIN') {
       if (nameEl) nameEl.textContent = `Hi, ${user.name} (Super Admin)`;
-      const superBtn = document.getElementById('btn-goto-superadmin');
-      if (superBtn) superBtn.style.display = 'inline-flex';
     } else {
       if (nameEl) nameEl.textContent = `Hi, ${user.name} (Staff)`;
     }

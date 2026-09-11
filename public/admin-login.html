@@ -95,9 +95,10 @@ loginForm.addEventListener('submit', async (e) => {
     }
 
     // Role-based redirect
-    if (data.role === 'superadmin') {
+    const roleUpper = (data.role || '').toUpperCase();
+    if (roleUpper === 'SUPER_ADMIN' || roleUpper === 'SUPERADMIN') {
       window.location.href = '/super-admin';
-    } else if (data.role === 'admin') {
+    } else if (roleUpper === 'ADMIN') {
       window.location.href = '/admin/dashboard';
     } else {
       errorMsg.textContent = 'Access restricted: Student accounts cannot access the staff portal.';

@@ -795,7 +795,26 @@ async function runTests() {
   assert(studentBAccessRes.json().error.includes('Forbidden'));
   console.log('   ✅ Scenario 6 passed: Student B correctly blocked with 403 when accessing Student A order');
 
-  console.log('\n🎉 ALL 36 TESTS PASSED SUCCESSFULLY! Full role-based system, 2-step payment & print queue verified.\n');
+  // Test 37: Student Portal Login Cross-Role Isolation (Admin & Super Admin blocked with 403 from Student login)
+  console.log('37. Testing Student Portal Cross-Role Isolation (Admin & Super Admin blocked from Student login)...');
+  const adminStudentLoginRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/login',
+    body: { email: 'admin@aitpune.edu.in', password: 'admin123', role: 'student' }
+  });
+  assert.strictEqual(adminStudentLoginRes.statusCode, 403);
+  assert(adminStudentLoginRes.json().error.includes('Admin / Staff account'));
+
+  const superStudentLoginRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/login',
+    body: { email: 'superadmin@aitpune.edu.in', password: 'superadmin123', role: 'student' }
+  });
+  assert.strictEqual(superStudentLoginRes.statusCode, 403);
+  assert(superStudentLoginRes.json().error.includes('Admin / Staff account'));
+  console.log('   ✅ Scenario 7 passed: Admin & Super Admin strictly prevented from signing in through Student portal');
+
+  console.log('\n🎉 ALL 37 TESTS PASSED SUCCESSFULLY! Full role-based system, isolation & print queue verified.\n');
 }
 
 runTests().catch(err => {

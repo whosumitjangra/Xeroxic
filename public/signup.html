@@ -13,36 +13,18 @@
 <div class="auth-wrap">
   <div class="auth-card">
     <div class="auth-logo"><img src="logo.gif" alt="AIT Pune Logo"></div>
-    <h1 class="auth-title">Create Account</h1>
-    <p class="auth-sub">Join Xerox Centre — AIT, Pune</p>
-
-    <!-- Role Switcher -->
-    <div class="role-toggle-group">
-      <button type="button" class="role-toggle-btn active" id="role-user-btn" data-role="user">
-        🎓 Student
-      </button>
-      <button type="button" class="role-toggle-btn" id="role-admin-btn" data-role="admin">
-        🛡️ Admin / Staff
-      </button>
-    </div>
+    <h1 class="auth-title">Create Student Account</h1>
+    <p class="auth-sub">Join Xerox Centre Student Printing Portal — AIT, Pune</p>
 
     <form id="signup-form">
-      <input type="hidden" id="selected-role" value="user">
-
       <label class="auth-label">Full Name</label>
-      <input class="auth-input" type="text" id="name" placeholder="Your name" required>
+      <input class="auth-input" type="text" id="name" placeholder="Your name" required autocomplete="name">
 
       <label class="auth-label">Email</label>
-      <input class="auth-input" type="email" id="email" placeholder="you@example.com" required>
+      <input class="auth-input" type="email" id="email" placeholder="student@aitpune.edu.in" required autocomplete="email">
 
       <label class="auth-label">Password</label>
-      <input class="auth-input" type="password" id="password" placeholder="At least 6 characters" required minlength="6">
-
-      <!-- Admin passcode field (revealed only if Admin is selected) -->
-      <div id="admin-passcode-wrap" style="display: none;">
-        <label class="auth-label">Admin Passcode <span style="font-weight:normal; font-size:12px; color:#a3b899;">(Default: AITXEROX2026)</span></label>
-        <input class="auth-input" type="password" id="admin-passcode" placeholder="Enter staff passcode">
-      </div>
+      <input class="auth-input" type="password" id="password" placeholder="At least 6 characters" required minlength="6" autocomplete="new-password">
 
       <p class="auth-error" id="error-msg"></p>
 
@@ -50,48 +32,24 @@
     </form>
 
     <p class="auth-switch">Already have an account? <a href="login.html">Sign in</a></p>
+    <p class="auth-switch" style="margin-top: 14px;">
+      <a href="/admin" style="color: #556b5e; font-size: 13px; text-decoration: none;">🛡️ Staff or Admin? Sign in to Admin Portal →</a>
+    </p>
   </div>
 </div>
 
 <script>
-const roleUserBtn = document.getElementById('role-user-btn');
-const roleAdminBtn = document.getElementById('role-admin-btn');
-const selectedRoleInput = document.getElementById('selected-role');
 const submitBtn = document.getElementById('signup-submit-btn');
-const adminPasscodeWrap = document.getElementById('admin-passcode-wrap');
-const adminPasscodeInput = document.getElementById('admin-passcode');
-
-function setRole(role) {
-  selectedRoleInput.value = role;
-  if (role === 'admin') {
-    roleAdminBtn.classList.add('active');
-    roleUserBtn.classList.remove('active');
-    adminPasscodeWrap.style.display = 'block';
-    adminPasscodeInput.required = true;
-    submitBtn.textContent = 'Register as Admin';
-    submitBtn.classList.add('admin-btn-highlight');
-  } else {
-    roleUserBtn.classList.add('active');
-    roleAdminBtn.classList.remove('active');
-    adminPasscodeWrap.style.display = 'none';
-    adminPasscodeInput.required = false;
-    adminPasscodeInput.value = '';
-    submitBtn.textContent = 'Sign Up as Student';
-    submitBtn.classList.remove('admin-btn-highlight');
-  }
-}
-
-roleUserBtn.addEventListener('click', () => setRole('user'));
-roleAdminBtn.addEventListener('click', () => setRole('admin'));
+const nameInput = document.getElementById('name');
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const errorMsg = document.getElementById('error-msg');
 
 document.getElementById('signup-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const name = document.getElementById('name').value.trim();
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
-  const role = selectedRoleInput.value;
-  const adminPasscode = adminPasscodeInput.value.trim();
-  const errorMsg = document.getElementById('error-msg');
+  const name = nameInput.value.trim();
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
   errorMsg.textContent = '';
   submitBtn.disabled = true;
   submitBtn.textContent = 'Creating account...';
@@ -100,27 +58,22 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
     const res = await fetch('/api/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, role, adminPasscode })
+      body: JSON.stringify({ name, email, password, role: 'student' })
     });
     const data = await res.json();
     if (!res.ok) {
-      errorMsg.textContent = data.error || 'Something went wrong.';
+      errorMsg.textContent = data.error || 'Registration failed. Please try again.';
       submitBtn.disabled = false;
-      submitBtn.textContent = role === 'admin' ? 'Register as Admin' : 'Sign Up as Student';
+      submitBtn.textContent = 'Sign Up as Student';
       return;
     }
     
-    if (data.redirect) {
-      window.location.href = data.redirect;
-    } else if (data.role === 'admin') {
-      window.location.href = 'admin.html';
-    } else {
-      window.location.href = 'index.html';
-    }
+    // Always navigate to student portal
+    window.location.href = '/';
   } catch (err) {
-    errorMsg.textContent = 'Could not reach the server. Is it running?';
+    errorMsg.textContent = 'Could not reach the server. Please check your connection.';
     submitBtn.disabled = false;
-    submitBtn.textContent = role === 'admin' ? 'Register as Admin' : 'Sign Up as Student';
+    submitBtn.textContent = 'Sign Up as Student';
   }
 });
 </script>
