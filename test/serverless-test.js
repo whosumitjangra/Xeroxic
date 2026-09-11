@@ -5,6 +5,12 @@
 
 process.env.VERCEL = '1'; // Test against serverless /tmp isolation
 
+const fs = require('fs');
+try {
+  fs.rmSync('/tmp/xerox-data', { recursive: true, force: true });
+  fs.rmSync('/tmp/xerox-uploads', { recursive: true, force: true });
+} catch (e) {}
+
 const assert = require('assert');
 const EventEmitter = require('events');
 const handler = require('../api/index');
@@ -251,7 +257,67 @@ async function runTests() {
   assert(cfg.dataDir.startsWith('/tmp'), 'Data directory must be in /tmp');
   console.log('   ✅ VERCEL=1 /tmp storage isolation passed');
 
-  console.log('\n🎉 ALL 12 TESTS PASSED SUCCESSFULLY! Ready for Vercel deployment.\n');
+  // Test 13: Admin Login
+  console.log('13. Testing Admin Login with default seeded credentials...');
+  const adminLoginRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/login',
+    body: { email: 'admin@aitpune.edu.in', password: 'admin123', role: 'admin' }
+  });
+  assert.strictEqual(adminLoginRes.statusCode, 200, `Admin login failed: ${adminLoginRes.text()}`);
+  const adminLoginData = adminLoginRes.json();
+  assert.strictEqual(adminLoginData.role, 'admin');
+  assert.strictEqual(adminLoginData.redirect, 'admin.html');
+  const adminCookie = adminLoginRes.headers['set-cookie'].split(';')[0];
+  console.log('   ✅ Admin login passed (role: admin, redirect: admin.html)');
+
+  // Test 14: Non-admin student blocked from Admin endpoint (403)
+  console.log('14. Testing Role Protection (Student rejected from Admin endpoint with 403)...');
+  const forbiddenRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/orders',
+    headers: { cookie: sessionCookie } // sessionCookie is from the student user in Test 3
+  });
+  assert.strictEqual(forbiddenRes.statusCode, 403, 'Student must be rejected with 403');
+  console.log('   ✅ Role protection passed (403 Forbidden verified)');
+
+  // Test 15: Admin accessing all document requests & stats
+  console.log('15. Testing Admin GET /api/admin/orders & GET /api/admin/stats...');
+  const adminOrdersRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/orders',
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(adminOrdersRes.statusCode, 200);
+  const adminOrdersData = adminOrdersRes.json();
+  assert(Array.isArray(adminOrdersData.orders));
+  assert(adminOrdersData.orders.some(o => o.orderId === createdOrderId));
+  console.log(`   ✅ Admin successfully retrieved all ${adminOrdersData.orders.length} document requests`);
+
+  // Test 16: Admin updating order status
+  console.log('16. Testing Admin PATCH /api/admin/orders/:id/status...');
+  const updateStatusRes = await invokeHandler({
+    method: 'PATCH',
+    url: `/api/admin/orders/${createdOrderId}/status`,
+    headers: { cookie: adminCookie },
+    body: { status: 'Ready for Pickup' }
+  });
+  assert.strictEqual(updateStatusRes.statusCode, 200);
+  assert.strictEqual(updateStatusRes.json().status, 'Ready for Pickup');
+  console.log('   ✅ Admin order status updated to "Ready for Pickup"');
+
+  // Test 17: Admin downloading student document
+  console.log('17. Testing Admin document download permission (GET /api/download/:id)...');
+  const adminDownloadRes = await invokeHandler({
+    method: 'GET',
+    url: `/api/download/${uploadedFileId}`,
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(adminDownloadRes.statusCode, 200);
+  assert.strictEqual(adminDownloadRes.text(), fileContent);
+  console.log('   ✅ Admin document download verified successfully');
+
+  console.log('\n🎉 ALL 17 TESTS PASSED SUCCESSFULLY! Ready for Vercel deployment.\n');
 }
 
 runTests().catch(err => {

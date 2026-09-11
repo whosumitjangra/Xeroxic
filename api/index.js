@@ -18,6 +18,7 @@ const {
   saveFiles,
   getOrders,
   saveOrders,
+  updateOrderStatus,
   saveUploadedFile,
   getUploadedFileBuffer,
   deleteUploadedFile,
@@ -34,8 +35,12 @@ const PRICE_TABLE = {
   'color-double': 8
 };
 
-// Order status based on elapsed time (demo simulation)
-function computeOrderStatus(createdAt) {
+// Order status helper (supports manual admin status or fallback to elapsed time)
+function computeOrderStatus(orderOrDate) {
+  if (typeof orderOrDate === 'object' && orderOrDate && orderOrDate.status) {
+    return orderOrDate.status;
+  }
+  const createdAt = typeof orderOrDate === 'object' && orderOrDate ? orderOrDate.createdAt : orderOrDate;
   const minutesElapsed = (Date.now() - new Date(createdAt).getTime()) / 60000;
   if (minutesElapsed < 1) return 'Order Received';
   if (minutesElapsed < 3) return 'Printing in Progress';
@@ -192,9 +197,15 @@ async function handler(req, res) {
   try {
     // ---------------- AUTH: SIGNUP ----------------
     if (pathname === '/api/signup' && req.method === 'POST') {
-      const { name, email, password } = await readJSONBody(req);
+      const { name, email, password, role = 'user', adminPasscode } = await readJSONBody(req);
       if (!name || !email || !password) {
         return sendJSON(res, 400, { error: 'Name, email and password are required.' });
+      }
+      if (role === 'admin') {
+        const expectedPasscode = process.env.ADMIN_PASSCODE || 'AITXEROX2026';
+        if (adminPasscode !== expectedPasscode) {
+          return sendJSON(res, 403, { error: 'Invalid Admin Passcode. Contact Xerox in-charge.' });
+        }
       }
       const users = await getUsers();
       if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
@@ -206,6 +217,7 @@ async function handler(req, res) {
         id: crypto.randomBytes(8).toString('hex'),
         name,
         email,
+        role: role === 'admin' ? 'admin' : 'user',
         salt,
         passwordHash,
         createdAt: new Date().toISOString()
@@ -215,12 +227,18 @@ async function handler(req, res) {
 
       const token = createSessionToken(newUser);
       res.setHeader('Set-Cookie', `session=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=604800`);
-      return sendJSON(res, 200, { success: true, name: newUser.name, email: newUser.email });
+      return sendJSON(res, 200, {
+        success: true,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        redirect: newUser.role === 'admin' ? 'admin.html' : 'index.html'
+      });
     }
 
     // ---------------- AUTH: LOGIN ----------------
     if (pathname === '/api/login' && req.method === 'POST') {
-      const { email, password } = await readJSONBody(req);
+      const { email, password, role } = await readJSONBody(req);
       if (!email || !password) {
         return sendJSON(res, 400, { error: 'Email and password are required.' });
       }
@@ -233,9 +251,19 @@ async function handler(req, res) {
       if (hash !== user.passwordHash) {
         return sendJSON(res, 401, { error: 'Invalid email or password.' });
       }
+      const userRole = user.role || 'user';
+      if (role === 'admin' && userRole !== 'admin') {
+        return sendJSON(res, 403, { error: 'This account does not have Admin access. Please sign in as Student.' });
+      }
       const token = createSessionToken(user);
       res.setHeader('Set-Cookie', `session=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=604800`);
-      return sendJSON(res, 200, { success: true, name: user.name, email: user.email });
+      return sendJSON(res, 200, {
+        success: true,
+        name: user.name,
+        email: user.email,
+        role: userRole,
+        redirect: userRole === 'admin' ? 'admin.html' : 'index.html'
+      });
     }
 
     // ---------------- AUTH: LOGOUT ----------------
@@ -248,7 +276,7 @@ async function handler(req, res) {
     if (pathname === '/api/me' && req.method === 'GET') {
       const session = getSessionFromReq(req);
       if (!session) return sendJSON(res, 401, { error: 'Not logged in.' });
-      return sendJSON(res, 200, { name: session.name, email: session.email });
+      return sendJSON(res, 200, { name: session.name, email: session.email, role: session.role || 'user' });
     }
 
     // ---------------- FILES: UPLOAD ----------------
@@ -256,22 +284,27 @@ async function handler(req, res) {
       const session = getSessionFromReq(req);
       if (!session) return sendJSON(res, 401, { error: 'You must be logged in to upload files.' });
 
-      const { files } = await parseMultipart(req);
-      if (!files.length) return sendJSON(res, 400, { error: 'No files received.' });
+      try {
+        const { files } = await parseMultipart(req);
+        if (!files || !files.length) return sendJSON(res, 400, { error: 'No files received. Please select a valid document.' });
 
-      const filesDb = await getFiles();
-      const saved = [];
+        const filesDb = await getFiles();
+        const saved = [];
 
-      for (const f of files) {
-        const record = await saveUploadedFile(session.userId, f.filename, f.data);
-        filesDb.push(record);
-        // Exclude large dataBase64 from immediate client response
-        const { dataBase64, ...cleanRecord } = record;
-        saved.push(cleanRecord);
+        for (const f of files) {
+          const record = await saveUploadedFile(session.userId, f.filename, f.data);
+          filesDb.push(record);
+          // Exclude large dataBase64 from immediate client response
+          const { dataBase64, ...cleanRecord } = record;
+          saved.push(cleanRecord);
+        }
+
+        await saveFiles(filesDb);
+        return sendJSON(res, 200, { success: true, files: saved });
+      } catch (uploadErr) {
+        console.error('Upload processing error:', uploadErr);
+        return sendJSON(res, 400, { error: uploadErr.message || 'File upload failed. Please verify file format and size.' });
       }
-
-      await saveFiles(filesDb);
-      return sendJSON(res, 200, { success: true, files: saved });
     }
 
     // ---------------- FILES: LIST ----------------
@@ -360,7 +393,7 @@ async function handler(req, res) {
           orderId: o.orderId,
           total: o.total,
           createdAt: o.createdAt,
-          status: computeOrderStatus(o.createdAt)
+          status: computeOrderStatus(o)
         }))
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       return sendJSON(res, 200, { orders: mine });
@@ -379,7 +412,92 @@ async function handler(req, res) {
         items: order.items,
         total: order.total,
         createdAt: order.createdAt,
-        status: computeOrderStatus(order.createdAt)
+        status: computeOrderStatus(order)
+      });
+    }
+
+    // ---------------- ADMIN: GET ALL ORDERS / DOCUMENT REQUESTS ----------------
+    if (pathname === '/api/admin/orders' && req.method === 'GET') {
+      const session = getSessionFromReq(req);
+      if (!session || session.role !== 'admin') {
+        return sendJSON(res, 403, { error: 'Forbidden: Admin access required.' });
+      }
+      const orders = await getOrders();
+      const users = await getUsers();
+      const filesDb = await getFiles();
+
+      const userMap = new Map(users.map(u => [u.id, u]));
+
+      const enriched = orders.map(o => {
+        const owner = userMap.get(o.ownerId) || {};
+        const items = (o.items || []).map(item => {
+          const fileRecord = filesDb.find(f => f.id === item.fileId);
+          return {
+            ...item,
+            storedName: fileRecord ? fileRecord.storedName : null,
+            size: fileRecord ? fileRecord.size : null
+          };
+        });
+        return {
+          orderId: o.orderId,
+          ownerId: o.ownerId,
+          ownerName: o.ownerName || owner.name || 'Student',
+          ownerEmail: owner.email || 'N/A',
+          items,
+          total: o.total,
+          createdAt: o.createdAt,
+          status: computeOrderStatus(o),
+          updatedAt: o.updatedAt || null
+        };
+      }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      return sendJSON(res, 200, { success: true, orders: enriched });
+    }
+
+    // ---------------- ADMIN: UPDATE ORDER STATUS ----------------
+    if (pathname.startsWith('/api/admin/orders/') && pathname.endsWith('/status') && (req.method === 'PATCH' || req.method === 'POST')) {
+      const session = getSessionFromReq(req);
+      if (!session || session.role !== 'admin') {
+        return sendJSON(res, 403, { error: 'Forbidden: Admin access required.' });
+      }
+      const parts = pathname.split('/');
+      const orderId = decodeURIComponent(parts[parts.length - 2]);
+      const { status } = await readJSONBody(req);
+      const validStatuses = ['Order Received', 'Printing in Progress', 'Ready for Pickup', 'Completed'];
+      if (!status || !validStatuses.includes(status)) {
+        return sendJSON(res, 400, { error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+      }
+      const updated = await updateOrderStatus(orderId, status);
+      if (!updated) return sendJSON(res, 404, { error: 'Order not found.' });
+      return sendJSON(res, 200, { success: true, orderId: updated.orderId, status: updated.status });
+    }
+
+    // ---------------- ADMIN: GET STATS ----------------
+    if (pathname === '/api/admin/stats' && req.method === 'GET') {
+      const session = getSessionFromReq(req);
+      if (!session || session.role !== 'admin') {
+        return sendJSON(res, 403, { error: 'Forbidden: Admin access required.' });
+      }
+      const orders = await getOrders();
+      let totalRevenue = 0;
+      let inProgressCount = 0;
+      let readyCount = 0;
+      let completedCount = 0;
+
+      for (const o of orders) {
+        totalRevenue += (o.total || 0);
+        const st = computeOrderStatus(o);
+        if (st === 'Printing in Progress' || st === 'Order Received') inProgressCount++;
+        else if (st === 'Ready for Pickup') readyCount++;
+        else if (st === 'Completed') completedCount++;
+      }
+
+      return sendJSON(res, 200, {
+        totalOrders: orders.length,
+        inProgressCount,
+        readyCount,
+        completedCount,
+        totalRevenue
       });
     }
 
@@ -389,8 +507,15 @@ async function handler(req, res) {
       if (!session) return sendJSON(res, 401, { error: 'Not logged in.' });
       const id = pathname.split('/').pop();
       const filesDb = await getFiles();
-      const record = filesDb.find(f => f.id === id && f.ownerId === session.userId);
+      const record = filesDb.find(f => f.id === id);
       if (!record) return sendJSON(res, 404, { error: 'File not found.' });
+
+      // Permission check: owner or admin can download/preview
+      const isOwner = record.ownerId === session.userId;
+      const isAdmin = session.role === 'admin';
+      if (!isOwner && !isAdmin) {
+        return sendJSON(res, 403, { error: 'Forbidden: You do not have permission to access this file.' });
+      }
 
       const fileBuffer = await getUploadedFileBuffer(record);
       if (!fileBuffer) return sendJSON(res, 404, { error: 'File data unavailable.' });

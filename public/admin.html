@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Portal — Xerox Centre (AIT Pune)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="admin-wrapper">
+  <!-- Top Header -->
+  <header class="admin-header">
+    <div class="logo"><img src="logo.gif" alt="AIT Pune Logo"></div>
+    <div class="brand">
+      <div class="title">XEROX CENTRE</div>
+      <div class="sub">AIT, PUNE <span class="admin-badge">ADMIN PORTAL</span></div>
+    </div>
+    <div class="spacer"></div>
+    <span class="welcome-name" id="admin-welcome-name">Loading...</span>
+    <button class="signin secondary-btn" id="student-view-btn" onclick="window.location.href='index.html'">🎓 Student View</button>
+    <button class="signin" id="admin-logout-btn">Sign Out</button>
+  </header>
+
+  <main class="admin-main">
+    <div class="admin-top-bar">
+      <div>
+        <h1 class="page-title" style="margin:0;">Print Document Requests</h1>
+        <p class="admin-subtext">Manage incoming student print jobs, download uploaded documents, and update live fulfillment status.</p>
+      </div>
+      <button class="refresh-btn" id="refresh-orders-btn">🔄 Refresh Requests</button>
+    </div>
+
+    <!-- Stats Summary Cards -->
+    <div class="admin-stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">📄</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-total-orders">0</div>
+          <div class="stat-label">Total Print Orders</div>
+        </div>
+      </div>
+      <div class="stat-card stat-pending">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-pending-orders">0</div>
+          <div class="stat-label">In Progress / Received</div>
+        </div>
+      </div>
+      <div class="stat-card stat-ready">
+        <div class="stat-icon">📦</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-ready-orders">0</div>
+          <div class="stat-label">Ready for Pickup</div>
+        </div>
+      </div>
+      <div class="stat-card stat-revenue">
+        <div class="stat-icon">💰</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-total-revenue">₹0</div>
+          <div class="stat-label">Total Revenue Collected</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <div class="admin-controls-card">
+      <div class="admin-search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="admin-search-input" class="admin-search-input" placeholder="Search by Student Name, Email, or Order ID (e.g. ORD-XXXX)...">
+      </div>
+      <div class="status-filter-pills" id="status-filters">
+        <button type="button" class="filter-pill active" data-filter="all">All Orders</button>
+        <button type="button" class="filter-pill" data-filter="Order Received">Received</button>
+        <button type="button" class="filter-pill" data-filter="Printing in Progress">Printing</button>
+        <button type="button" class="filter-pill" data-filter="Ready for Pickup">Ready for Pickup</button>
+        <button type="button" class="filter-pill" data-filter="Completed">Completed</button>
+      </div>
+    </div>
+
+    <!-- Orders / Requests Container -->
+    <div id="orders-loading" class="admin-loading-state">
+      <div class="spinner"></div>
+      <p>Loading document requests...</p>
+    </div>
+
+    <div id="orders-container" class="admin-orders-list" style="display:none;">
+      <!-- Populated dynamically by admin.js -->
+    </div>
+
+    <div id="orders-empty" class="admin-empty-state" style="display:none;">
+      <div class="empty-icon">📭</div>
+      <h3>No Document Requests Found</h3>
+      <p>No print jobs match your search or filter criteria.</p>
+    </div>
+  </main>
+</div>
+
+<!-- Notification Toast -->
+<div id="admin-toast" class="admin-toast"></div>
+
+<script src="admin.js"></script>
+</body>
+</html>

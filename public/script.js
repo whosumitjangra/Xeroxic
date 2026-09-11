@@ -22,6 +22,21 @@ async function checkAuth() {
         window.location.href = 'login.html';
       };
     }
+    if (data.role === 'admin') {
+      let adminLink = document.getElementById('admin-portal-link');
+      if (!adminLink) {
+        adminLink = document.createElement('button');
+        adminLink.id = 'admin-portal-link';
+        adminLink.className = 'signin secondary-btn';
+        adminLink.style.marginRight = '8px';
+        adminLink.textContent = '🛡️ Admin Portal';
+        adminLink.onclick = () => window.location.href = 'admin.html';
+        const header = document.querySelector('header');
+        if (header && authBtn) {
+          header.insertBefore(adminLink, authBtn);
+        }
+      }
+    }
     return data;
   } catch (err) {
     window.location.href = 'login.html';
@@ -30,26 +45,56 @@ async function checkAuth() {
 }
 checkAuth();
 
-// ---------- Page navigation (Print Centre card, Back button) ----------
-document.querySelectorAll('[data-target]').forEach(el => {
-  el.addEventListener('click', () => {
-    const targetId = el.getAttribute('data-target');
-    showPage(targetId);
-  });
-});
+// ---------- Image compression helper for fast & reliable cloud uploads ----------
+async function compressImageIfLarge(file) {
+  if (!file.type.startsWith('image/') || file.size <= 1.5 * 1024 * 1024) {
+    return file;
+  }
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDimension = 2048;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
 
-document.querySelectorAll('[data-alert]').forEach(el => {
-  el.addEventListener('click', () => {
-    alert(el.getAttribute('data-alert'));
+        canvas.toBlob(
+          (blob) => {
+            if (blob && blob.size < file.size) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          0.85
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
   });
-});
-
-function showPage(id){
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  window.scrollTo({top:0, behavior:'smooth'});
-  if (id === 'printcentre') loadFiles();
-  if (id === 'printoptions') loadOrderItems();
 }
 
 // ---------- Drag & drop + real upload to backend ----------
@@ -88,13 +133,22 @@ if (uploadTrigger) {
 async function uploadFiles(fileListToUpload) {
   if (!fileListToUpload || fileListToUpload.length === 0) return;
 
+  uploadStatus.textContent = 'Processing files...';
+  uploadTrigger.disabled = true;
+
   const formData = new FormData();
   for (const f of fileListToUpload) {
-    formData.append('files', f);
+    if (f.size > 4.5 * 1024 * 1024 && !f.type.startsWith('image/')) {
+      uploadStatus.textContent = `File "${f.name}" exceeds 4.5MB serverless cap. Please choose a smaller document.`;
+      uploadTrigger.disabled = false;
+      return;
+    }
+    uploadStatus.textContent = `Optimizing ${f.name}...`;
+    const processed = await compressImageIfLarge(f);
+    formData.append('files', processed);
   }
 
-  uploadStatus.textContent = 'Uploading...';
-  uploadTrigger.disabled = true;
+  uploadStatus.textContent = 'Uploading to server...';
 
   try {
     const res = await fetch('/api/upload', {
@@ -111,7 +165,7 @@ async function uploadFiles(fileListToUpload) {
       if (proceedWrap) proceedWrap.style.display = 'block';
     }
   } catch (err) {
-    uploadStatus.textContent = 'Could not reach the server.';
+    uploadStatus.textContent = 'Could not reach server or file exceeds cloud limit.';
   } finally {
     uploadTrigger.disabled = false;
   }

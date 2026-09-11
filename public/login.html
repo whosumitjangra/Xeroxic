@@ -16,16 +16,29 @@
     <h1 class="auth-title">Welcome Back</h1>
     <p class="auth-sub">Sign in to Xerox Centre — AIT, Pune</p>
 
+    <!-- Role Switcher: Student vs Admin -->
+    <div class="role-toggle-group">
+      <button type="button" class="role-toggle-btn active" id="role-user-btn" data-role="user">
+        🎓 Student
+      </button>
+      <button type="button" class="role-toggle-btn" id="role-admin-btn" data-role="admin">
+        🛡️ Admin / Staff
+      </button>
+    </div>
+
     <form id="login-form">
+      <input type="hidden" id="selected-role" value="user">
+
       <label class="auth-label">Email</label>
       <input class="auth-input" type="email" id="email" placeholder="you@example.com" required>
 
       <label class="auth-label">Password</label>
       <input class="auth-input" type="password" id="password" placeholder="••••••••" required>
 
+      <p class="role-hint" id="role-hint"></p>
       <p class="auth-error" id="error-msg"></p>
 
-      <button type="submit" class="auth-btn">Sign In</button>
+      <button type="submit" class="auth-btn" id="login-submit-btn">Sign In as Student</button>
     </form>
 
     <p class="auth-switch">Don't have an account? <a href="signup.html">Sign up</a></p>
@@ -33,27 +46,73 @@
 </div>
 
 <script>
+const roleUserBtn = document.getElementById('role-user-btn');
+const roleAdminBtn = document.getElementById('role-admin-btn');
+const selectedRoleInput = document.getElementById('selected-role');
+const submitBtn = document.getElementById('login-submit-btn');
+const roleHint = document.getElementById('role-hint');
+const emailInput = document.getElementById('email');
+
+function setRole(role) {
+  selectedRoleInput.value = role;
+  if (role === 'admin') {
+    roleAdminBtn.classList.add('active');
+    roleUserBtn.classList.remove('active');
+    submitBtn.textContent = 'Sign In as Admin';
+    submitBtn.classList.add('admin-btn-highlight');
+    roleHint.innerHTML = '⚡ Admin Demo Account: <code>admin@aitpune.edu.in</code> (pass: <code>admin123</code>)';
+    if (!emailInput.value || emailInput.value === 'you@example.com') {
+      emailInput.placeholder = 'admin@aitpune.edu.in';
+    }
+  } else {
+    roleUserBtn.classList.add('active');
+    roleAdminBtn.classList.remove('active');
+    submitBtn.textContent = 'Sign In as Student';
+    submitBtn.classList.remove('admin-btn-highlight');
+    roleHint.textContent = '';
+    emailInput.placeholder = 'you@example.com';
+  }
+}
+
+roleUserBtn.addEventListener('click', () => setRole('user'));
+roleAdminBtn.addEventListener('click', () => setRole('admin'));
+
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const email = document.getElementById('email').value;
+  const email = emailInput.value.trim();
   const password = document.getElementById('password').value;
+  const role = selectedRoleInput.value;
   const errorMsg = document.getElementById('error-msg');
   errorMsg.textContent = '';
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Signing In...';
 
   try {
     const res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password, role })
     });
     const data = await res.json();
     if (!res.ok) {
       errorMsg.textContent = data.error || 'Something went wrong.';
+      submitBtn.disabled = false;
+      submitBtn.textContent = role === 'admin' ? 'Sign In as Admin' : 'Sign In as Student';
       return;
     }
-    window.location.href = 'index.html';
+    
+    // Redirect based on role returned from server
+    if (data.redirect) {
+      window.location.href = data.redirect;
+    } else if (data.role === 'admin') {
+      window.location.href = 'admin.html';
+    } else {
+      window.location.href = 'index.html';
+    }
   } catch (err) {
     errorMsg.textContent = 'Could not reach the server. Is it running?';
+    submitBtn.disabled = false;
+    submitBtn.textContent = role === 'admin' ? 'Sign In as Admin' : 'Sign In as Student';
   }
 });
 </script>
