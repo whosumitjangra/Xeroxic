@@ -19,6 +19,10 @@ const {
   getOrders,
   saveOrders,
   updateOrderStatus,
+  getAssignments,
+  saveAssignments,
+  createAssignment,
+  deleteAssignment,
   saveUploadedFile,
   getUploadedFileBuffer,
   deleteUploadedFile,
@@ -339,7 +343,7 @@ async function handler(req, res) {
       const session = getSessionFromReq(req);
       if (!session) return sendJSON(res, 401, { error: 'You must be logged in to place an order.' });
 
-      const { items } = await readJSONBody(req);
+      const { items, paymentMethod = 'UPI', utr = '' } = await readJSONBody(req);
       if (!Array.isArray(items) || items.length === 0) {
         return sendJSON(res, 400, { error: 'No items in this order.' });
       }
@@ -372,14 +376,17 @@ async function handler(req, res) {
         orderId,
         ownerId: session.userId,
         ownerName: session.name,
+        ownerEmail: session.email,
         items: cleanItems,
         total,
+        paymentMethod: paymentMethod || 'UPI',
+        utr: utr || null,
         createdAt: new Date().toISOString()
       };
       orders.push(order);
       await saveOrders(orders);
 
-      return sendJSON(res, 200, { success: true, orderId, total });
+      return sendJSON(res, 200, { success: true, orderId, total, paymentMethod: order.paymentMethod });
     }
 
     // ---------------- ORDERS: LIST MY ORDERS ----------------
@@ -392,6 +399,7 @@ async function handler(req, res) {
         .map(o => ({
           orderId: o.orderId,
           total: o.total,
+          paymentMethod: o.paymentMethod || 'UPI',
           createdAt: o.createdAt,
           status: computeOrderStatus(o)
         }))
@@ -411,6 +419,8 @@ async function handler(req, res) {
         orderId: order.orderId,
         items: order.items,
         total: order.total,
+        paymentMethod: order.paymentMethod || 'UPI',
+        utr: order.utr || null,
         createdAt: order.createdAt,
         status: computeOrderStatus(order)
       });
@@ -499,6 +509,116 @@ async function handler(req, res) {
         completedCount,
         totalRevenue
       });
+    }
+
+    // ---------------- ASSIGNMENTS: LIST (STUDENTS & ADMIN) ----------------
+    if (pathname === '/api/assignments' && req.method === 'GET') {
+      const session = getSessionFromReq(req);
+      if (!session) return sendJSON(res, 401, { error: 'Not logged in.' });
+
+      const assignments = await getAssignments();
+      const sanitized = assignments.map(a => ({
+        id: a.id,
+        subject: a.subject,
+        experimentNo: a.experimentNo,
+        title: a.title,
+        info: a.info,
+        submissionGuidelines: a.submissionGuidelines,
+        deadline: a.deadline,
+        createdAt: a.createdAt,
+        hasAttachment: !!a.attachment,
+        attachmentName: a.attachment ? a.attachment.originalName : null,
+        attachmentSize: a.attachment ? a.attachment.size : null
+      }));
+
+      return sendJSON(res, 200, { success: true, assignments: sanitized });
+    }
+
+    // ---------------- ASSIGNMENTS: CREATE (ADMIN ONLY) ----------------
+    if (pathname === '/api/admin/assignments' && req.method === 'POST') {
+      const session = getSessionFromReq(req);
+      if (!session || session.role !== 'admin') {
+        return sendJSON(res, 403, { error: 'Forbidden: Admin access required.' });
+      }
+
+      const body = await readJSONBody(req);
+      const { subject, experimentNo, title, info, submissionGuidelines, deadline, attachment } = body;
+
+      if (!subject || !title) {
+        return sendJSON(res, 400, { error: 'Subject and title are required.' });
+      }
+
+      let cleanAttachment = null;
+      if (attachment && attachment.dataBase64) {
+        cleanAttachment = {
+          originalName: attachment.originalName || 'demo_assignment.pdf',
+          mimeType: attachment.mimeType || 'application/pdf',
+          size: attachment.size || Buffer.byteLength(attachment.dataBase64, 'base64'),
+          dataBase64: attachment.dataBase64
+        };
+      }
+
+      const newAssignment = await createAssignment({
+        subject,
+        experimentNo: experimentNo || '',
+        title,
+        info: info || '',
+        submissionGuidelines: submissionGuidelines || '',
+        deadline: deadline || '',
+        attachment: cleanAttachment
+      });
+
+      return sendJSON(res, 201, { success: true, assignment: newAssignment });
+    }
+
+    // ---------------- ASSIGNMENTS: DELETE (ADMIN ONLY) ----------------
+    if (pathname.startsWith('/api/admin/assignments/') && req.method === 'DELETE') {
+      const session = getSessionFromReq(req);
+      if (!session || session.role !== 'admin') {
+        return sendJSON(res, 403, { error: 'Forbidden: Admin access required.' });
+      }
+
+      const id = pathname.split('/').pop();
+      const deleted = await deleteAssignment(id);
+      if (!deleted) {
+        return sendJSON(res, 404, { error: 'Assignment not found.' });
+      }
+
+      return sendJSON(res, 200, { success: true, id });
+    }
+
+    // ---------------- ASSIGNMENTS: DOWNLOAD / PREVIEW DEMO ATTACHMENT ----------------
+    if (pathname.startsWith('/api/assignments/') && pathname.endsWith('/attachment') && req.method === 'GET') {
+      const session = getSessionFromReq(req);
+      if (!session) return sendJSON(res, 401, { error: 'Not logged in.' });
+
+      const parts = pathname.split('/');
+      // /api/assignments/:id/attachment -> parts: ['', 'api', 'assignments', id, 'attachment']
+      const id = parts[3];
+      const assignments = await getAssignments();
+      const assignment = assignments.find(a => a.id === id);
+
+      if (!assignment || !assignment.attachment || !assignment.attachment.dataBase64) {
+        return sendJSON(res, 404, { error: 'No demo attachment found for this assignment.' });
+      }
+
+      const att = assignment.attachment;
+      const fileBuffer = Buffer.from(att.dataBase64, 'base64');
+      const ext = path.extname(att.originalName).toLowerCase();
+      const contentType = att.mimeType || MIME[ext] || 'application/octet-stream';
+      const wantsInline = parsed.searchParams.get('inline') === '1' || parsed.searchParams.get('inline') === 'true';
+
+      if (!wantsInline) {
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(att.originalName)}"`);
+      } else {
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(att.originalName)}"`);
+      }
+
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Content-Length': fileBuffer.length
+      });
+      return res.end(fileBuffer);
     }
 
     // ---------------- FILES: DOWNLOAD / PREVIEW ----------------

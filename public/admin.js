@@ -27,6 +27,7 @@ async function checkAdminAuth() {
     
     // Load dashboard data
     loadDashboardData();
+    loadAdminAssignments();
   } catch (err) {
     window.location.href = 'login.html';
   }
@@ -61,6 +62,8 @@ async function loadDashboardData() {
 
     const ordersData = await ordersRes.json();
     allOrders = ordersData.orders || [];
+    const tabReqCount = document.getElementById('tab-req-count');
+    if (tabReqCount) tabReqCount.textContent = allOrders.length;
 
     if (statsRes.ok) {
       const stats = await statsRes.json();
@@ -318,6 +321,332 @@ if (refreshBtn) {
     showToast('Orders refreshed!', 'info');
   });
 }
+
+// ===================================================================
+// Admin Tab Switching
+// ===================================================================
+const tabBtnRequests = document.getElementById('tab-btn-requests');
+const tabBtnAssignments = document.getElementById('tab-btn-assignments');
+const tabRequestsView = document.getElementById('tab-requests-view');
+const tabAssignmentsView = document.getElementById('tab-assignments-view');
+
+tabBtnRequests?.addEventListener('click', () => {
+  tabBtnRequests.classList.add('active');
+  tabBtnAssignments?.classList.remove('active');
+  if (tabRequestsView) tabRequestsView.style.display = 'block';
+  if (tabAssignmentsView) tabAssignmentsView.style.display = 'none';
+});
+
+tabBtnAssignments?.addEventListener('click', () => {
+  tabBtnAssignments.classList.add('active');
+  tabBtnRequests?.classList.remove('active');
+  if (tabRequestsView) tabRequestsView.style.display = 'none';
+  if (tabAssignmentsView) tabAssignmentsView.style.display = 'block';
+  loadAdminAssignments();
+});
+
+// ===================================================================
+// Admin Subject Assignments Manager
+// ===================================================================
+let allAdminAssignments = [];
+let currentAdminSubjectFilter = 'all';
+let currentAdminSearch = '';
+let attachedFileObject = null;
+
+async function loadAdminAssignments() {
+  const loadingEl = document.getElementById('admin-asgn-loading');
+  const gridEl = document.getElementById('admin-asgn-grid');
+  const emptyEl = document.getElementById('admin-asgn-empty');
+  const countEl = document.getElementById('tab-asgn-count');
+
+  if (loadingEl) loadingEl.style.display = 'block';
+  if (gridEl) gridEl.style.display = 'none';
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/assignments');
+    if (!res.ok) throw new Error('Failed to load assignments');
+    const data = await res.json();
+    allAdminAssignments = data.assignments || [];
+    if (countEl) countEl.textContent = allAdminAssignments.length;
+
+    setupAdminSubjectFilters(allAdminAssignments);
+    renderAdminAssignments();
+  } catch (err) {
+    showToast('Failed to load assignments: ' + err.message, 'error');
+  } finally {
+    if (loadingEl) loadingEl.style.display = 'none';
+  }
+}
+
+function setupAdminSubjectFilters(assignments) {
+  const container = document.getElementById('admin-asgn-subject-filters');
+  if (!container) return;
+  const subjects = Array.from(new Set(assignments.map(a => a.subject).filter(Boolean)));
+  container.innerHTML = '<button type="button" class="filter-pill active" data-subject="all">All Subjects</button>';
+
+  subjects.forEach(subj => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'filter-pill';
+    btn.dataset.subject = subj;
+    btn.textContent = subj;
+    btn.onclick = () => {
+      container.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentAdminSubjectFilter = subj;
+      renderAdminAssignments();
+    };
+    container.appendChild(btn);
+  });
+
+  const allBtn = container.querySelector('[data-subject="all"]');
+  if (allBtn) {
+    allBtn.onclick = () => {
+      container.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+      allBtn.classList.add('active');
+      currentAdminSubjectFilter = 'all';
+      renderAdminAssignments();
+    };
+  }
+}
+
+function renderAdminAssignments() {
+  const gridEl = document.getElementById('admin-asgn-grid');
+  const emptyEl = document.getElementById('admin-asgn-empty');
+  if (!gridEl) return;
+
+  const filtered = allAdminAssignments.filter(a => {
+    const matchesSubject = currentAdminSubjectFilter === 'all' || a.subject === currentAdminSubjectFilter;
+    const q = currentAdminSearch.toLowerCase();
+    const matchesSearch = !q ||
+      (a.title && a.title.toLowerCase().includes(q)) ||
+      (a.subject && a.subject.toLowerCase().includes(q)) ||
+      (a.experimentNo && a.experimentNo.toLowerCase().includes(q)) ||
+      (a.info && a.info.toLowerCase().includes(q));
+    return matchesSubject && matchesSearch;
+  });
+
+  if (filtered.length === 0) {
+    gridEl.style.display = 'none';
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = 'none';
+  gridEl.style.display = 'grid';
+  gridEl.innerHTML = '';
+
+  filtered.forEach(a => {
+    const card = document.createElement('div');
+    card.className = 'asgn-card';
+    card.id = `admin-asgn-${a.id}`;
+
+    const hasAtt = a.hasAttachment;
+    const previewBtn = hasAtt ? `
+      <button type="button" class="action-btn preview-btn" onclick="openAdminAttachmentPreview('${a.id}', '${encodeURIComponent(a.title)}', '${encodeURIComponent(a.attachmentName || 'demo_file')}')">
+        👁 Preview Demo
+      </button>
+      <a href="/api/assignments/${a.id}/attachment" class="action-btn download-btn" download="${a.attachmentName || 'demo_file'}">
+        ⬇ Download
+      </a>
+    ` : '<span style="font-size:12px; color:#7d9183; align-self:center;">No demo file</span>';
+
+    card.innerHTML = `
+      <div class="asgn-card-top">
+        <span class="asgn-subject-tag">${a.subject}</span>
+        ${a.experimentNo ? `<span class="asgn-exp-badge">${a.experimentNo}</span>` : ''}
+        ${a.deadline ? `<span class="asgn-deadline-pill">Due: ${a.deadline}</span>` : ''}
+      </div>
+      <h3 class="asgn-title">${a.title}</h3>
+      <div class="asgn-section-block">
+        <div class="asgn-section-label">🔬 Experiment Info:</div>
+        <p class="asgn-text">${a.info || 'No experiment description.'}</p>
+      </div>
+      ${a.submissionGuidelines ? `
+        <div class="asgn-guide-box">
+          <span class="guide-title">📌 Submission Instructions:</span>
+          <p class="asgn-guide-text">${a.submissionGuidelines}</p>
+        </div>
+      ` : ''}
+      <div class="asgn-card-footer">
+        <div class="asgn-actions">
+          ${previewBtn}
+          <button type="button" class="action-btn delete-asgn-btn" style="margin-left:auto;" onclick="deleteAdminAssignment('${a.id}')">
+            🗑 Delete
+          </button>
+        </div>
+      </div>
+    `;
+    gridEl.appendChild(card);
+  });
+}
+
+// Search listener
+document.getElementById('admin-asgn-search-input')?.addEventListener('input', (e) => {
+  currentAdminSearch = e.target.value.trim();
+  renderAdminAssignments();
+});
+
+// Modal Dialog Controls
+const addModal = document.getElementById('admin-asgn-modal');
+const btnOpenAddAsgn = document.getElementById('btn-open-add-asgn');
+const modalClose = document.getElementById('modal-asgn-close');
+const modalCancel = document.getElementById('modal-asgn-cancel');
+const asgnDropzone = document.getElementById('asgn-dropzone');
+const asgnFileInput = document.getElementById('asgn-file-input');
+const asgnFileStatus = document.getElementById('asgn-file-status');
+const addAsgnForm = document.getElementById('add-asgn-form');
+
+btnOpenAddAsgn?.addEventListener('click', () => {
+  if (addModal) addModal.style.display = 'flex';
+});
+
+modalClose?.addEventListener('click', () => {
+  if (addModal) addModal.style.display = 'none';
+});
+
+modalCancel?.addEventListener('click', () => {
+  if (addModal) addModal.style.display = 'none';
+});
+
+asgnDropzone?.addEventListener('click', () => {
+  asgnFileInput?.click();
+});
+
+asgnFileInput?.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 4.5 * 1024 * 1024) {
+    alert('Attachment file must be under 4.5 MB.');
+    return;
+  }
+  asgnFileStatus.textContent = `Reading ${file.name} (${(file.size / 1024).toFixed(1)} KB)...`;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64Data = reader.result.split(',')[1];
+    attachedFileObject = {
+      originalName: file.name,
+      mimeType: file.type || 'application/octet-stream',
+      size: file.size,
+      dataBase64: base64Data
+    };
+    asgnFileStatus.textContent = `✅ Ready: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+  };
+  reader.readAsDataURL(file);
+});
+
+addAsgnForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const submitBtn = document.getElementById('submit-asgn-btn');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Publishing...';
+  }
+
+  const subject = document.getElementById('asgn-subject-input')?.value.trim();
+  const expNo = document.getElementById('asgn-expno-input')?.value.trim();
+  const title = document.getElementById('asgn-title-input')?.value.trim();
+  const info = document.getElementById('asgn-info-input')?.value.trim();
+  const guidelines = document.getElementById('asgn-guidelines-input')?.value.trim();
+  const deadline = document.getElementById('asgn-deadline-input')?.value;
+
+  try {
+    const res = await fetch('/api/admin/assignments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject,
+        experimentNo: expNo,
+        title,
+        info,
+        submissionGuidelines: guidelines,
+        deadline,
+        attachment: attachedFileObject
+      })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || 'Failed to publish assignment.');
+      return;
+    }
+
+    showToast('Assignment published successfully!', 'success');
+    addAsgnForm.reset();
+    attachedFileObject = null;
+    asgnFileStatus.textContent = 'Supports PDF, JPG, PNG, DOC (max 4 MB)';
+    if (addModal) addModal.style.display = 'none';
+    loadAdminAssignments();
+  } catch (err) {
+    showToast('Error publishing assignment: ' + err.message, 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Publish Assignment';
+    }
+  }
+});
+
+// Delete Assignment
+window.deleteAdminAssignment = async function(id) {
+  if (!confirm('Are you sure you want to delete this subject assignment?')) return;
+  try {
+    const res = await fetch(`/api/admin/assignments/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
+    showToast('Assignment deleted.', 'info');
+    loadAdminAssignments();
+  } catch (err) {
+    showToast('Could not delete assignment: ' + err.message, 'error');
+  }
+};
+
+// Preview Modal for Admin
+window.openAdminAttachmentPreview = function(asgnId, titleEncoded, fnameEncoded) {
+  const modal = document.getElementById('admin-preview-modal');
+  const titleEl = document.getElementById('admin-preview-title');
+  const bodyEl = document.getElementById('admin-preview-body');
+  const dlLink = document.getElementById('admin-preview-dl-link');
+
+  const title = decodeURIComponent(titleEncoded);
+  const fname = decodeURIComponent(fnameEncoded);
+
+  if (titleEl) titleEl.textContent = `${title} — ${fname}`;
+  if (dlLink) {
+    dlLink.href = `/api/assignments/${asgnId}/attachment`;
+    dlLink.setAttribute('download', fname);
+  }
+
+  const isImg = /\.(png|jpg|jpeg|gif|svg)$/i.test(fname);
+  if (bodyEl) {
+    if (isImg) {
+      bodyEl.innerHTML = `<img src="/api/assignments/${asgnId}/attachment?inline=1" alt="Demo preview" style="max-width:100%; max-height:70vh; object-fit:contain; border-radius:8px;">`;
+    } else {
+      bodyEl.innerHTML = `<iframe src="/api/assignments/${asgnId}/attachment?inline=1" style="width:100%; height:65vh; border:none; border-radius:8px;"></iframe>`;
+    }
+  }
+
+  if (modal) modal.style.display = 'flex';
+};
+
+document.getElementById('admin-preview-close')?.addEventListener('click', () => {
+  const modal = document.getElementById('admin-preview-modal');
+  if (modal) modal.style.display = 'none';
+});
+
+// Close modal when clicking overlay background
+document.getElementById('admin-preview-modal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'admin-preview-modal') {
+    e.target.style.display = 'none';
+  }
+});
+
+document.getElementById('admin-asgn-modal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'admin-asgn-modal') {
+    e.target.style.display = 'none';
+  }
+});
 
 // Run auth check on initialization
 checkAdminAuth();

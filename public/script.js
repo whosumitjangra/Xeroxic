@@ -45,6 +45,46 @@ async function checkAuth() {
 }
 checkAuth();
 
+// ===================================================================
+// Page Navigation & Router
+// ===================================================================
+function showPage(pageId) {
+  const pages = document.querySelectorAll('.page');
+  const target = document.getElementById(pageId);
+  if (!target) return;
+
+  pages.forEach(p => p.classList.remove('active'));
+  target.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  if (pageId === 'printcentre') {
+    loadFiles();
+  } else if (pageId === 'printoptions') {
+    loadOrderItems();
+  } else if (pageId === 'assignments') {
+    loadAssignments();
+  } else if (pageId === 'payment') {
+    initPaymentPage();
+  }
+}
+
+// Global click event listener for [data-target] and [data-alert]
+document.addEventListener('click', (e) => {
+  const targetEl = e.target.closest('[data-target]');
+  if (targetEl) {
+    const page = targetEl.dataset.target;
+    if (page) {
+      e.preventDefault();
+      showPage(page);
+    }
+  }
+  const alertEl = e.target.closest('[data-alert]');
+  if (alertEl) {
+    e.preventDefault();
+    alert(alertEl.dataset.alert);
+  }
+});
+
 // ---------- Image compression helper for fast & reliable cloud uploads ----------
 async function compressImageIfLarge(file) {
   if (!file.type.startsWith('image/') || file.size <= 1.5 * 1024 * 1024) {
@@ -190,11 +230,14 @@ function formatSize(bytes) {
 
 function renderFiles(files) {
   fileList.innerHTML = '';
+  const proceedWrap = document.getElementById('proceed-wrap');
   if (!files || files.length === 0) {
     dzText.textContent = 'Drag and drop your files here';
+    if (proceedWrap) proceedWrap.style.display = 'none';
     return;
   }
   dzText.textContent = files.length + ' file(s) uploaded';
+  if (proceedWrap) proceedWrap.style.display = 'block';
 
   files.forEach(f => {
     const item = document.createElement('div');
@@ -343,6 +386,82 @@ function updateOrderTotal() {
   document.getElementById('order-total').textContent = '₹' + total;
 }
 
+// ===================================================================
+// PAYMENT & UPI GATEWAY FLOW
+// ===================================================================
+
+let currentPaymentMethod = 'UPI';
+
+function initPaymentPage() {
+  const total = orderDraft.reduce((sum, i) => sum + i.price, 0);
+  const totalEl = document.getElementById('payment-total');
+  if (totalEl) totalEl.textContent = '₹' + total;
+  document.querySelectorAll('.pay-btn-amount').forEach(el => el.textContent = '₹' + total);
+
+  // Generate UPI URI
+  const upiUri = `upi://pay?pa=aitxerox@upi&pn=AIT%20Xerox%20Centre&am=${total}&cu=INR&tn=Xerox%20Order`;
+
+  // Set Direct UPI App Link for mobile
+  const intentLink = document.getElementById('upi-intent-link');
+  if (intentLink) {
+    intentLink.href = upiUri;
+  }
+
+  // Render QR Code
+  const qrContainer = document.getElementById('upi-qr-container');
+  if (qrContainer) {
+    const encoded = encodeURIComponent(upiUri);
+    qrContainer.innerHTML = `
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encoded}&color=16211c"
+           alt="UPI Payment QR Code"
+           class="upi-qr-img"
+           onerror="this.onerror=null; this.src='https://chart.googleapis.com/chart?cht=qr&chs=180x180&chl=${encoded}';">
+    `;
+  }
+
+  // Setup tab listeners
+  const tabUpi = document.getElementById('tab-upi');
+  const tabCard = document.getElementById('tab-card');
+  const upiSec = document.getElementById('upi-section');
+  const cardSec = document.getElementById('card-section');
+
+  tabUpi?.addEventListener('click', () => {
+    currentPaymentMethod = 'UPI';
+    tabUpi.classList.add('active');
+    tabCard?.classList.remove('active');
+    if (upiSec) upiSec.style.display = 'block';
+    if (cardSec) cardSec.style.display = 'none';
+  });
+
+  tabCard?.addEventListener('click', () => {
+    currentPaymentMethod = 'Card';
+    tabCard.classList.add('active');
+    tabUpi?.classList.remove('active');
+    if (upiSec) upiSec.style.display = 'none';
+    if (cardSec) cardSec.style.display = 'block';
+  });
+
+  // Copy UPI ID button
+  const copyBtn = document.getElementById('copy-upi-btn');
+  if (copyBtn) {
+    copyBtn.onclick = () => {
+      const upiId = document.getElementById('upi-id-text')?.textContent || 'aitxerox@upi';
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(upiId).then(() => {
+          copyBtn.textContent = '✅ Copied!';
+          setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 2000);
+        }).catch(() => {
+          copyBtn.textContent = '✅ Copied!';
+          setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 2000);
+        });
+      } else {
+        copyBtn.textContent = '✅ Copied!';
+        setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 2000);
+      }
+    };
+  }
+}
+
 document.getElementById('submit-order-btn')?.addEventListener('click', () => {
   const errorEl = document.getElementById('order-error');
   errorEl.textContent = '';
@@ -350,49 +469,63 @@ document.getElementById('submit-order-btn')?.addEventListener('click', () => {
     errorEl.textContent = 'Please upload at least one file before proceeding.';
     return;
   }
-  const total = orderDraft.reduce((sum, i) => sum + i.price, 0);
-  document.getElementById('payment-total').textContent = '₹' + total;
-  document.getElementById('pay-btn-amount').textContent = '₹' + total;
   showPage('payment');
 });
 
-// ---------- Payment (demo only — no real transaction) ----------
-document.getElementById('pay-btn')?.addEventListener('click', async () => {
-  const payBtn = document.getElementById('pay-btn');
-  payBtn.disabled = true;
-  payBtn.textContent = 'Processing...';
+async function executePayment(method) {
+  const activeBtn = method === 'UPI' ? document.getElementById('upi-pay-btn') : document.getElementById('card-pay-btn');
+  const originalText = activeBtn ? activeBtn.innerHTML : '';
+  if (activeBtn) {
+    activeBtn.disabled = true;
+    activeBtn.textContent = 'Verifying & Placing Order...';
+  }
+
+  const utr = document.getElementById('pay-utr')?.value.trim() || '';
 
   try {
     const res = await fetch('/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: orderDraft })
+      body: JSON.stringify({
+        items: orderDraft,
+        paymentMethod: method,
+        utr: utr || null
+      })
     });
     const data = await res.json();
 
     if (!res.ok) {
       alert(data.error || 'Payment failed. Please try again.');
-      payBtn.disabled = false;
-      payBtn.textContent = 'Pay ' + document.getElementById('pay-btn-amount').textContent;
       return;
     }
 
-    renderConfirmation(data.orderId, data.total, orderDraft);
+    renderConfirmation(data.orderId, data.total, orderDraft, method);
     showPage('confirmation');
   } catch (err) {
     alert('Could not reach the server.');
   } finally {
-    payBtn.disabled = false;
-    payBtn.textContent = 'Pay ' + document.getElementById('pay-btn-amount').textContent;
+    if (activeBtn) {
+      activeBtn.disabled = false;
+      activeBtn.innerHTML = originalText;
+    }
   }
-});
+}
 
-function renderConfirmation(orderId, total, items) {
+document.getElementById('upi-pay-btn')?.addEventListener('click', () => executePayment('UPI'));
+document.getElementById('card-pay-btn')?.addEventListener('click', () => executePayment('Card'));
+
+function renderConfirmation(orderId, total, items, method = 'UPI') {
   document.getElementById('confirm-token').textContent = orderId;
   document.getElementById('confirm-total').textContent = '₹' + total;
 
   const itemsEl = document.getElementById('confirm-items');
-  itemsEl.innerHTML = '';
+  itemsEl.innerHTML = `
+    <div class="confirm-method-row">
+      <span class="pay-method-badge ${method === 'UPI' ? 'upi-badge' : 'card-badge'}">
+        ${method === 'UPI' ? '⚡ Paid via UPI Instant' : '💳 Paid via Card'}
+      </span>
+    </div>
+  `;
   items.forEach(i => {
     const line = document.createElement('div');
     line.className = 'confirm-line';
@@ -470,4 +603,221 @@ dockCards.forEach(card => {
   card.addEventListener('mouseleave', () => {
     dockCards.forEach(c => c.classList.remove('is-active', 'is-dimmed'));
   });
+});
+
+// ===================================================================
+// SUBJECT ASSIGNMENTS & DEMO PREVIEW LOGIC
+// ===================================================================
+
+let allAssignments = [];
+let currentSubjectFilter = 'all';
+
+async function loadAssignments() {
+  const loadingEl = document.getElementById('asgn-loading');
+  const gridEl = document.getElementById('asgn-grid');
+  const emptyEl = document.getElementById('asgn-empty');
+  if (loadingEl) loadingEl.style.display = 'block';
+  if (gridEl) gridEl.style.display = 'none';
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/assignments');
+    if (!res.ok) throw new Error('Failed to load assignments');
+    const data = await res.json();
+    allAssignments = data.assignments || [];
+
+    setupSubjectFilters(allAssignments);
+    renderAssignmentsList();
+  } catch (err) {
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (emptyEl) {
+      emptyEl.style.display = 'block';
+      emptyEl.querySelector('h3').textContent = 'Could not load assignments';
+      emptyEl.querySelector('p').textContent = 'Please check your connection and try again.';
+    }
+  } finally {
+    if (loadingEl) loadingEl.style.display = 'none';
+  }
+}
+
+function setupSubjectFilters(assignments) {
+  const container = document.getElementById('asgn-subject-filters');
+  if (!container) return;
+  const subjects = Array.from(new Set(assignments.map(a => a.subject).filter(Boolean)));
+  container.innerHTML = '<button type="button" class="filter-pill active" data-subject="all">All Subjects</button>';
+
+  subjects.forEach(subj => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'filter-pill';
+    btn.dataset.subject = subj;
+    btn.textContent = subj;
+    btn.onclick = () => {
+      container.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentSubjectFilter = subj;
+      renderAssignmentsList();
+    };
+    container.appendChild(btn);
+  });
+
+  const allBtn = container.querySelector('[data-subject="all"]');
+  if (allBtn) {
+    allBtn.onclick = () => {
+      container.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+      allBtn.classList.add('active');
+      currentSubjectFilter = 'all';
+      renderAssignmentsList();
+    };
+  }
+}
+
+function renderAssignmentsList() {
+  const gridEl = document.getElementById('asgn-grid');
+  const emptyEl = document.getElementById('asgn-empty');
+  const search = (document.getElementById('asgn-search-input')?.value || '').toLowerCase().trim();
+
+  const filtered = allAssignments.filter(a => {
+    const matchesSubject = currentSubjectFilter === 'all' || a.subject === currentSubjectFilter;
+    const matchesSearch = !search ||
+      (a.title && a.title.toLowerCase().includes(search)) ||
+      (a.subject && a.subject.toLowerCase().includes(search)) ||
+      (a.experimentNo && a.experimentNo.toLowerCase().includes(search)) ||
+      (a.info && a.info.toLowerCase().includes(search));
+    return matchesSubject && matchesSearch;
+  });
+
+  if (filtered.length === 0) {
+    if (gridEl) gridEl.style.display = 'none';
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (gridEl) {
+    gridEl.style.display = 'grid';
+    gridEl.innerHTML = '';
+  }
+
+  filtered.forEach(a => {
+    const card = document.createElement('div');
+    card.className = 'asgn-card';
+
+    const hasAtt = a.hasAttachment;
+    const previewBtnHTML = hasAtt ? `
+      <button type="button" class="action-btn preview-btn" onclick="openAttachmentPreview('${a.id}', '${encodeURIComponent(a.title)}', '${encodeURIComponent(a.attachmentName || 'Demo Assignment')}')">
+        👁 Preview Demo
+      </button>
+      <a href="/api/assignments/${a.id}/attachment" class="action-btn download-btn" download="${a.attachmentName || 'demo_assignment'}">
+        ⬇ Download
+      </a>
+      <button type="button" class="action-btn print-direct-btn" onclick="orderAssignmentPrint('${a.id}', '${encodeURIComponent(a.attachmentName || a.title + '.pdf')}')">
+        🖨 Print This Report
+      </button>
+    ` : '<span class="no-att-note">No demo attachment</span>';
+
+    card.innerHTML = `
+      <div class="asgn-card-top">
+        <span class="asgn-subject-tag">${a.subject}</span>
+        ${a.experimentNo ? `<span class="asgn-exp-badge">${a.experimentNo}</span>` : ''}
+        ${a.deadline ? `<span class="asgn-deadline-pill">Due: ${a.deadline}</span>` : ''}
+      </div>
+      <h3 class="asgn-title">${a.title}</h3>
+      <div class="asgn-section-block">
+        <div class="asgn-section-label">🔬 Experiment Info &amp; Objectives:</div>
+        <p class="asgn-text">${a.info || 'No experiment description provided.'}</p>
+      </div>
+      ${a.submissionGuidelines ? `
+        <div class="asgn-guide-box">
+          <span class="guide-title">📌 Submission Guidelines:</span>
+          <p class="asgn-guide-text">${a.submissionGuidelines}</p>
+        </div>
+      ` : ''}
+      <div class="asgn-card-footer">
+        <div class="asgn-actions">
+          ${previewBtnHTML}
+        </div>
+      </div>
+    `;
+    gridEl.appendChild(card);
+  });
+}
+
+// Search input listener for assignments
+document.getElementById('asgn-search-input')?.addEventListener('input', () => {
+  renderAssignmentsList();
+});
+
+// Attachment Preview Modal
+window.openAttachmentPreview = function(asgnId, titleEncoded, fnameEncoded) {
+  const modal = document.getElementById('preview-modal');
+  const titleEl = document.getElementById('modal-title');
+  const bodyEl = document.getElementById('modal-body');
+  const dlLink = document.getElementById('modal-download-link');
+  const printBtn = document.getElementById('modal-print-btn');
+
+  const title = decodeURIComponent(titleEncoded);
+  const fname = decodeURIComponent(fnameEncoded);
+
+  if (titleEl) titleEl.textContent = `${title} — ${fname}`;
+  if (dlLink) {
+    dlLink.href = `/api/assignments/${asgnId}/attachment`;
+    dlLink.setAttribute('download', fname);
+  }
+
+  if (printBtn) {
+    printBtn.onclick = () => {
+      if (modal) modal.style.display = 'none';
+      orderAssignmentPrint(asgnId, fnameEncoded);
+    };
+  }
+
+  const isImg = /\.(png|jpg|jpeg|gif|svg)$/i.test(fname);
+  if (bodyEl) {
+    if (isImg) {
+      bodyEl.innerHTML = `<img src="/api/assignments/${asgnId}/attachment?inline=1" alt="Demo preview" style="max-width:100%; max-height:70vh; object-fit:contain; border-radius:8px;">`;
+    } else {
+      bodyEl.innerHTML = `<iframe src="/api/assignments/${asgnId}/attachment?inline=1" style="width:100%; height:65vh; border:none; border-radius:8px;"></iframe>`;
+    }
+  }
+
+  if (modal) modal.style.display = 'flex';
+};
+
+// 1-Click Send Demo Assignment to Print Centre
+window.orderAssignmentPrint = async function(asgnId, fnameEncoded) {
+  const fname = decodeURIComponent(fnameEncoded);
+  try {
+    const res = await fetch(`/api/assignments/${asgnId}/attachment`);
+    if (!res.ok) throw new Error('Could not fetch assignment demo file');
+    const blob = await res.blob();
+    const file = new File([blob], fname, { type: blob.type || 'application/pdf' });
+
+    const formData = new FormData();
+    formData.append('files', file);
+
+    const upRes = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    });
+    if (!upRes.ok) throw new Error('Upload failed');
+
+    showPage('printoptions');
+    alert(`"${fname}" added to your Print Options! Choose copies and proceed.`);
+  } catch (err) {
+    alert('Could not transfer to Print Centre: ' + err.message);
+  }
+};
+
+// Modal Close Listener
+document.getElementById('modal-close-btn')?.addEventListener('click', () => {
+  const modal = document.getElementById('preview-modal');
+  if (modal) modal.style.display = 'none';
+});
+
+// Close modal when clicking on overlay background
+document.getElementById('preview-modal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'preview-modal') {
+    e.target.style.display = 'none';
+  }
 });

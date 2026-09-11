@@ -15,15 +15,24 @@ This document summarizes the current architecture, progress, resolved issues, fi
    - Refactored native Node.js HTTP server into a dual-mode application (runs locally on `http://localhost:3000` via `server.js` and in cloud via `api/index.js`).
    - Fixed Vercel timeout bug caused by `server.listen()` in serverless containers.
    - Configured `vercel.json` rewrites and `outputDirectory: "public"` for zero-delay static CDN serving and seamless `/api/*` routing.
-2. **Stateless Authentication**:
-   - Converted in-memory sessions to **HMAC-SHA256 signed stateless cookies** (`lib/auth.js`).
-   - Sessions now reliably persist across all distributed Vercel lambda instances and cold starts.
-3. **Adaptive Storage**:
-   - Created `lib/storage.js` with auto-fallback to `/tmp` storage when running in serverless read-only environments (`EROFS` prevention).
-   - Bundled initial seed data for users, files, and orders.
-   - Built optional Upstash Redis / Vercel KV REST integration.
-4. **Automated Testing**:
-   - `test/serverless-test.js` tests all 12 critical paths (signup, login, me, upload, download, orders, tracking, logout, and Vercel storage isolation).
+2. **Stateless Authentication & Role System**:
+   - HMAC-SHA256 signed stateless cookies (`lib/auth.js`) supporting both `student` and `admin` roles.
+   - Role-protected endpoints preventing student access to admin management APIs.
+3. **Print Centre Navigation Fix**:
+   - Implemented universal `showPage(pageId)` router and delegated click listener for `[data-target]` buttons.
+   - Fixed Print Centre, Print Options, Assignments, Track Order, and Confirmation page flows.
+4. **Admin Portal Redesign**:
+   - Replaced dark mode with signature AIT brand green header, `#eef3ee` light mint background, and crisp white glass cards.
+   - Added dual-tab navigation (`📋 Print Document Requests` and `📚 Subject Assignments`).
+5. **UPI Payment Gateway at Checkout**:
+   - Dynamic QR Code generation for instant UPI payment with any banking app (GPay, PhonePe, Paytm, BHIM).
+   - 1-click copy for official Xerox UPI ID (`aitxerox@upi`).
+   - UTR reference verification and order confirmation.
+6. **Subject Assignments Module**:
+   - Admin portal for publishing lab practicals with experiment number, description, submission guidelines, deadlines, and demo attachment uploads.
+   - Student assignments page with subject filter pills, search bar, in-page attachment preview modal, and 1-click "Print This Report" integration.
+7. **Automated Testing**:
+   - `test/serverless-test.js` tests all 23 critical paths.
 
 ---
 
@@ -34,6 +43,7 @@ xerox-fullstack/
 ├── api/
 │   └── index.js             # Primary Vercel Serverless Function & API router
 ├── data/
+│   ├── assignments.json     # Subject lab practicals & demo attachments (seed)
 │   ├── files.json           # Uploaded files metadata (seed)
 │   ├── orders.json          # Print orders (seed)
 │   └── users.json           # User accounts (passwords hashed with scrypt)
@@ -41,14 +51,16 @@ xerox-fullstack/
 │   ├── auth.js              # Password hashing & stateless HMAC-SHA256 sessions
 │   └── storage.js           # Adaptive storage (/tmp fallback, local disk, Redis KV)
 ├── public/
-│   ├── index.html           # Student Dashboard, Print Centre, Print Options & Tracking
-│   ├── login.html           # Authentication / Sign In page
-│   ├── signup.html          # Registration / Sign Up page
+│   ├── admin.html           # Admin Document Requests & Subject Assignments Manager
+│   ├── admin.js             # Admin management & attachment upload logic
+│   ├── index.html           # Student Dashboard, Print Centre, Assignments & UPI Checkout
+│   ├── login.html           # Authentication / Sign In page (Student vs Admin toggle)
+│   ├── signup.html          # Registration page (Admin passcode verification)
 │   ├── logo.gif             # AIT Pune brand asset
-│   ├── script.js            # Student frontend application logic
-│   └── style.css            # Responsive dark green & teal glassmorphism stylesheet
+│   ├── script.js            # Student frontend application logic & UPI QR generator
+│   └── style.css            # Responsive green, mint & glassmorphism stylesheet
 ├── test/
-│   └── serverless-test.js   # Automated API & serverless verification suite
+│   └── serverless-test.js   # Automated API & serverless verification suite (23 tests)
 ├── uploads/                 # Local directory for uploaded files
 ├── .env.example             # Environment variable template
 ├── .gitignore               # Standard git ignore rules

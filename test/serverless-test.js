@@ -317,7 +317,106 @@ async function runTests() {
   assert.strictEqual(adminDownloadRes.text(), fileContent);
   console.log('   ✅ Admin document download verified successfully');
 
-  console.log('\n🎉 ALL 17 TESTS PASSED SUCCESSFULLY! Ready for Vercel deployment.\n');
+  // Test 18: Fetching Public Assignments as Student
+  console.log('18. Testing GET /api/assignments (student view)...');
+  const assignmentsRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/assignments',
+    headers: { cookie: sessionCookie }
+  });
+  assert.strictEqual(assignmentsRes.statusCode, 200);
+  const assignmentsData = assignmentsRes.json();
+  assert(Array.isArray(assignmentsData.assignments));
+  assert(assignmentsData.assignments.length >= 1);
+  console.log(`   ✅ Assignments list retrieved successfully (${assignmentsData.assignments.length} assignments found)`);
+
+  // Test 19: Non-Admin blocked from creating assignment (403)
+  console.log('19. Testing Role Protection on POST /api/admin/assignments (Student rejected with 403)...');
+  const studentCreateAsgnRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/admin/assignments',
+    headers: { cookie: sessionCookie },
+    body: { subject: 'Physics', title: 'Optics Lab' }
+  });
+  assert.strictEqual(studentCreateAsgnRes.statusCode, 403);
+  console.log('   ✅ Student assignment creation rejected with 403');
+
+  // Test 20: Admin creating assignment with demo attachment
+  console.log('20. Testing Admin POST /api/admin/assignments (with demo attachment)...');
+  const demoContent = 'DEMO_EXPERIMENT_ATTACHMENT_CONTENT';
+  const newAsgnRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/admin/assignments',
+    headers: { cookie: adminCookie },
+    body: {
+      subject: 'Artificial Intelligence',
+      experimentNo: 'Exp 01',
+      title: 'A* Search Algorithm Implementation',
+      info: 'Implement A* search algorithm for 8-puzzle problem with Manhattan heuristic.',
+      submissionGuidelines: 'Submit printed spiral report before end of week.',
+      deadline: '2026-10-15',
+      attachment: {
+        originalName: 'AI_Exp1_Demo.txt',
+        mimeType: 'text/plain',
+        size: demoContent.length,
+        dataBase64: Buffer.from(demoContent).toString('base64')
+      }
+    }
+  });
+  assert.strictEqual(newAsgnRes.statusCode, 201);
+  const createdAsgn = newAsgnRes.json().assignment;
+  assert(createdAsgn.id);
+  assert.strictEqual(createdAsgn.subject, 'Artificial Intelligence');
+  console.log(`   ✅ Admin successfully created assignment: ${createdAsgn.id}`);
+
+  // Test 21: Downloading/previewing demo attachment
+  console.log('21. Testing GET /api/assignments/:id/attachment...');
+  const attachRes = await invokeHandler({
+    method: 'GET',
+    url: `/api/assignments/${createdAsgn.id}/attachment`,
+    headers: { cookie: sessionCookie }
+  });
+  assert.strictEqual(attachRes.statusCode, 200);
+  assert.strictEqual(attachRes.text(), demoContent);
+  console.log('   ✅ Demo attachment download/preview verified successfully');
+
+  // Test 22: Placing Order with UPI Gateway & UTR Reference
+  console.log('22. Testing POST /api/orders with UPI Payment & UTR reference...');
+  const upiOrderRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/orders',
+    headers: { cookie: sessionCookie },
+    body: {
+      items: [{ fileId: uploadedFileId, originalName: 'report.txt', pages: 2, sides: 'single', color: 'bw' }],
+      paymentMethod: 'UPI',
+      utr: '123456789012'
+    }
+  });
+  assert.strictEqual(upiOrderRes.statusCode, 200);
+  const upiOrderData = upiOrderRes.json();
+  assert.strictEqual(upiOrderData.paymentMethod, 'UPI');
+
+  const trackUpiRes = await invokeHandler({
+    method: 'GET',
+    url: `/api/orders/${upiOrderData.orderId}`,
+    headers: { cookie: sessionCookie }
+  });
+  assert.strictEqual(trackUpiRes.json().paymentMethod, 'UPI');
+  assert.strictEqual(trackUpiRes.json().utr, '123456789012');
+  console.log('   ✅ UPI order placement & UTR tracking verified successfully');
+
+  // Test 23: Admin deleting assignment
+  console.log('23. Testing Admin DELETE /api/admin/assignments/:id...');
+  const deleteAsgnRes = await invokeHandler({
+    method: 'DELETE',
+    url: `/api/admin/assignments/${createdAsgn.id}`,
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(deleteAsgnRes.statusCode, 200);
+  assert.strictEqual(deleteAsgnRes.json().success, true);
+  console.log('   ✅ Admin successfully deleted assignment');
+
+  console.log('\n🎉 ALL 23 TESTS PASSED SUCCESSFULLY! Backend is ready.\n');
 }
 
 runTests().catch(err => {

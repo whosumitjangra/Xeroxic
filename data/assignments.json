@@ -1,0 +1,50 @@
+[
+  {
+    "id": "asgn-cn-01",
+    "subject": "Computer Networks",
+    "experimentNo": "Exp 03",
+    "title": "Client-Server Socket Programming (TCP/UDP)",
+    "info": "Implement a concurrent client-server chat application using BSD Socket API in C/Python. Demonstrate packet transmission, connection handshake, and error handling for multi-client connections.",
+    "submissionGuidelines": "Submit printed lab manual spiral-bound report including handwritten algorithm, flow chart, verified source code, and Wireshark packet capture screenshots before the deadline.",
+    "deadline": "2026-09-28",
+    "createdAt": "2026-09-10T10:00:00.000Z",
+    "attachment": {
+      "originalName": "CN_Exp3_Socket_Programming_Demo.pdf",
+      "mimeType": "application/pdf",
+      "size": 1420,
+      "dataBase64": "JVBERi0xLjQKJcfsj6IKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50IDEKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA1OTUgODQyXQovQ29udGVudHMgNCAwIFIKL1Jlc291cmNlcyA8PAovRm9udCA8PCAvRjEgNSAwIFIgPj4KPj4KPj4KZW5kb2JqCjQgMCBvYmoKPDwKL0xlbmd0aCAyNzUKPj4Kc3RyZWFtCkJUCi9GMSAxOCBUZgpSZCA1MCA3OTAgVGQKKEFJVFBVTkUgLSBDT01QVVRFUiBORVRXT1JLUyBMQUIpIFRqCi9GMSAxMiBUZgowIC0zMCBUZgooRXhwZXJpbWVudCAzOiBDbGllbnQtU2VydmVyIFNvY2tldCBQcm9ncmFtbWluZykgVGoKMCAtMjUgVGQKKFN1YmplY3Q6IENvbXB1dGVyIE5ldHdvcmtzIHwgRGVwdDogQ29tcHV0ZXIgRW5naW5lZXJpbmcpIFRqCjAgLTI1IFRkCihPYmplY3RpdmU6IEltcGxlbWVudCBhbmQgYW5hbHl6ZSBUQ1AvVURQIGNsaWVudC1zZXJ2ZXIgY29tbXVuaWNhdGlvbikgVGoKMCAtMjUgVGQKKFN1Ym1pc3Npb24gR3VpZGVsaW5lczogU3BpcmFsLWJvdW5kIHJlcG9ydCB3aXRoIFdpcmVzaGFyayB0cmFjZXMpIFRqCkVUCmVuZHN0cmVhbQplbmRvYmoKNSAwIG9iago8PAovVHlwZSAvRm9udAovU3VidHlwZSAvVHlwZTEKL0Jhc2VGb250IC9IZWx2ZXRpY2Etd2VpZ2h0Cj4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDA2OCAwMDAwMCBuIAowMDAwMDAwMTI1IDAwMDAwIG4gCjAwMDAwMDAyNTYgMDAwMDAgbiAKMDAwMDAwMDU4NSAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDYKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjY2MAolJUVPRgo="
+    }
+  },
+  {
+    "id": "asgn-dbms-02",
+    "subject": "Database Management Systems",
+    "experimentNo": "Exp 04",
+    "title": "Complex SQL Queries, Views & Stored Procedures",
+    "info": "Design relational schema for College Library Automation. Write and optimize complex SQL queries involving nested joins, aggregate group-by clauses, triggers, and PL/SQL procedures.",
+    "submissionGuidelines": "Submit typed and verified SQL query output tables with query execution plan analysis signed by lab in-charge.",
+    "deadline": "2026-10-02",
+    "createdAt": "2026-09-10T11:00:00.000Z",
+    "attachment": {
+      "originalName": "DBMS_Exp4_SQL_Library_Schema.pdf",
+      "mimeType": "application/pdf",
+      "size": 1420,
+      "dataBase64": "JVBERi0xLjQKJcfsj6IKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50IDEKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA1OTUgODQyXQovQ29udGVudHMgNCAwIFIKL1Jlc291cmNlcyA8PAovRm9udCA8PCAvRjEgNSAwIFIgPj4KPj4KPj4KZW5kb2JqCjQgMCBvYmoKPDwKL0xlbmd0aCAyNzUKPj4Kc3RyZWFtCkJUCi9GMSAxOCBUZgpSZCA1MCA3OTAgVGQKKEFJVFBVTkUgLSBEQk1TIExBQiBSRVBPUlQpIFRqCi9GMSAxMiBUZgowIC0zMCBUZgooRXhwZXJpbWVudCA0OiBDb21wbGV4IFNRTCAmIFN0b3JlZCBQcm9jZWR1cmVzKSBUagowIC0yNSBUZgooU3ViamVjdDogRGF0YWJhc2UgTWFuYWdlbWVudCBTeXN0ZW1zKSBUagowIC0yNSBUZgooT2JqZWN0aXZlOiBTY2hlbWEgRGVzaWduICYgUXVlcnkgT3B0aW1pemF0aW9uKSBUagowIC0yNSBUZgooU3VibWlzc2lvbjogU3F1YXJlIHByaW50b3V0IG9mIEVSIGRpYWdyYW0gYW5kIHF1ZXJ5IG91dHB1dHMpIFRqCkVUCmVuZHN0cmVhbQplbmRvYmoKNSAwIG9iago8PAovVHlwZSAvRm9udAovU3VidHlwZSAvVHlwZTEKL0Jhc2VGb250IC9IZWx2ZXRpY2Etd2VpZ2h0Cj4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDA2OCAwMDAwMCBuIAowMDAwMDAwMTI1IDAwMDAwIG4gCjAwMDAwMDAyNTYgMDAwMDAgbiAKMDAwMDAwMDU4NSAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDYKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjY2MAolJUVPRgo="
+    }
+  },
+  {
+    "id": "asgn-os-03",
+    "subject": "Operating Systems",
+    "experimentNo": "Exp 02",
+    "title": "CPU Scheduling Algorithms (FCFS, SJF, Priority, Round Robin)",
+    "info": "Implement scheduling algorithms in C++ to compute average Turnaround Time, Waiting Time, and Response Time. Generate Gantt charts for multi-process work loads.",
+    "submissionGuidelines": "Attach printed code with test-case outputs and verified Gantt charts. Spiral binding is mandatory.",
+    "deadline": "2026-10-05",
+    "createdAt": "2026-09-10T12:00:00.000Z",
+    "attachment": {
+      "originalName": "OS_Exp2_CPU_Scheduling_Format.pdf",
+      "mimeType": "application/pdf",
+      "size": 1420,
+      "dataBase64": "JVBERi0xLjQKJcfsj6IKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50IDEKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA1OTUgODQyXQovQ29udGVudHMgNCAwIFIKL1Jlc291cmNlcyA8PAovRm9udCA8PCAvRjEgNSAwIFIgPj4KPj4KPj4KZW5kb2JqCjQgMCBvYmoKPDwKL0xlbmd0aCAyNzUKPj4Kc3RyZWFtCkJUCi9GMSAxOCBUZgpSZCA1MCA3OTAgVGQKKEFJVFBVTkUgLSBPUFVSQVRJTkcgU1lTVEVNIFBSQUNUSUNBTCkgVGoKL0YxIDEyIFRkCjAgLTMwIFRkCihFeHBlcmltZW50IDI6IENQVSBTY2hlZHVsaW5nIEFsZ29yaXRobXMpIFRqCjAgLTI1IFRkCihTdWJqZWN0OiBPcGVyYXRpbmcgU3lzdGVtcyB8IFNlY29uZCBZZWFyKSBUagowIC0yNSBUZgooT2JqZWN0aXZlOiBHYW50dCBDaGFydHMsIFdhaXRpbmcgJiBUdXJuYXJvdW5kIFRpbWUpIFRqCjAgLTI1IFRkCihTdWJtaXNzaW9uOiBIYW5kd3JpdHRlbiBzY2hlZHVsaW5nIHRhYmxlcyB3aXRoIGNvZGUgcHJpbnRvdXQpIFRqCkVUCmVuZHN0cmVhbQplbmRvYmoKNSAwIG9iago8PAovVHlwZSAvRm9udAovU3VidHlwZSAvVHlwZTEKL0Jhc2VGb250IC9IZWx2ZXRpY2Etd2VpZ2h0Cj4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDA2OCAwMDAwMCBuIAowMDAwMDAwMTI1IDAwMDAwIG4gCjAwMDAwMDAyNTYgMDAwMDAgbiAKMDAwMDAwMDU4NSAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDYKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjY2MAolJUVPRgo="
+    }
+  }
+]

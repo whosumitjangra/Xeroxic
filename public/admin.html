@@ -25,77 +25,200 @@
   </header>
 
   <main class="admin-main">
-    <div class="admin-top-bar">
-      <div>
-        <h1 class="page-title" style="margin:0;">Print Document Requests</h1>
-        <p class="admin-subtext">Manage incoming student print jobs, download uploaded documents, and update live fulfillment status.</p>
-      </div>
-      <button class="refresh-btn" id="refresh-orders-btn">🔄 Refresh Requests</button>
+    <!-- Admin Navigation Tabs -->
+    <div class="admin-tabs-nav">
+      <button type="button" class="admin-nav-tab active" id="tab-btn-requests">
+        <span>📋</span> Print Document Requests (<span id="tab-req-count">0</span>)
+      </button>
+      <button type="button" class="admin-nav-tab" id="tab-btn-assignments">
+        <span>📚</span> Subject Assignments (<span id="tab-asgn-count">0</span>)
+      </button>
     </div>
 
-    <!-- Stats Summary Cards -->
-    <div class="admin-stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon">📄</div>
-        <div class="stat-info">
-          <div class="stat-value" id="stat-total-orders">0</div>
-          <div class="stat-label">Total Print Orders</div>
+    <!-- ================= TAB 1: DOCUMENT REQUESTS ================= -->
+    <div id="tab-requests-view">
+      <div class="admin-top-bar">
+        <div>
+          <h1 class="page-title" style="margin:0 0 6px 0; font-size:26px;">Print Document Requests</h1>
+          <p class="admin-subtext">Manage incoming student print jobs, preview or download uploaded files for printing, and update live fulfillment status.</p>
+        </div>
+        <button class="refresh-btn" id="refresh-orders-btn">🔄 Refresh Requests</button>
+      </div>
+
+      <!-- Stats Summary Cards -->
+      <div class="admin-stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">📄</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-total-orders">0</div>
+            <div class="stat-label">Total Print Orders</div>
+          </div>
+        </div>
+        <div class="stat-card stat-pending">
+          <div class="stat-icon">⏳</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-pending-orders">0</div>
+            <div class="stat-label">In Progress / Received</div>
+          </div>
+        </div>
+        <div class="stat-card stat-ready">
+          <div class="stat-icon">📦</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-ready-orders">0</div>
+            <div class="stat-label">Ready for Pickup</div>
+          </div>
+        </div>
+        <div class="stat-card stat-revenue">
+          <div class="stat-icon">💰</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-total-revenue">₹0</div>
+            <div class="stat-label">Total Revenue Collected</div>
+          </div>
         </div>
       </div>
-      <div class="stat-card stat-pending">
-        <div class="stat-icon">⏳</div>
-        <div class="stat-info">
-          <div class="stat-value" id="stat-pending-orders">0</div>
-          <div class="stat-label">In Progress / Received</div>
+
+      <!-- Search & Filter Controls -->
+      <div class="admin-controls-card">
+        <div class="admin-search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="admin-search-input" class="admin-search-input" placeholder="Search by Student Name, Email, or Order ID (e.g. ORD-XXXX)...">
+        </div>
+        <div class="status-filter-pills" id="status-filters">
+          <button type="button" class="filter-pill active" data-filter="all">All Orders</button>
+          <button type="button" class="filter-pill" data-filter="Order Received">Received</button>
+          <button type="button" class="filter-pill" data-filter="Printing in Progress">Printing</button>
+          <button type="button" class="filter-pill" data-filter="Ready for Pickup">Ready for Pickup</button>
+          <button type="button" class="filter-pill" data-filter="Completed">Completed</button>
         </div>
       </div>
-      <div class="stat-card stat-ready">
-        <div class="stat-icon">📦</div>
-        <div class="stat-info">
-          <div class="stat-value" id="stat-ready-orders">0</div>
-          <div class="stat-label">Ready for Pickup</div>
+
+      <!-- Orders / Requests Container -->
+      <div id="orders-loading" class="admin-loading-state">
+        <div class="spinner"></div>
+        <p>Loading document requests...</p>
+      </div>
+
+      <div id="orders-container" class="admin-orders-list" style="display:none;">
+        <!-- Populated dynamically by admin.js -->
+      </div>
+
+      <div id="orders-empty" class="admin-empty-state" style="display:none;">
+        <div class="empty-icon">📭</div>
+        <h3>No Document Requests Found</h3>
+        <p>No print jobs match your search or filter criteria.</p>
+      </div>
+    </div>
+
+    <!-- ================= TAB 2: SUBJECT ASSIGNMENTS MANAGER ================= -->
+    <div id="tab-assignments-view" style="display:none;">
+      <div class="admin-top-bar">
+        <div>
+          <h1 class="page-title" style="margin:0 0 6px 0; font-size:26px;">Subject Practical Assignments</h1>
+          <p class="admin-subtext">Publish lab experiments, guidelines, submission deadlines, and demo attachment writeups for students.</p>
+        </div>
+        <button class="upload-btn" id="btn-open-add-asgn" style="box-shadow: 0 4px 14px rgba(92,184,92,0.3);">➕ Add New Assignment</button>
+      </div>
+
+      <!-- Search & Filter for Assignments -->
+      <div class="admin-controls-card">
+        <div class="admin-search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="admin-asgn-search-input" class="admin-search-input" placeholder="Search experiments by title, subject or experiment number...">
+        </div>
+        <div class="status-filter-pills" id="admin-asgn-subject-filters">
+          <button type="button" class="filter-pill active" data-subject="all">All Subjects</button>
         </div>
       </div>
-      <div class="stat-card stat-revenue">
-        <div class="stat-icon">💰</div>
-        <div class="stat-info">
-          <div class="stat-value" id="stat-total-revenue">₹0</div>
-          <div class="stat-label">Total Revenue Collected</div>
-        </div>
+
+      <!-- Assignments Loading & Grid -->
+      <div id="admin-asgn-loading" class="admin-loading-state">
+        <div class="spinner"></div>
+        <p>Loading subject assignments...</p>
       </div>
-    </div>
 
-    <!-- Search & Filter Controls -->
-    <div class="admin-controls-card">
-      <div class="admin-search-wrap">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="admin-search-input" class="admin-search-input" placeholder="Search by Student Name, Email, or Order ID (e.g. ORD-XXXX)...">
+      <div id="admin-asgn-grid" class="asgn-grid" style="display:none;">
+        <!-- Populated dynamically by admin.js -->
       </div>
-      <div class="status-filter-pills" id="status-filters">
-        <button type="button" class="filter-pill active" data-filter="all">All Orders</button>
-        <button type="button" class="filter-pill" data-filter="Order Received">Received</button>
-        <button type="button" class="filter-pill" data-filter="Printing in Progress">Printing</button>
-        <button type="button" class="filter-pill" data-filter="Ready for Pickup">Ready for Pickup</button>
-        <button type="button" class="filter-pill" data-filter="Completed">Completed</button>
+
+      <div id="admin-asgn-empty" class="admin-empty-state" style="display:none;">
+        <div class="empty-icon">📚</div>
+        <h3>No Assignments Published</h3>
+        <p>Click "Add New Assignment" above to post practical lab manuals for students.</p>
       </div>
-    </div>
-
-    <!-- Orders / Requests Container -->
-    <div id="orders-loading" class="admin-loading-state">
-      <div class="spinner"></div>
-      <p>Loading document requests...</p>
-    </div>
-
-    <div id="orders-container" class="admin-orders-list" style="display:none;">
-      <!-- Populated dynamically by admin.js -->
-    </div>
-
-    <div id="orders-empty" class="admin-empty-state" style="display:none;">
-      <div class="empty-icon">📭</div>
-      <h3>No Document Requests Found</h3>
-      <p>No print jobs match your search or filter criteria.</p>
     </div>
   </main>
+</div>
+
+<!-- ADD ASSIGNMENT MODAL -->
+<div id="admin-asgn-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title">➕ Add New Subject Lab Assignment</h3>
+      <button type="button" class="modal-close" id="modal-asgn-close">✕</button>
+    </div>
+    <form id="add-asgn-form">
+      <div class="modal-body">
+        <div class="modal-row">
+          <div class="modal-form-group">
+            <label class="auth-label">Subject *</label>
+            <input class="auth-input" type="text" id="asgn-subject-input" placeholder="e.g. Computer Networks, DBMS, OS, AI..." required>
+          </div>
+          <div class="modal-form-group">
+            <label class="auth-label">Experiment Number</label>
+            <input class="auth-input" type="text" id="asgn-expno-input" placeholder="e.g. Exp 04">
+          </div>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="auth-label">Experiment / Assignment Title *</label>
+          <input class="auth-input" type="text" id="asgn-title-input" placeholder="e.g. Client-Server Socket Programming (TCP/UDP)" required>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="auth-label">Experiment Info &amp; Objectives</label>
+          <textarea class="modal-textarea" id="asgn-info-input" placeholder="Describe the practical problem statement, objectives, expected output, and tools to use..."></textarea>
+        </div>
+
+        <div class="modal-row">
+          <div class="modal-form-group">
+            <label class="auth-label">Submission Guidelines</label>
+            <textarea class="modal-textarea" id="asgn-guidelines-input" style="min-height:60px;" placeholder="e.g. Handwritten algorithms + code printout in spiral file."></textarea>
+          </div>
+          <div class="modal-form-group">
+            <label class="auth-label">Submission Due Date</label>
+            <input class="auth-input" type="date" id="asgn-deadline-input">
+          </div>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="auth-label">Demo Assignment Attachment (PDF, Image, Doc) for Student Preview</label>
+          <div class="modal-file-upload" id="asgn-dropzone">
+            <p style="margin:0 0 6px; font-weight:600; color:#2b7a2b;">📎 Select or Drop Demo Assignment File</p>
+            <span style="font-size:12px; color:#6c8072;" id="asgn-file-status">Supports PDF, JPG, PNG, DOC (max 4 MB)</span>
+            <input type="file" id="asgn-file-input" style="display:none;" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.txt">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="upload-btn secondary-btn" id="modal-asgn-cancel">Cancel</button>
+        <button type="submit" class="upload-btn" id="submit-asgn-btn">Publish Assignment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- DEMO ATTACHMENT PREVIEW MODAL -->
+<div id="admin-preview-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="admin-preview-title" class="modal-title">Attachment Preview</h3>
+      <button type="button" class="modal-close" id="admin-preview-close">✕</button>
+    </div>
+    <div class="modal-body" id="admin-preview-body"></div>
+    <div class="modal-footer">
+      <a href="#" id="admin-preview-dl-link" class="upload-btn" download>⬇ Download File</a>
+    </div>
+  </div>
 </div>
 
 <!-- Notification Toast -->
