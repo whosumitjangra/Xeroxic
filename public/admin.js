@@ -30,8 +30,9 @@ async function checkAdminAuth() {
       if (nameEl) nameEl.textContent = `Hi, ${user.name} (Staff)`;
     }
     
-    // Load dashboard data
+    // Load dashboard data, notifications & assignments
     loadDashboardData();
+    loadAdminNotifications();
     loadAdminAssignments();
 
     // Request desktop notification permissions if supported
@@ -39,9 +40,10 @@ async function checkAdminAuth() {
       Notification.requestPermission().catch(() => {});
     }
 
-    // Start 4-second responsive polling for real-time incoming requests
+    // Start 4-second responsive polling for real-time incoming requests & persistent notifications
     setInterval(() => {
       loadDashboardData(true);
+      loadAdminNotifications(true);
     }, 4000);
   } catch (err) {
     window.location.href = '/admin';
@@ -57,8 +59,10 @@ if (logoutBtn) {
   });
 }
 
-// State for real-time incoming notification detection
-let knownOrderIds = new Set();
+// State for database-driven persistent incoming notifications
+let activeUnreadNotifications = [];
+let currentNotifIndex = 0;
+let playedNotifIds = new Set();
 let titleFlashInterval = null;
 const originalDocTitle = document.title || 'Admin Portal — Xerox Centre';
 
@@ -97,77 +101,175 @@ function playNotificationChime() {
   }
 }
 
-// Trigger real-time alert (sound + banner + title flash + highlight)
-function triggerNewOrderNotification(newOrders) {
-  if (!newOrders || newOrders.length === 0) return;
-  const latest = newOrders[0];
-
-  // 1. Play alert chime
-  playNotificationChime();
-
-  // 2. Top notification banner
-  const banner = document.getElementById('admin-incoming-alert');
-  const alertText = document.getElementById('incoming-alert-text');
-  const viewBtn = document.getElementById('btn-view-incoming');
-  const dismissBtn = document.getElementById('btn-dismiss-incoming');
-
-  if (banner && alertText) {
-    const docsCount = latest.items?.length || 1;
-    alertText.innerHTML = `<strong>⚡ NEW PRINT REQUEST!</strong> Order <code>#${latest.orderId}</code> from <strong>${latest.ownerName}</strong> (${docsCount} file(s) • ₹${latest.total})`;
-    banner.style.display = 'flex';
-
-    if (viewBtn) {
-      viewBtn.onclick = () => {
-        banner.style.display = 'none';
-        const card = document.getElementById(`order-card-${latest.orderId}`);
-        if (card) {
-          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          card.classList.add('new-order-pulse');
-          setTimeout(() => card.classList.remove('new-order-pulse'), 6000);
-        }
-      };
-    }
-
-    if (dismissBtn) {
-      dismissBtn.onclick = () => {
-        banner.style.display = 'none';
-      };
-    }
-
-    setTimeout(() => {
-      if (banner) banner.style.display = 'none';
-    }, 25000);
-  }
-
-  // 3. Flashing browser tab title
+function startTitleFlash(orderId) {
   if (titleFlashInterval) clearInterval(titleFlashInterval);
   let isAlertTitle = false;
   titleFlashInterval = setInterval(() => {
-    document.title = isAlertTitle ? originalDocTitle : `🔔 (NEW REQUEST!) ${latest.orderId}`;
+    document.title = isAlertTitle ? originalDocTitle : `🔔 (NEW REQUEST!) ${orderId}`;
     isAlertTitle = !isAlertTitle;
   }, 1000);
-
-  // 4. Desktop Notification (if permitted)
-  if ('Notification' in window && Notification.permission === 'granted') {
-    try {
-      new Notification('⚡ New Print Request Received!', {
-        body: `Order ${latest.orderId} from ${latest.ownerName} (${latest.items?.length || 1} file(s) • ₹${latest.total})`,
-        icon: '/logo.gif'
-      });
-    } catch (e) {}
-  }
-
-  showToast(`⚡ New print request arrived: ${latest.orderId}`, 'success');
 }
 
-// Clear title flash on window focus
-window.addEventListener('focus', () => {
+function stopTitleFlash() {
   if (titleFlashInterval) {
     clearInterval(titleFlashInterval);
     titleFlashInterval = null;
     document.title = originalDocTitle;
   }
+}
+
+// Clear title flash on window focus
+window.addEventListener('focus', () => {
+  stopTitleFlash();
 });
+
+function triggerDesktopNotification(notif) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification('⚡ New Print Request Received!', {
+        body: `Order #${notif.orderId} from ${notif.studentName} (${notif.fileCount} file(s) • ₹${notif.amount})`,
+        icon: '/logo.gif'
+      });
+    } catch (e) {}
+  }
+}
+
+// Fetch database-driven persistent notifications
+async function loadAdminNotifications(isPolling = false) {
+  try {
+    const res = await fetch(`/api/admin/notifications?_t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const unread = data.unread || [];
+
+    // Check for brand new incoming requests not yet chimed
+    const brandNew = unread.filter(n => !playedNotifIds.has(n.id));
+    if (brandNew.length > 0) {
+      brandNew.forEach(n => playedNotifIds.add(n.id));
+      playNotificationChime();
+      startTitleFlash(brandNew[0].orderId);
+      triggerDesktopNotification(brandNew[0]);
+      showToast(`⚡ New print request arrived: ${brandNew[0].orderId}`, 'success');
+    }
+
+    activeUnreadNotifications = unread;
+    renderNotificationBanner();
+  } catch (err) {
+    // Silent fail during background polling
+  }
+}
+
+// Render persistent notification banner with direct navigation
+function renderNotificationBanner() {
+  const banner = document.getElementById('admin-incoming-alert');
+  const alertText = document.getElementById('incoming-alert-text');
+  const viewBtn = document.getElementById('btn-view-incoming');
+  const dismissBtn = document.getElementById('btn-dismiss-incoming');
+
+  if (!banner || !alertText) return;
+
+  if (activeUnreadNotifications.length === 0) {
+    banner.style.display = 'none';
+    stopTitleFlash();
+    return;
+  }
+
+  if (currentNotifIndex >= activeUnreadNotifications.length) {
+    currentNotifIndex = 0;
+  }
+
+  const notif = activeUnreadNotifications[currentNotifIndex];
+  const countBadge = activeUnreadNotifications.length > 1
+    ? ` <span style="background:rgba(255,255,255,0.25); padding:2px 8px; border-radius:999px; font-size:12px; margin-left:6px;">${currentNotifIndex + 1} of ${activeUnreadNotifications.length}</span>`
+    : '';
+
+  alertText.innerHTML = `<strong>⚡ NEW PRINT REQUEST!</strong>${countBadge} Order <code>#${notif.orderId}</code> from <strong>${notif.studentName}</strong> (${notif.fileCount} file(s) • ₹${notif.amount})`;
+  banner.style.display = 'flex';
+
+  if (viewBtn) {
+    viewBtn.onclick = async () => {
+      // 1. Acknowledge on backend
+      try {
+        await fetch(`/api/admin/notifications/${encodeURIComponent(notif.id)}/acknowledge`, {
+          method: 'POST',
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+      } catch (e) {}
+
+      // 2. Remove from active list
+      activeUnreadNotifications = activeUnreadNotifications.filter(n => n.id !== notif.id);
+      renderNotificationBanner();
+
+      // 3. Open the exact related print request card
+      openRelatedPrintRequest(notif.orderId);
+    };
+  }
+
+  if (dismissBtn) {
+    dismissBtn.onclick = async () => {
+      try {
+        await fetch(`/api/admin/notifications/${encodeURIComponent(notif.id)}/acknowledge`, {
+          method: 'POST',
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+      } catch (e) {}
+
+      activeUnreadNotifications = activeUnreadNotifications.filter(n => n.id !== notif.id);
+      renderNotificationBanner();
+    };
+  }
+}
+
+// Open exact related print request and smoothly focus it
+function openRelatedPrintRequest(orderId) {
+  if (!orderId) return;
+
+  // 1. Switch to Print Document Requests tab if on Subject Assignments
+  const tabBtnRequests = document.getElementById('tab-btn-requests');
+  const tabRequestsView = document.getElementById('tab-requests-view');
+  const tabBtnAssignments = document.getElementById('tab-btn-assignments');
+  const tabAssignmentsView = document.getElementById('tab-assignments-view');
+
+  if (tabBtnRequests && !tabBtnRequests.classList.contains('active')) {
+    tabBtnRequests.classList.add('active');
+    tabBtnAssignments?.classList.remove('active');
+    if (tabRequestsView) tabRequestsView.style.display = 'block';
+    if (tabAssignmentsView) tabAssignmentsView.style.display = 'none';
+  }
+
+  // 2. Reset filters & clear search to guarantee the card is not hidden
+  const statusFilters = document.getElementById('status-filters');
+  if (statusFilters) {
+    statusFilters.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+    const allPill = statusFilters.querySelector('[data-filter="all"]');
+    if (allPill) allPill.classList.add('active');
+  }
+  activeFilter = 'all';
+
+  const searchInput = document.getElementById('admin-search-input');
+  if (searchInput && searchQuery) {
+    searchInput.value = '';
+    searchQuery = '';
+  }
+
+  // 3. Force re-render to ensure card is populated
+  renderOrders(true);
+
+  // 4. Smoothly scroll into view and pulse
+  setTimeout(() => {
+    const card = document.getElementById(`order-card-${orderId}`);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add('new-order-pulse');
+      setTimeout(() => card.classList.remove('new-order-pulse'), 8000);
+    } else {
+      showToast(`Order #${orderId} loaded in queue.`, 'info');
+    }
+  }, 100);
+}
 
 // Load stats and orders from server (supports silent 4s background polling)
 async function loadDashboardData(isPolling = false) {
@@ -183,28 +285,15 @@ async function loadDashboardData(isPolling = false) {
 
   try {
     const [ordersRes, statsRes] = await Promise.all([
-      fetch('/api/admin/orders'),
-      fetch('/api/admin/stats')
+      fetch(`/api/admin/orders?_t=${Date.now()}`, { cache: 'no-store' }),
+      fetch(`/api/admin/stats?_t=${Date.now()}`, { cache: 'no-store' })
     ]);
 
     if (!ordersRes.ok) throw new Error('Failed to load orders');
 
     const ordersData = await ordersRes.json();
-    const fetchedOrders = ordersData.orders || [];
+    allOrders = ordersData.orders || [];
 
-    if (!isPolling) {
-      // First load: record initial known orders
-      knownOrderIds = new Set(fetchedOrders.map(o => o.orderId));
-    } else {
-      // Background poll: check for brand new incoming requests
-      const newlyArrived = fetchedOrders.filter(o => !knownOrderIds.has(o.orderId));
-      if (newlyArrived.length > 0) {
-        newlyArrived.forEach(o => knownOrderIds.add(o.orderId));
-        triggerNewOrderNotification(newlyArrived);
-      }
-    }
-
-    allOrders = fetchedOrders;
     const tabReqCount = document.getElementById('tab-req-count');
     if (tabReqCount) tabReqCount.textContent = allOrders.length;
 
@@ -276,7 +365,7 @@ function computeStatsFromOrders(orders) {
 }
 
 // Render filtered orders list with quick actions & live stage progression
-function renderOrders() {
+function renderOrders(force = false) {
   const containerEl = document.getElementById('orders-container');
   const emptyEl = document.getElementById('orders-empty');
   if (!containerEl) return;
@@ -318,9 +407,17 @@ function renderOrders() {
 
   if (filtered.length === 0) {
     containerEl.style.display = 'none';
+    containerEl._renderedSig = '';
     if (emptyEl) emptyEl.style.display = 'block';
     return;
   }
+
+  // Prevent UI flickering if orders and statuses have not changed
+  const sig = `${activeFilter}|${searchQuery}|` + filtered.map(o => `${o.orderId}:${o.status}:${o.total}:${o.paymentStatus}:${(o.items||[]).length}`).join(';');
+  if (!force && containerEl._renderedSig === sig) {
+    return;
+  }
+  containerEl._renderedSig = sig;
 
   if (emptyEl) emptyEl.style.display = 'none';
   containerEl.style.display = 'flex';
@@ -604,7 +701,10 @@ async function loadAdminAssignments() {
   if (emptyEl) emptyEl.style.display = 'none';
 
   try {
-    const res = await fetch('/api/assignments');
+    const res = await fetch(`/api/assignments?_t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+    });
     if (!res.ok) throw new Error('Failed to load assignments');
     const data = await res.json();
     allAdminAssignments = data.assignments || [];
@@ -831,14 +931,27 @@ addAsgnForm?.addEventListener('submit', async (e) => {
 
 // Delete Assignment
 window.deleteAdminAssignment = async function(id) {
-  if (!confirm('Are you sure you want to delete this subject assignment?')) return;
+  if (!confirm('Are you sure you want to permanently delete this subject assignment?')) return;
   try {
-    const res = await fetch(`/api/admin/assignments/${id}`, { method: 'DELETE' });
+    // 1. Optimistic removal from frontend state to immediately update UI
+    allAdminAssignments = allAdminAssignments.filter(a => a.id !== id);
+    const countEl = document.getElementById('tab-asgn-count');
+    if (countEl) countEl.textContent = allAdminAssignments.length;
+    renderAdminAssignments();
+
+    // 2. Permanently delete from backend & database tombstone
+    const res = await fetch(`/api/admin/assignments/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { 'Cache-Control': 'no-cache' }
+    });
     if (!res.ok) throw new Error('Delete failed');
-    showToast('Assignment deleted.', 'info');
-    loadAdminAssignments();
+    showToast('Assignment permanently deleted.', 'info');
+
+    // 3. Re-sync from backend with cache-busting
+    await loadAdminAssignments();
   } catch (err) {
     showToast('Could not delete assignment: ' + err.message, 'error');
+    await loadAdminAssignments();
   }
 };
 

@@ -28,6 +28,12 @@ const {
   saveAssignments,
   createAssignment,
   deleteAssignment,
+  getNotifications,
+  saveNotifications,
+  createNotification,
+  acknowledgeNotification,
+  acknowledgeAllNotifications,
+  getUnreadNotifications,
   getPricing,
   savePricing,
   getStaffUsers,
@@ -108,7 +114,10 @@ function sendJSON(res, statusCode, obj) {
   const body = JSON.stringify(obj);
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
-    'Content-Length': Buffer.byteLength(body)
+    'Content-Length': Buffer.byteLength(body),
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
   });
   res.end(body);
 }
@@ -463,6 +472,18 @@ async function handler(req, res) {
       orders.push(order);
       await saveOrders(orders);
 
+      // Immediately queue persistent notification for admin
+      try {
+        await createNotification({
+          orderId: order.orderId,
+          studentName: session.name,
+          studentEmail: session.email,
+          amount: order.total,
+          fileCount: cleanItems.length,
+          message: `New Print Request #${order.orderId} from ${session.name}`
+        });
+      } catch (e) {}
+
       return sendJSON(res, 200, {
         success: true,
         orderId,
@@ -680,6 +701,95 @@ async function handler(req, res) {
       }
 
       return sendJSON(res, 200, { success: true, request: updatedReq || { id: reqIdOrOrderId, requestStatus: normStatus } });
+    }
+
+    // ---------------- ADMIN: GET NOTIFICATIONS ----------------
+    if (pathname === '/api/admin/notifications' && req.method === 'GET') {
+      const session = getSessionFromReq(req);
+      if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
+
+      // Self-healing check: Ensure any active REQUEST_RECEIVED/New order has an unread notification
+      try {
+        const orders = await getOrders();
+        const existingNotifs = await getNotifications();
+        const existingOrderIds = new Set(existingNotifs.map(n => n.orderId ? n.orderId.toUpperCase() : ''));
+
+        for (const o of orders) {
+          const st = String(o.status || '').toUpperCase();
+          const paySt = String(o.paymentStatus || '').toUpperCase();
+          if ((st === 'REQUEST_RECEIVED' || o.status === 'New' || o.status === 'Order Received') &&
+              paySt !== 'CANCELLED' && paySt !== 'FAILED') {
+            if (!existingOrderIds.has(o.orderId.toUpperCase())) {
+              await createNotification({
+                orderId: o.orderId,
+                studentName: o.ownerName || 'Student',
+                studentEmail: o.ownerEmail || 'N/A',
+                amount: o.total || 0,
+                fileCount: (o.items || []).length,
+                message: `New Print Request #${o.orderId} from ${o.ownerName || 'Student'}`
+              });
+              existingOrderIds.add(o.orderId.toUpperCase());
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Sync unnotified orders warning:', e.message);
+      }
+
+      const allNotifs = await getNotifications();
+      const unread = allNotifs.filter(n => n.status === 'UNREAD');
+
+      return sendJSON(res, 200, {
+        success: true,
+        notifications: allNotifs,
+        unread,
+        unreadCount: unread.length
+      });
+    }
+
+    // ---------------- ADMIN: ACKNOWLEDGE NOTIFICATION BY ID ----------------
+    if (pathname.startsWith('/api/admin/notifications/') && pathname.endsWith('/acknowledge') && req.method === 'POST') {
+      const session = getSessionFromReq(req);
+      if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
+
+      const rawId = pathname.replace('/api/admin/notifications/', '').replace('/acknowledge', '').trim();
+      const id = decodeURIComponent(rawId);
+
+      const acknowledged = await acknowledgeNotification(id);
+      const unread = await getUnreadNotifications();
+      return sendJSON(res, 200, {
+        success: true,
+        acknowledgedId: id,
+        acknowledged,
+        unreadCount: unread.length
+      });
+    }
+
+    // ---------------- ADMIN: ACKNOWLEDGE NOTIFICATION BY ORDER ID ----------------
+    if (pathname.startsWith('/api/admin/notifications/acknowledge-by-order/') && req.method === 'POST') {
+      const session = getSessionFromReq(req);
+      if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
+
+      const rawId = pathname.replace('/api/admin/notifications/acknowledge-by-order/', '').split('?')[0].trim();
+      const orderId = decodeURIComponent(rawId);
+
+      const acknowledged = await acknowledgeNotification(orderId);
+      const unread = await getUnreadNotifications();
+      return sendJSON(res, 200, {
+        success: true,
+        orderId,
+        acknowledged,
+        unreadCount: unread.length
+      });
+    }
+
+    // ---------------- ADMIN: ACKNOWLEDGE ALL NOTIFICATIONS ----------------
+    if (pathname === '/api/admin/notifications/acknowledge-all' && req.method === 'POST') {
+      const session = getSessionFromReq(req);
+      if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
+
+      await acknowledgeAllNotifications();
+      return sendJSON(res, 200, { success: true, unreadCount: 0 });
     }
 
     // ---------------- ADMIN: GET ALL ORDERS / DOCUMENT REQUESTS ----------------
@@ -973,7 +1083,12 @@ async function handler(req, res) {
       const session = getSessionFromReq(req);
       if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
 
-      const id = pathname.split('/').pop();
+      const rawId = pathname.replace('/api/admin/assignments/', '').split('/')[0].split('?')[0].trim();
+      const id = decodeURIComponent(rawId);
+      if (!id) {
+        return sendJSON(res, 400, { error: 'Assignment ID is required.' });
+      }
+
       const deleted = await deleteAssignment(id);
       if (!deleted) {
         return sendJSON(res, 404, { error: 'Assignment not found.' });

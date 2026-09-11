@@ -920,7 +920,10 @@ async function loadAssignments() {
   if (emptyEl) emptyEl.style.display = 'none';
 
   try {
-    const res = await fetch('/api/assignments');
+    const res = await fetch(`/api/assignments?_t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+    });
     if (!res.ok) throw new Error('Failed to load assignments');
     const data = await res.json();
     allAssignments = data.assignments || [];

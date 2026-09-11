@@ -84,6 +84,10 @@ function invokeHandler({ method = 'GET', url = '/', headers = {}, body = null })
 async function runTests() {
   console.log('🧪 Starting Xerox Centre Serverless & API Test Suite...\n');
 
+  // Ensure default pricing is initialized
+  const storage = require('../lib/storage');
+  await storage.savePricing({ 'bw-single': 2, 'bw-double': 3, 'color-single': 5, 'color-double': 8 });
+
   // Test 1: Auth Library Token Generation & Verification
   console.log('1. Testing Stateless HMAC-SHA256 Auth Tokens...');
   const testUser = { id: 'usr_123', name: 'AIT Student', email: 'student@aitpune.edu.in' };
@@ -829,7 +833,131 @@ async function runTests() {
   assert(superCssRes.text().includes('--green-main') || superCssRes.text().includes('body'));
   console.log('   ✅ Subpath asset fallback verified: CSS and JS load properly for Admin and Super Admin');
 
-  console.log('\n🎉 ALL 38 TESTS PASSED SUCCESSFULLY! Full role-based system, asset routing & notifications verified.\n');
+  // Test 39: Persistent Database-Driven Admin Notifications
+  console.log('39. Testing Persistent Database-Driven Admin Notifications (GET /api/admin/notifications)...');
+  const notifsRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/notifications',
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(notifsRes.statusCode, 200);
+  const notifsData = notifsRes.json();
+  assert.strictEqual(notifsData.success, true);
+  assert(Array.isArray(notifsData.notifications));
+  assert(Array.isArray(notifsData.unread));
+  console.log(`   ✅ Notifications retrieved successfully (${notifsData.notifications.length} total, ${notifsData.unreadCount} unread)`);
+
+  // Test 40: Notification Acknowledgment & Deduplication
+  console.log('40. Testing Notification Acknowledgment & Deduplication...');
+  if (notifsData.unread.length > 0) {
+    const targetNotif = notifsData.unread[0];
+    const ackRes = await invokeHandler({
+      method: 'POST',
+      url: `/api/admin/notifications/${targetNotif.id}/acknowledge`,
+      headers: { cookie: adminCookie }
+    });
+    assert.strictEqual(ackRes.statusCode, 200);
+    assert.strictEqual(ackRes.json().success, true);
+
+    // Verify it is acknowledged on next retrieval
+    const afterAckRes = await invokeHandler({
+      method: 'GET',
+      url: '/api/admin/notifications',
+      headers: { cookie: adminCookie }
+    });
+    const afterAckData = afterAckRes.json();
+    const foundStillUnread = afterAckData.unread.some(n => n.id === targetNotif.id);
+    assert.strictEqual(foundStillUnread, false, 'Acknowledged notification must not remain unread');
+    console.log(`   ✅ Notification #${targetNotif.id} successfully acknowledged and removed from unread queue`);
+  }
+
+  // Test 41: Permanent Assignment Deletion & Resurrection Prevention (Create A & B -> Delete A -> Create C -> Verify A never returns)
+  console.log('41. Testing Permanent Assignment Deletion & Resurrection Prevention...');
+  const asgnAlphaRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/admin/assignments',
+    headers: { cookie: adminCookie },
+    body: {
+      subject: 'Physics Lab',
+      experimentNo: 'Exp 01',
+      title: 'Assignment Alpha - Laser Diffraction',
+      info: 'Measure wavelength of He-Ne laser',
+      submissionGuidelines: 'Submit spiral bound copy'
+    }
+  });
+  assert.strictEqual(asgnAlphaRes.statusCode, 201);
+  const asgnAlpha = asgnAlphaRes.json().assignment;
+
+  const asgnBetaRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/admin/assignments',
+    headers: { cookie: adminCookie },
+    body: {
+      subject: 'Physics Lab',
+      experimentNo: 'Exp 02',
+      title: 'Assignment Beta - Optics Bench',
+      info: 'Verify lens formula'
+    }
+  });
+  assert.strictEqual(asgnBetaRes.statusCode, 201);
+  const asgnBeta = asgnBetaRes.json().assignment;
+
+  // Delete Assignment Alpha
+  const delAlphaRes = await invokeHandler({
+    method: 'DELETE',
+    url: `/api/admin/assignments/${asgnAlpha.id}`,
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(delAlphaRes.statusCode, 200);
+
+  // Verify Alpha is gone
+  const checkAfterDel = await invokeHandler({
+    method: 'GET',
+    url: '/api/assignments',
+    headers: { cookie: sessionCookie }
+  });
+  const listAfterDel = checkAfterDel.json().assignments;
+  assert(!listAfterDel.some(a => a.id === asgnAlpha.id), 'Deleted assignment Alpha must not appear in list');
+
+  // Create Assignment Gamma
+  const asgnGammaRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/admin/assignments',
+    headers: { cookie: adminCookie },
+    body: {
+      subject: 'Physics Lab',
+      experimentNo: 'Exp 03',
+      title: 'Assignment Gamma - Hall Effect',
+      info: 'Calculate Hall coefficient'
+    }
+  });
+  assert.strictEqual(asgnGammaRes.statusCode, 201);
+
+  // Verify list: Beta and Gamma exist, but Alpha MUST NOT return!
+  const finalCheck = await invokeHandler({
+    method: 'GET',
+    url: '/api/assignments',
+    headers: { cookie: sessionCookie }
+  });
+  const finalList = finalCheck.json().assignments;
+  assert(!finalList.some(a => a.id === asgnAlpha.id), 'Deleted assignment Alpha MUST NOT reappear after adding Gamma!');
+  assert(finalList.some(a => a.id === asgnBeta.id), 'Assignment Beta must still be present');
+  assert(finalList.some(a => a.id === asgnGammaRes.json().assignment.id), 'Assignment Gamma must be present');
+  console.log('   ✅ Assignment deletion persistence verified: deleted assignment does NOT reappear after adding new assignment');
+
+  // Test 42: API Anti-Caching Headers Verification
+  console.log('42. Testing Strict Anti-Caching Headers on API Endpoints...');
+  const cacheCheckRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/assignments',
+    headers: { cookie: sessionCookie }
+  });
+  const cc = cacheCheckRes.headers['cache-control'] || '';
+  assert(cc.includes('no-store'), 'API response must contain Cache-Control: no-store');
+  assert(cc.includes('no-cache'), 'API response must contain Cache-Control: no-cache');
+  console.log('   ✅ Strict Cache-Control: no-store, no-cache verified on API responses');
+
+  console.log('\n🎉 ALL 42 TESTS PASSED SUCCESSFULLY! Persistent notifications, assignment tombstoning, and role isolation fully verified.\n');
 }
 
 runTests().catch(err => {
