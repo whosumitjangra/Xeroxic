@@ -59,6 +59,11 @@ function showPage(pageId) {
   const target = document.getElementById(pageId);
   if (!target) return;
 
+  // Stop any active tracking poller when navigating away from trackorder
+  if (pageId !== 'trackorder' && typeof stopTrackingPoller === 'function') {
+    stopTrackingPoller();
+  }
+
   pages.forEach(p => p.classList.remove('active'));
   target.classList.add('active');
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -767,46 +772,110 @@ function formatStudentStatus(status) {
   };
 }
 
+// Pulsing beacon config: status → beacon colour CSS class
+function getStatusBeacon(status) {
+  const st = (status || '').toUpperCase();
+  if (st === 'CANCELLED') return { cls: 'beacon-grey',   label: '⚫', terminal: true };
+  if (st === 'COMPLETED') return { cls: 'beacon-green',  label: '🟢', terminal: true };
+  if (st === 'READY')     return { cls: 'beacon-green',  label: '🟢', terminal: false };
+  if (st === 'PRINTING')  return { cls: 'beacon-blue',   label: '🔵', terminal: false };
+  if (st === 'ACCEPTED')  return { cls: 'beacon-amber',  label: '🟡', terminal: false };
+  // REQUEST_RECEIVED or unknown → red (in queue)
+                          return { cls: 'beacon-red',    label: '🔴', terminal: false };
+}
+
+let _trackingPoller = null;
+
+function stopTrackingPoller() {
+  if (_trackingPoller) {
+    clearInterval(_trackingPoller);
+    _trackingPoller = null;
+  }
+}
+
 async function trackOrder(orderId) {
+  stopTrackingPoller();
+
   const errorEl = document.getElementById('track-error');
   const resultEl = document.getElementById('track-result');
-  errorEl.textContent = '';
-  resultEl.innerHTML = '<div style="color:#6c8072; font-size:14px;">Looking up order details...</div>';
+  if (errorEl) errorEl.textContent = '';
+  if (resultEl) resultEl.innerHTML = '<div style="color:#6c8072; font-size:14px;">Looking up order details...</div>';
 
-  try {
-    const res = await fetch('/api/orders/' + encodeURIComponent(orderId));
-    const data = await res.json();
+  async function fetchAndRender(silent = false) {
+    try {
+      const res = await fetch('/api/orders/' + encodeURIComponent(orderId));
+      const data = await res.json();
 
-    if (!res.ok) {
-      resultEl.innerHTML = '';
-      errorEl.textContent = data.error || 'Order not found. Please verify Order ID.';
-      return;
+      if (!res.ok) {
+        if (!silent) {
+          if (resultEl) resultEl.innerHTML = '';
+          if (errorEl) errorEl.textContent = data.error || 'Order not found. Please verify Order ID.';
+        }
+        stopTrackingPoller();
+        return;
+      }
+
+      const beacon = getStatusBeacon(data.status);
+      const studentStatus = formatStudentStatus(data.status);
+
+      let itemsHTML = '';
+      (data.items || []).forEach(i => {
+        const specs = `${i.color === 'color' ? 'Color' : 'B&W'}, ${i.sides === 'double' ? 'Double-sided' : 'Single-sided'}, ${i.pages}p`;
+        itemsHTML += `<div class="confirm-line"><span>${i.originalName} (${specs})</span><span>₹${i.price}</span></div>`;
+      });
+
+      // 5-step progress pipeline
+      const steps = ['REQUEST_RECEIVED','ACCEPTED','PRINTING','READY','COMPLETED'];
+      const stUp = (data.status || '').toUpperCase();
+      const stepIdx = stUp === 'CANCELLED' ? -1 : steps.indexOf(stUp);
+      const progressHTML = stUp === 'CANCELLED' ? '' : `
+        <div class="track-progress-bar" style="margin:14px 0 18px;">
+          ${steps.map((s, i) => {
+            const done = i < stepIdx;
+            const active = i === stepIdx;
+            const names = ['Received','Accepted','Printing','Ready','Collected'];
+            return `<div class="track-step ${done ? 'step-done' : ''} ${active ? 'step-active' : ''}">
+              <div class="track-step-dot"></div>
+              <div class="track-step-label">${names[i]}</div>
+            </div>`;
+          }).join('')}
+        </div>`;
+
+      const liveTag = beacon.terminal ? '' :
+        `<span style="font-size:11px; color:#059669; background:#dcfce7; border-radius:20px; padding:2px 8px; font-weight:600; margin-left:8px; vertical-align:middle;">LIVE ↻</span>`;
+
+      if (resultEl) resultEl.innerHTML = `
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+          <span class="status-beacon ${beacon.cls}"></span>
+          <span style="${studentStatus.style}; font-size:14px; padding:6px 14px; border-radius:12px; font-weight:600;">${studentStatus.label}</span>
+          ${liveTag}
+        </div>
+        <p style="font-size:13px; color:#4a5e50; margin:0 0 10px 0;">${studentStatus.sub}</p>
+        ${progressHTML}
+        <p class="track-order-id" style="font-size:17px; font-weight:700; margin:0 0 3px 0;">${data.orderId}</p>
+        <p style="color:#7b9183; font-size:12px; margin:0 0 14px 0;">Placed on ${new Date(data.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+        <div style="margin-top:10px;">${itemsHTML}</div>
+        <div class="price-summary" style="margin-top:14px;"><span>Total Paid</span><span>₹${data.total}</span></div>
+        ${!beacon.terminal ? `<p style="font-size:11px; color:#9aab9f; margin-top:10px; text-align:center;">Auto-refreshing every 8 seconds…</p>` : ''}
+      `;
+
+      // Stop polling when terminal state is reached
+      if (beacon.terminal) stopTrackingPoller();
+
+    } catch (err) {
+      if (!silent) {
+        if (resultEl) resultEl.innerHTML = '';
+        if (errorEl) errorEl.textContent = 'Could not reach the server.';
+      }
+      stopTrackingPoller();
     }
-
-    let itemsHTML = '';
-    (data.items || []).forEach(i => {
-      const specs = `${i.color === 'color' ? 'Color' : 'B&W'}, ${i.sides === 'double' ? 'Double-sided' : 'Single-sided'}, ${i.pages}p`;
-      itemsHTML += `<div class="confirm-line"><span>${i.originalName} (${specs})</span><span>₹${i.price}</span></div>`;
-    });
-
-    const studentStatus = formatStudentStatus(data.status);
-
-    resultEl.innerHTML = `
-      <div class="status-badge" style="${studentStatus.style}; font-size:14px; padding:8px 14px; display:inline-block; border-radius:12px; margin-bottom:10px;">
-        ${studentStatus.label}
-      </div>
-      <p style="font-size:13.5px; color:#4a5e50; margin:0 0 14px 0;">${studentStatus.sub}</p>
-      <p class="track-order-id" style="font-size:18px; font-weight:700; margin:0 0 4px 0;">${data.orderId}</p>
-      <p class="fsize" style="color:#7b9183; font-size:12px; margin:0 0 14px 0;">Placed on ${new Date(data.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p>
-      <div style="margin-top:14px;">${itemsHTML}</div>
-      <div class="price-summary" style="margin-top:14px;">
-        <span>Total Paid</span><span>₹${data.total}</span>
-      </div>
-    `;
-  } catch (err) {
-    resultEl.innerHTML = '';
-    errorEl.textContent = 'Could not reach the server.';
   }
+
+  // Initial fetch (shows loading message)
+  await fetchAndRender(false);
+
+  // Start live auto-polling every 8 seconds (only for non-terminal statuses)
+  _trackingPoller = setInterval(() => fetchAndRender(true), 8000);
 }
 
 // ---------- Load Student's Previous Orders ----------

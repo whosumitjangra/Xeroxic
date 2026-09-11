@@ -327,9 +327,31 @@ async function loadDashboardData(isPolling = false) {
     if (!ordersRes.ok) throw new Error('Failed to load orders');
 
     const ordersData = await ordersRes.json();
-    allOrders = ordersData.orders || [];
+    const freshOrders = ordersData.orders || [];
 
-    console.log('[Admin Poll/Sync] Received orders count:', allOrders.length, 'Filter:', activeFilter);
+    if (isPolling && freshOrders.length < allOrders.length) {
+      // KV may have returned a stale/incomplete snapshot.
+      // Merge: keep all previously known orders, but update their status fields
+      // if the fresh poll has updated info for them. Also add any genuinely new orders.
+      const knownIds = new Map(allOrders.map(o => [o.orderId, o]));
+      for (const fresh of freshOrders) {
+        if (knownIds.has(fresh.orderId)) {
+          // Update status and payment fields in-place, preserve everything else
+          const existing = knownIds.get(fresh.orderId);
+          existing.status = fresh.status;
+          existing.paymentStatus = fresh.paymentStatus;
+          existing.updatedAt = fresh.updatedAt;
+        } else {
+          // Genuinely new order not yet in local state
+          allOrders.unshift(fresh);
+        }
+      }
+      console.log('[Admin Poll] Merged (stale KV guard). Known:', allOrders.length, 'Fresh:', freshOrders.length);
+    } else {
+      // Normal case: use fresh data (initial load or fresh KV with more/equal data)
+      allOrders = freshOrders;
+      console.log('[Admin Poll/Sync] Received orders count:', allOrders.length, 'Filter:', activeFilter);
+    }
 
     const tabReqCount = document.getElementById('tab-req-count');
     if (tabReqCount) tabReqCount.textContent = allOrders.length;
@@ -1006,11 +1028,12 @@ window.deleteAdminAssignment = async function(id) {
     });
     if (!res.ok) throw new Error('Delete failed');
     showToast('Assignment permanently deleted.', 'info');
-
-    // 3. Re-sync from backend with cache-busting
-    await loadAdminAssignments();
+    // NOTE: Do NOT re-fetch here — the KV write may not have propagated yet,
+    // and re-fetching would restore the deleted item from stale KV data.
+    // The optimistic state above is the source of truth until next page load.
   } catch (err) {
     showToast('Could not delete assignment: ' + err.message, 'error');
+    // On error, re-sync from backend to restore consistent state
     await loadAdminAssignments();
   }
 };

@@ -1908,3 +1908,135 @@ h1.centre-title{
   }
 }
 
+/* ===== STATUS BEACON — pulsing dot for order tracking ===== */
+.status-beacon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: beacon-pulse 1.8s ease-in-out infinite;
+}
+
+/* Red — in queue / REQUEST_RECEIVED */
+.beacon-red {
+  background: #ef4444;
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+  animation-name: beacon-pulse-red;
+}
+@keyframes beacon-pulse-red {
+  0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
+  70%  { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Green — READY / COMPLETED */
+.beacon-green {
+  background: #10b981;
+  animation-name: beacon-pulse-green;
+}
+@keyframes beacon-pulse-green {
+  0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); }
+  70%  { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* Blue — PRINTING */
+.beacon-blue {
+  background: #3b82f6;
+  animation-name: beacon-pulse-blue;
+}
+@keyframes beacon-pulse-blue {
+  0%   { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.55); }
+  70%  { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+/* Amber — ACCEPTED */
+.beacon-amber {
+  background: #f59e0b;
+  animation-name: beacon-pulse-amber;
+}
+@keyframes beacon-pulse-amber {
+  0%   { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55); }
+  70%  { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+/* Grey — CANCELLED (no pulse, static) */
+.beacon-grey {
+  background: #9ca3af;
+  animation: none;
+}
+
+/* ===== 5-STEP PROGRESS BAR for order tracking ===== */
+.track-progress-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: relative;
+  padding: 0 4px;
+}
+
+/* Connecting line */
+.track-progress-bar::before {
+  content: '';
+  position: absolute;
+  top: 9px;
+  left: 12px;
+  right: 12px;
+  height: 3px;
+  background: #e5e7eb;
+  z-index: 0;
+  border-radius: 2px;
+}
+
+.track-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.track-step-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  border: 2.5px solid #d1d5db;
+  transition: all 0.3s ease;
+}
+
+.track-step.step-done .track-step-dot {
+  background: #10b981;
+  border-color: #10b981;
+}
+
+.track-step.step-active .track-step-dot {
+  background: #ffffff;
+  border-color: #5cb85c;
+  border-width: 3px;
+  box-shadow: 0 0 0 4px rgba(92, 184, 92, 0.25);
+  animation: beacon-pulse-green 1.8s ease-in-out infinite;
+}
+
+.track-step-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.track-step.step-done .track-step-label {
+  color: #059669;
+}
+
+.track-step.step-active .track-step-label {
+  color: #16a34a;
+  font-weight: 700;
+}
+
