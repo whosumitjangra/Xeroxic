@@ -1134,28 +1134,24 @@ async function handler(req, res) {
       if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
 
       const body = await readJSONBody(req);
-      const { subject, experimentNo, title, info, submissionGuidelines, deadline, attachment } = body;
+      const { subject, deadline, attachment } = body;
 
-      if (!subject || !title) {
-        return sendJSON(res, 400, { error: 'Subject and title are required.' });
+      if (!subject || !subject.trim()) {
+        return sendJSON(res, 400, { error: 'Subject is required.' });
       }
 
       let cleanAttachment = null;
       if (attachment && attachment.dataBase64) {
         cleanAttachment = {
-          originalName: attachment.originalName || 'demo_assignment.pdf',
-          mimeType: attachment.mimeType || 'application/pdf',
+          originalName: attachment.originalName || 'assignment_file',
+          mimeType: attachment.mimeType || 'application/octet-stream',
           size: attachment.size || Buffer.byteLength(attachment.dataBase64, 'base64'),
           dataBase64: attachment.dataBase64
         };
       }
 
       const newAssignment = await createAssignment({
-        subject,
-        experimentNo: experimentNo || '',
-        title,
-        info: info || '',
-        submissionGuidelines: submissionGuidelines || '',
+        subject: subject.trim(),
         deadline: deadline || '',
         attachment: cleanAttachment
       });

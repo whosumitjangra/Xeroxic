@@ -3,242 +3,536 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Portal — Xerox Centre (AIT Pune)</title>
+<title>Admin Desk — Xerox Centre (AIT Pune)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
+<style>
+  /* ===== PORTAL SHELL ===== */
+  body { margin:0; background:#eef5f0; font-family:'Poppins',sans-serif; }
+
+  .portal-header {
+    background: linear-gradient(135deg,#2d8f4e,#1e6b38);
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 28px; height: 64px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .portal-logo {
+    width: 40px; height: 40px; background: #fff;
+    border-radius: 10px; overflow: hidden; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .portal-logo img { width:100%; height:100%; object-fit:contain; }
+  .portal-brand-text { line-height:1.2; }
+  .portal-brand-text .brand-title { color:#fff; font-size:15px; font-weight:700; letter-spacing:1px; }
+  .portal-brand-text .brand-sub { color:rgba(255,255,255,0.7); font-size:10px; font-weight:500; }
+  .portal-divider { width:1px; height:32px; background:rgba(255,255,255,0.25); margin:0 8px; }
+  .portal-page-title { color:#fff; font-size:18px; font-weight:700; letter-spacing:0.5px; flex:1; }
+  .portal-header-right { display:flex; align-items:center; gap:12px; }
+
+  /* Notification bell */
+  .notif-bell-btn {
+    position: relative; background: rgba(255,255,255,0.15);
+    border: 1.5px solid rgba(255,255,255,0.25); border-radius: 12px;
+    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .notif-bell-btn:hover { background: rgba(255,255,255,0.25); }
+  .notif-bell-btn svg { width:20px; height:20px; stroke:#fff; fill:none; }
+  .notif-badge {
+    position: absolute; top: -4px; right: -4px;
+    background: #ef4444; color: #fff; font-size: 10px; font-weight: 700;
+    min-width: 18px; height: 18px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid #1e6b38;
+  }
+  .notif-badge.hidden { display: none; }
+
+  /* User info pill */
+  .user-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.25);
+    border-radius: 12px; padding: 6px 12px; cursor: pointer;
+  }
+  .user-pill svg { width:18px; height:18px; stroke:#fff; fill:none; }
+  .user-pill-text { color:#fff; font-size:12px; font-weight:600; line-height:1.2; }
+  .user-pill-sub { color:rgba(255,255,255,0.65); font-size:10px; }
+
+  .signout-btn {
+    background: transparent; border: 1.5px solid rgba(255,255,255,0.5);
+    color: #fff; border-radius: 10px; padding: 7px 16px;
+    font-family: 'Poppins',sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+  }
+  .signout-btn:hover { background: rgba(255,255,255,0.15); }
+
+  /* ===== NOTIFICATION BANNER ===== */
+  .admin-incoming-banner {
+    background: linear-gradient(90deg,#059669,#047857);
+    color: #fff; padding: 10px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+    animation: slideDown 0.3s ease;
+  }
+  @keyframes slideDown { from { transform:translateY(-100%); opacity:0; } to { transform:translateY(0); opacity:1; } }
+  .incoming-alert-content { display:flex; align-items:center; gap:10px; font-weight:600; font-size:14px; }
+  .incoming-alert-actions { display:flex; gap:8px; }
+  .alert-view-btn {
+    background:#fff; color:#047857; border:none; border-radius:8px;
+    padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer;
+  }
+  .alert-dismiss-btn {
+    background:rgba(255,255,255,0.2); color:#fff; border:none;
+    border-radius:8px; padding:6px 12px; font-size:13px; cursor:pointer;
+  }
+
+  /* ===== MAIN LAYOUT ===== */
+  .portal-main { max-width: 1280px; margin: 0 auto; padding: 28px 24px 60px; }
+
+  /* ===== STATUS CARD GRID (top row) ===== */
+  .status-cards-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  @media(max-width:1100px) { .status-cards-row { grid-template-columns:repeat(3,1fr); } }
+  @media(max-width:650px)  { .status-cards-row { grid-template-columns:repeat(2,1fr); } }
+
+  .status-card {
+    background: #fff; border-radius: 18px;
+    border: 1.5px solid #e8f0eb;
+    padding: 20px 16px 16px;
+    display: flex; flex-direction: column; align-items: flex-start;
+    cursor: pointer; transition: all 0.2s ease;
+    position: relative; overflow: hidden; min-height: 140px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+  .status-card:hover { border-color: #5cb85c; box-shadow: 0 6px 20px rgba(92,184,92,0.15); transform:translateY(-2px); }
+  .status-card.active-filter { border-color: #2d8f4e; box-shadow: 0 4px 16px rgba(45,143,78,0.2); }
+
+  /* Coloured beacon dot top-right */
+  .status-card-beacon {
+    position: absolute; top: 14px; right: 14px;
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+
+  .status-card-icon {
+    width: 48px; height: 48px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px; font-size: 22px;
+  }
+  .status-card-label { font-size: 13px; font-weight: 600; color: #2b3a30; line-height: 1.3; }
+  .status-card-count {
+    font-size: 22px; font-weight: 700; color: #1e3d2a;
+    margin-top: auto; padding-top: 8px;
+  }
+
+  /* Decorative quarter-circle bottom right */
+  .status-card::after {
+    content: ''; position: absolute; bottom: -16px; right: -16px;
+    width: 60px; height: 60px; border-radius: 50%;
+    background: rgba(0,0,0,0.04);
+  }
+
+  /* Card color themes */
+  .card-new    { --icon-bg:#fff5f5; --beacon:#ef4444; --icon-color:#dc2626; }
+  .card-queue  { --icon-bg:#eff6ff; --beacon:#93c5fd; --icon-color:#2563eb; }
+  .card-print  { --icon-bg:#fffbeb; --beacon:#f59e0b; --icon-color:#d97706; }
+  .card-ready  { --icon-bg:#f3e8ff; --beacon:#a78bfa; --icon-color:#7c3aed; }
+  .card-collect{ --icon-bg:#ecfdf5; --beacon:#34d399; --icon-color:#059669; }
+  .card-done   { --icon-bg:#eff6ff; --beacon:#60a5fa; --icon-color:#2563eb; }
+
+  .status-card-icon { background: var(--icon-bg); color: var(--icon-color); }
+  .status-card-beacon { background: var(--beacon); animation: beacon-pulse-green 2s ease-in-out infinite; }
+
+  /* ===== CONTENT AREA ===== */
+  .content-panel {
+    background: #fff; border-radius: 20px;
+    border: 1.5px solid #e8f0eb;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+    overflow: hidden;
+  }
+  .content-panel-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1.5px solid #f0f5f1;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .content-panel-title { font-size: 17px; font-weight: 700; color: #1e3d2a; margin: 0; }
+  .content-panel-sub { font-size: 12px; color: #6c8072; margin: 3px 0 0; }
+
+  /* Search & filter row */
+  .filter-row {
+    padding: 14px 24px;
+    border-bottom: 1.5px solid #f0f5f1;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .search-box-wrap { position: relative; flex: 1; min-width: 200px; }
+  .search-box-wrap .s-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 14px; color: #7d9183; pointer-events: none;
+  }
+  .search-box-input {
+    width: 100%; padding: 9px 14px 9px 36px;
+    border: 1.5px solid #dce5dc; border-radius: 12px;
+    font-family: 'Poppins',sans-serif; font-size: 13px; color: #1e3d2a;
+    outline: none; box-sizing: border-box; transition: border 0.2s;
+  }
+  .search-box-input:focus { border-color: #5cb85c; }
+  .filter-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .fpill {
+    padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    border: 1.5px solid #dce5dc; background: #f9fbf9; color: #556b5d;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .fpill:hover { border-color: #5cb85c; color: #2d6b2d; }
+  .fpill.active { background: #2d8f4e; color: #fff; border-color: #2d8f4e; }
+  .badge-pill {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.25); color: #fff; font-size: 10px; font-weight: 700;
+    min-width: 16px; height: 16px; border-radius: 999px; padding: 0 4px; margin-left: 4px;
+  }
+
+  /* Orders list */
+  .orders-body { padding: 16px 24px; }
+  #orders-loading { padding: 40px; text-align: center; color: #7d9183; }
+  #orders-container .admin-order-card { margin-bottom: 14px; }
+  #orders-empty { padding: 48px; text-align: center; color: #8fa896; }
+  #orders-empty .empty-icon { font-size: 40px; margin-bottom: 10px; }
+  #orders-empty h3 { margin: 0 0 6px; font-size: 16px; color: #4a5e50; }
+  #orders-empty p { margin: 0; font-size: 13px; }
+
+  /* ===== REFRESH BUTTON ===== */
+  .refresh-btn {
+    background: #f0f5f1; border: 1.5px solid #dce5dc; border-radius: 10px;
+    padding: 8px 16px; font-family:'Poppins',sans-serif; font-size: 12px;
+    font-weight: 600; color: #2d6b2d; cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .refresh-btn:hover { background: #e0ede0; }
+
+  /* ===== ASSIGNMENTS TAB ===== */
+  .add-asgn-btn {
+    background: linear-gradient(135deg,#2d8f4e,#1e6b38);
+    color: #fff; border: none; border-radius: 12px;
+    padding: 10px 20px; font-family:'Poppins',sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: opacity 0.15s; display: flex; align-items: center; gap: 8px;
+  }
+  .add-asgn-btn:hover { opacity: 0.9; }
+
+  /* ===== TABS ===== */
+  .portal-tabs {
+    display: flex; gap: 0; margin-bottom: 20px;
+    background: #fff; border-radius: 14px; padding: 4px;
+    border: 1.5px solid #e0eae1; width: fit-content;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .ptab {
+    background: transparent; border: none; padding: 9px 22px; border-radius: 10px;
+    font-family: 'Poppins',sans-serif; font-size: 13px; font-weight: 600;
+    color: #556b5d; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;
+  }
+  .ptab:hover { background: #f2f7f2; }
+  .ptab.active { background: linear-gradient(135deg,#2d8f4e,#1e6b38); color: #fff; }
+  .ptab-count { font-size:11px; font-weight:700; background:rgba(255,255,255,0.25); border-radius:999px; padding:1px 6px; }
+
+  /* ===== MODAL ===== */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px;
+  }
+  .modal-box {
+    background: #fff; border-radius: 20px; width: 100%; max-width: 480px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2); overflow: hidden;
+    animation: modalIn 0.25s ease;
+  }
+  @keyframes modalIn { from { transform:scale(0.92); opacity:0; } to { transform:scale(1); opacity:1; } }
+  .modal-head {
+    background: linear-gradient(135deg,#2d8f4e,#1e6b38);
+    padding: 18px 22px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-head h3 { color: #fff; margin: 0; font-size: 16px; }
+  .modal-x { background: rgba(255,255,255,0.2); border: none; color: #fff; border-radius: 8px;
+    width: 30px; height: 30px; cursor: pointer; font-size: 16px; display:flex; align-items:center; justify-content:center; }
+  .modal-x:hover { background: rgba(255,255,255,0.3); }
+  .modal-body-pad { padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+  .mfield label { display:block; font-size:12px; font-weight:600; color:#4a5e50; margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px; }
+  .mfield input, .mfield select {
+    width: 100%; padding: 10px 14px; border: 1.5px solid #d8e5da; border-radius: 12px;
+    font-family:'Poppins',sans-serif; font-size:14px; color:#1e3d2a;
+    outline:none; box-sizing:border-box; transition: border 0.2s;
+  }
+  .mfield input:focus, .mfield select:focus { border-color: #2d8f4e; }
+  .file-drop {
+    border: 2px dashed #c8dbd0; border-radius: 14px; padding: 22px;
+    text-align: center; cursor: pointer; transition: all 0.2s; background: #f8fbf9;
+  }
+  .file-drop:hover { border-color: #2d8f4e; background: #f0f9f3; }
+  .file-drop p { margin: 0 0 4px; font-weight: 600; color: #2d8f4e; font-size: 14px; }
+  .file-drop span { font-size: 12px; color: #7d9183; }
+  .modal-foot {
+    padding: 16px 22px; border-top: 1.5px solid #f0f5f1;
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+  .btn-cancel {
+    background: #f0f5f1; border: 1.5px solid #dce5dc; border-radius: 10px;
+    padding: 10px 18px; font-family:'Poppins',sans-serif; font-size: 13px;
+    font-weight: 600; color: #4a5e50; cursor: pointer;
+  }
+  .btn-submit {
+    background: linear-gradient(135deg,#2d8f4e,#1e6b38); color:#fff; border:none;
+    border-radius:10px; padding:10px 22px; font-family:'Poppins',sans-serif;
+    font-size:13px; font-weight:600; cursor:pointer; transition:opacity 0.15s;
+  }
+  .btn-submit:hover { opacity:0.9; }
+  .btn-submit:disabled { opacity:0.6; }
+
+  /* ===== TOAST ===== */
+  .portal-toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: #1e3d2a; color: #fff; padding: 12px 20px; border-radius: 12px;
+    font-size: 13px; font-weight: 600; z-index: 2000;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2); display: none;
+    animation: toastIn 0.3s ease;
+    max-width: 320px;
+  }
+  @keyframes toastIn { from { transform:translateY(16px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+  .portal-toast.success { background: #059669; }
+  .portal-toast.error   { background: #dc2626; }
+  .portal-toast.info    { background: #0284c7; }
+</style>
 </head>
 <body>
 
-<div class="admin-wrapper">
-  <!-- Top Header -->
-  <header class="admin-header">
-    <div class="logo"><img src="/logo.gif" alt="AIT Pune Logo"></div>
-    <div class="brand">
-      <div class="title">XEROX CENTRE</div>
-      <div class="sub">AIT, PUNE <span class="admin-badge">ADMIN PORTAL</span></div>
+<!-- ===== HEADER ===== -->
+<header class="portal-header">
+  <div class="portal-logo"><img src="/logo.gif" alt="AIT Logo"></div>
+  <div class="portal-brand-text">
+    <div class="brand-title">XEROX CENTRE</div>
+    <div class="brand-sub">AIT, PUNE</div>
+  </div>
+  <div class="portal-divider"></div>
+  <div class="portal-page-title">ADMIN DESK</div>
+  <div class="portal-header-right">
+    <!-- Bell -->
+    <button class="notif-bell-btn" id="btn-notif-bell" title="Notifications">
+      <svg viewBox="0 0 24 24" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="notif-badge hidden" id="notif-badge-count">0</span>
+    </button>
+    <!-- User -->
+    <div class="user-pill">
+      <svg viewBox="0 0 24 24" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <div>
+        <div class="user-pill-text" id="admin-welcome-name">Admin</div>
+        <div class="user-pill-sub">Login</div>
+      </div>
+      <svg viewBox="0 0 24 24" stroke-width="2" style="width:12px;height:12px;"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
-    <div class="spacer"></div>
-    <span class="welcome-name" id="admin-welcome-name">Loading...</span>
-    <button class="signin" id="admin-logout-btn">Sign Out</button>
-  </header>
+    <!-- Sign Out -->
+    <button class="signout-btn" id="admin-logout-btn">
+      <svg viewBox="0 0 24 24" stroke="#fff" fill="none" stroke-width="2" style="width:16px;height:16px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</header>
 
-  <!-- Top Notification Banner for Live Incoming Print Requests -->
-  <div id="admin-incoming-alert" class="admin-incoming-banner" style="display:none;">
-    <div class="incoming-alert-content">
-      <span class="incoming-alert-icon">⚡🔔</span>
-      <span id="incoming-alert-text" class="incoming-alert-text">New Print Request Received!</span>
+<!-- ===== NOTIFICATION BANNER ===== -->
+<div id="admin-incoming-alert" class="admin-incoming-banner" style="display:none;">
+  <div class="incoming-alert-content">
+    <span class="incoming-alert-icon">⚡🔔</span>
+    <span id="incoming-alert-text">New Print Request Received!</span>
+  </div>
+  <div class="incoming-alert-actions">
+    <button type="button" class="alert-view-btn" id="btn-view-incoming">View Request ↓</button>
+    <button type="button" class="alert-dismiss-btn" id="btn-dismiss-incoming">✕</button>
+  </div>
+</div>
+
+<main class="portal-main">
+
+  <!-- ===== TABS ===== -->
+  <div class="portal-tabs">
+    <button type="button" class="ptab active" id="tab-btn-requests">
+      📋 Print Requests
+      <span class="ptab-count" id="tab-req-count">0</span>
+    </button>
+    <button type="button" class="ptab" id="tab-btn-assignments">
+      📚 Assignments
+      <span class="ptab-count" id="tab-asgn-count">0</span>
+    </button>
+  </div>
+
+  <!-- ===== TAB 1: PRINT REQUESTS ===== -->
+  <div id="tab-requests-view">
+    <!-- Status card row -->
+    <div class="status-cards-row" id="status-cards-row">
+      <div class="status-card card-new active-filter" data-filter="New" id="scard-new">
+        <span class="status-card-beacon" style="background:#ef4444;"></span>
+        <div class="status-card-icon">📄</div>
+        <div class="status-card-label">New Request</div>
+        <div class="status-card-count" id="scard-count-new">0</div>
+      </div>
+      <div class="status-card card-queue" data-filter="Accepted" id="scard-queue">
+        <span class="status-card-beacon" style="background:#93c5fd;"></span>
+        <div class="status-card-icon">🕐</div>
+        <div class="status-card-label">Queue</div>
+        <div class="status-card-count" id="scard-count-queue">0</div>
+      </div>
+      <div class="status-card card-print" data-filter="Printing" id="scard-print">
+        <span class="status-card-beacon" style="background:#f59e0b;"></span>
+        <div class="status-card-icon">🖨️</div>
+        <div class="status-card-label">Printing</div>
+        <div class="status-card-count" id="scard-count-print">0</div>
+      </div>
+      <div class="status-card card-ready" data-filter="Printed" id="scard-printed">
+        <span class="status-card-beacon" style="background:#a78bfa;"></span>
+        <div class="status-card-icon">🖨️</div>
+        <div class="status-card-label">Printed</div>
+        <div class="status-card-count" id="scard-count-printed">0</div>
+      </div>
+      <div class="status-card card-collect" data-filter="Ready for Collection" id="scard-collect">
+        <span class="status-card-beacon" style="background:#34d399;"></span>
+        <div class="status-card-icon">✅</div>
+        <div class="status-card-label">Ready to be Collected</div>
+        <div class="status-card-count" id="scard-count-collect">0</div>
+      </div>
+      <div class="status-card card-done" data-filter="Collected" id="scard-done">
+        <span class="status-card-beacon" style="background:#60a5fa;"></span>
+        <div class="status-card-icon">✨</div>
+        <div class="status-card-label">Completed Tasks</div>
+        <div class="status-card-count" id="scard-count-done">0</div>
+      </div>
     </div>
-    <div class="incoming-alert-actions">
-      <button type="button" class="alert-view-btn" id="btn-view-incoming">View Request ↓</button>
-      <button type="button" class="alert-dismiss-btn" id="btn-dismiss-incoming">✕</button>
+
+    <!-- Orders panel -->
+    <div class="content-panel">
+      <div class="content-panel-header">
+        <div>
+          <h2 class="content-panel-title" id="orders-panel-title">All Print Requests</h2>
+          <p class="content-panel-sub">Live view • auto-refreshes every 4 seconds</p>
+        </div>
+        <button class="refresh-btn" id="refresh-orders-btn">🔄 Refresh</button>
+      </div>
+
+      <div class="filter-row">
+        <div class="search-box-wrap">
+          <span class="s-icon">🔍</span>
+          <input type="text" class="search-box-input" id="admin-search-input" placeholder="Search by name, email or Order ID…">
+        </div>
+        <div class="filter-pills" id="status-filters">
+          <button type="button" class="fpill active" data-filter="all">All Orders</button>
+          <button type="button" class="fpill" data-filter="pending">Pending <span id="pill-pending-count" class="badge-pill" style="display:none;background:#d97706;">0</span></button>
+          <button type="button" class="fpill" data-filter="New" id="filter-pill-new">New <span id="pill-new-count" class="badge-pill" style="display:none;background:#b45309;">0</span></button>
+          <button type="button" class="fpill" data-filter="Accepted">Accepted</button>
+          <button type="button" class="fpill" data-filter="Printing">Printing</button>
+          <button type="button" class="fpill" data-filter="Ready for Collection">Ready</button>
+          <button type="button" class="fpill" data-filter="Collected" id="filter-pill-completed">Completed</button>
+        </div>
+      </div>
+
+      <div class="orders-body">
+        <div id="orders-loading">
+          <div class="spinner"></div>
+          <p>Loading requests…</p>
+        </div>
+        <div id="orders-container" class="admin-orders-list" style="display:none;"></div>
+        <div id="orders-empty" style="display:none;">
+          <div class="empty-icon">📭</div>
+          <h3>No Requests Found</h3>
+          <p>No print jobs match your search or filter.</p>
+        </div>
+      </div>
     </div>
   </div>
 
-  <main class="admin-main">
-    <!-- Admin Navigation Tabs -->
-    <div class="admin-tabs-nav">
-      <button type="button" class="admin-nav-tab active" id="tab-btn-requests">
-        <span>📋</span> Print Document Requests (<span id="tab-req-count">0</span>)
-      </button>
-      <button type="button" class="admin-nav-tab" id="tab-btn-assignments">
-        <span>📚</span> Subject Assignments (<span id="tab-asgn-count">0</span>)
-      </button>
-    </div>
-
-    <!-- ================= TAB 1: DOCUMENT REQUESTS ================= -->
-    <div id="tab-requests-view">
-      <div class="admin-top-bar">
+  <!-- ===== TAB 2: ASSIGNMENTS ===== -->
+  <div id="tab-assignments-view" style="display:none;">
+    <div class="content-panel">
+      <div class="content-panel-header">
         <div>
-          <h1 class="page-title" style="margin:0 0 6px 0; font-size:26px;">Print Document Requests</h1>
-          <p class="admin-subtext">Manage incoming student print jobs, preview or download uploaded files for printing, and update live fulfillment status.</p>
+          <h2 class="content-panel-title">Subject Assignments</h2>
+          <p class="content-panel-sub">Publish lab assignments visible to all students</p>
         </div>
-        <button class="refresh-btn" id="refresh-orders-btn">🔄 Refresh Requests</button>
+        <button class="add-asgn-btn" id="btn-open-add-asgn">➕ Add Assignment</button>
       </div>
 
-      <!-- Stats Summary Cards -->
-      <div class="admin-stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon">📄</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-total-orders">0</div>
-            <div class="stat-label">Total Print Orders</div>
-          </div>
+      <div class="filter-row">
+        <div class="search-box-wrap">
+          <span class="s-icon">🔍</span>
+          <input type="text" class="search-box-input" id="admin-asgn-search-input" placeholder="Search assignments…">
         </div>
-        <div class="stat-card stat-pending">
-          <div class="stat-icon">⏳</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-pending-orders">0</div>
-            <div class="stat-label">In Queue / Printing</div>
-          </div>
-        </div>
-        <div class="stat-card stat-ready">
-          <div class="stat-icon">📦</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-ready-orders">0</div>
-            <div class="stat-label">Ready for Collection</div>
-          </div>
-        </div>
-        <div class="stat-card stat-revenue">
-          <div class="stat-icon">💰</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-total-revenue">₹0</div>
-            <div class="stat-label">Total Revenue Collected</div>
-          </div>
+        <div class="filter-pills" id="admin-asgn-subject-filters">
+          <button type="button" class="fpill active" data-subject="all">All Subjects</button>
         </div>
       </div>
 
-      <!-- Search & Filter Controls -->
-      <div class="admin-controls-card">
-        <div class="admin-search-wrap">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="admin-search-input" class="admin-search-input" placeholder="Search by Student Name, Email, or Order ID (e.g. ORD-XXXX)...">
+      <div class="orders-body">
+        <div id="admin-asgn-loading">
+          <div class="spinner"></div>
+          <p>Loading assignments…</p>
         </div>
-        <div class="status-filter-pills" id="status-filters">
-          <button type="button" class="filter-pill active" data-filter="all">All Orders</button>
-          <button type="button" class="filter-pill" data-filter="pending" id="filter-pill-pending">
-            Pending <span class="badge-count" id="pill-pending-count" style="display:none; background:#d97706; color:#fff; padding:1px 6px; border-radius:999px; font-size:11px; margin-left:4px;">0</span>
-          </button>
-          <button type="button" class="filter-pill" data-filter="New" id="filter-pill-new">
-            New Requests <span class="badge-count" id="pill-new-count" style="display:none; background:#b45309; color:#fff; padding:1px 6px; border-radius:999px; font-size:11px; margin-left:4px;">0</span>
-          </button>
-          <button type="button" class="filter-pill" data-filter="Accepted">Accepted</button>
-          <button type="button" class="filter-pill" data-filter="Printing">Printing</button>
-          <button type="button" class="filter-pill" data-filter="Ready for Collection">Ready for Collection</button>
-          <button type="button" class="filter-pill" data-filter="Collected" id="filter-pill-completed">Completed</button>
+        <div id="admin-asgn-grid" class="asgn-grid" style="display:none;"></div>
+        <div id="admin-asgn-empty" style="display:none;">
+          <div class="empty-icon">📚</div>
+          <h3>No Assignments Yet</h3>
+          <p>Click "Add Assignment" to post a lab assignment for students.</p>
         </div>
-      </div>
-
-      <!-- Orders / Requests Container -->
-      <div id="orders-loading" class="admin-loading-state">
-        <div class="spinner"></div>
-        <p>Loading document requests...</p>
-      </div>
-
-      <div id="orders-container" class="admin-orders-list" style="display:none;">
-        <!-- Populated dynamically by admin.js -->
-      </div>
-
-      <div id="orders-empty" class="admin-empty-state" style="display:none;">
-        <div class="empty-icon">📭</div>
-        <h3>No Document Requests Found</h3>
-        <p>No print jobs match your search or filter criteria.</p>
       </div>
     </div>
+  </div>
 
-    <!-- ================= TAB 2: SUBJECT ASSIGNMENTS MANAGER ================= -->
-    <div id="tab-assignments-view" style="display:none;">
-      <div class="admin-top-bar">
-        <div>
-          <h1 class="page-title" style="margin:0 0 6px 0; font-size:26px;">Subject Practical Assignments</h1>
-          <p class="admin-subtext">Publish lab experiments, guidelines, submission deadlines, and demo attachment writeups for students.</p>
-        </div>
-        <button class="upload-btn" id="btn-open-add-asgn" style="box-shadow: 0 4px 14px rgba(92,184,92,0.3);">➕ Add New Assignment</button>
-      </div>
+</main>
 
-      <!-- Search & Filter for Assignments -->
-      <div class="admin-controls-card">
-        <div class="admin-search-wrap">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="admin-asgn-search-input" class="admin-search-input" placeholder="Search experiments by title, subject or experiment number...">
-        </div>
-        <div class="status-filter-pills" id="admin-asgn-subject-filters">
-          <button type="button" class="filter-pill active" data-subject="all">All Subjects</button>
-        </div>
-      </div>
-
-      <!-- Assignments Loading & Grid -->
-      <div id="admin-asgn-loading" class="admin-loading-state">
-        <div class="spinner"></div>
-        <p>Loading subject assignments...</p>
-      </div>
-
-      <div id="admin-asgn-grid" class="asgn-grid" style="display:none;">
-        <!-- Populated dynamically by admin.js -->
-      </div>
-
-      <div id="admin-asgn-empty" class="admin-empty-state" style="display:none;">
-        <div class="empty-icon">📚</div>
-        <h3>No Assignments Published</h3>
-        <p>Click "Add New Assignment" above to post practical lab manuals for students.</p>
-      </div>
-    </div>
-  </main>
-</div>
-
-<!-- ADD ASSIGNMENT MODAL -->
+<!-- ===== ADD ASSIGNMENT MODAL ===== -->
 <div id="admin-asgn-modal" class="modal-overlay" style="display:none;">
-  <div class="modal-card">
-    <div class="modal-header">
-      <h3 class="modal-title">➕ Add New Subject Lab Assignment</h3>
-      <button type="button" class="modal-close" id="modal-asgn-close">✕</button>
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>➕ Add Assignment</h3>
+      <button type="button" class="modal-x" id="modal-asgn-close">✕</button>
     </div>
     <form id="add-asgn-form">
-      <div class="modal-body">
-        <div class="modal-row">
-          <div class="modal-form-group">
-            <label class="auth-label">Subject *</label>
-            <input class="auth-input" type="text" id="asgn-subject-input" placeholder="e.g. Computer Networks, DBMS, OS, AI..." required>
-          </div>
-          <div class="modal-form-group">
-            <label class="auth-label">Experiment Number</label>
-            <input class="auth-input" type="text" id="asgn-expno-input" placeholder="e.g. Exp 04">
-          </div>
+      <div class="modal-body-pad">
+        <div class="mfield">
+          <label>Subject *</label>
+          <input type="text" id="asgn-subject-input" placeholder="e.g. Computer Networks, DBMS, OS…" required>
         </div>
-
-        <div class="modal-form-group">
-          <label class="auth-label">Experiment / Assignment Title *</label>
-          <input class="auth-input" type="text" id="asgn-title-input" placeholder="e.g. Client-Server Socket Programming (TCP/UDP)" required>
+        <div class="mfield">
+          <label>Submission Due Date</label>
+          <input type="date" id="asgn-deadline-input">
         </div>
-
-        <div class="modal-form-group">
-          <label class="auth-label">Experiment Info &amp; Objectives</label>
-          <textarea class="modal-textarea" id="asgn-info-input" placeholder="Describe the practical problem statement, objectives, expected output, and tools to use..."></textarea>
-        </div>
-
-        <div class="modal-row">
-          <div class="modal-form-group">
-            <label class="auth-label">Submission Guidelines</label>
-            <textarea class="modal-textarea" id="asgn-guidelines-input" style="min-height:60px;" placeholder="e.g. Handwritten algorithms + code printout in spiral file."></textarea>
-          </div>
-          <div class="modal-form-group">
-            <label class="auth-label">Submission Due Date</label>
-            <input class="auth-input" type="date" id="asgn-deadline-input">
-          </div>
-        </div>
-
-        <div class="modal-form-group">
-          <label class="auth-label">Demo Assignment Attachment (PDF, Image, Doc) for Student Preview</label>
-          <div class="modal-file-upload" id="asgn-dropzone">
-            <p style="margin:0 0 6px; font-weight:600; color:#2b7a2b;">📎 Select or Drop Demo Assignment File</p>
-            <span style="font-size:12px; color:#6c8072;" id="asgn-file-status">Supports PDF, JPG, PNG, DOC (max 4 MB)</span>
+        <div class="mfield">
+          <label>Assignment Attachment (PDF, Image, Doc)</label>
+          <div class="file-drop" id="asgn-dropzone">
+            <p>📎 Select or Drop File</p>
+            <span id="asgn-file-status">Supports PDF, JPG, PNG, DOC (max 4 MB)</span>
             <input type="file" id="asgn-file-input" style="display:none;" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.txt">
           </div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="upload-btn secondary-btn" id="modal-asgn-cancel">Cancel</button>
-        <button type="submit" class="upload-btn" id="submit-asgn-btn">Publish Assignment</button>
+      <div class="modal-foot">
+        <button type="button" class="btn-cancel" id="modal-asgn-cancel">Cancel</button>
+        <button type="submit" class="btn-submit" id="submit-asgn-btn">Publish Assignment</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- DEMO ATTACHMENT PREVIEW MODAL -->
+<!-- ===== PREVIEW MODAL ===== -->
 <div id="admin-preview-modal" class="modal-overlay" style="display:none;">
-  <div class="modal-card">
-    <div class="modal-header">
-      <h3 id="admin-preview-title" class="modal-title">Attachment Preview</h3>
-      <button type="button" class="modal-close" id="admin-preview-close">✕</button>
+  <div class="modal-box" style="max-width:700px;">
+    <div class="modal-head">
+      <h3 id="admin-preview-title">Attachment Preview</h3>
+      <button type="button" class="modal-x" id="admin-preview-close">✕</button>
     </div>
-    <div class="modal-body" id="admin-preview-body"></div>
-    <div class="modal-footer">
-      <a href="#" id="admin-preview-dl-link" class="upload-btn" download>⬇ Download File</a>
+    <div class="modal-body-pad" id="admin-preview-body" style="padding:0; max-height:75vh; overflow:auto;"></div>
+    <div class="modal-foot">
+      <a href="#" id="admin-preview-dl-link" class="btn-submit" download>⬇ Download File</a>
     </div>
   </div>
 </div>
 
-<!-- Notification Toast -->
+<!-- Toast -->
 <div id="admin-toast" class="admin-toast"></div>
 
 <script src="/admin.js"></script>

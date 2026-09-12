@@ -400,33 +400,59 @@ function updateStatsUI(stats) {
     pendingPillCount.textContent = pCnt;
     pendingPillCount.style.display = pCnt > 0 ? 'inline-block' : 'none';
   }
+
+  // Update status card counts (new card-grid UI)
+  const scardCounts = {
+    new:     stats.newCount || stats.newRequestsCount || 0,
+    queue:   stats.acceptedCount || 0,
+    print:   stats.printingCount || 0,
+    printed: stats.printedCount || 0,
+    collect: stats.readyCount || 0,
+    done:    stats.completedCount || 0
+  };
+  Object.entries(scardCounts).forEach(([key, val]) => {
+    const el = document.getElementById(`scard-count-${key}`);
+    if (el) el.textContent = val;
+  });
+
+  // Notification bell badge
+  const bellBadge = document.getElementById('notif-badge-count');
+  if (bellBadge) {
+    const unread = (stats.newCount || 0) + (stats.newRequestsCount || 0);
+    bellBadge.textContent = unread;
+    bellBadge.classList.toggle('hidden', unread === 0);
+  }
 }
 
+
 function computeStatsFromOrders(orders) {
-  let pending = 0;
-  let ready = 0;
-  let revenue = 0;
-  let newCount = 0;
+  let pending = 0, ready = 0, revenue = 0, newCount = 0;
+  let acceptedCount = 0, printingCount = 0, printedCount = 0, completedCount = 0;
   for (const o of orders) {
     if (o.paymentStatus !== 'CANCELLED' && o.paymentStatus !== 'FAILED') {
       revenue += (o.total || 0);
     }
     const st = (o.status || '').toUpperCase();
     if (st === 'REQUEST_RECEIVED' || o.status === 'New' || o.status === 'Order Received') {
-      newCount++;
-      pending++;
+      newCount++; pending++;
+    } else if (st === 'ACCEPTED' || o.status === 'Accepted') {
+      acceptedCount++; pending++;
+    } else if (st === 'PRINTING' || o.status === 'Printing' || o.status === 'Printing in Progress') {
+      printingCount++; pending++;
+    } else if (st === 'PRINTED' || o.status === 'Printed') {
+      printedCount++; pending++;
     } else if (st === 'READY' || o.status === 'Ready for Collection' || o.status === 'Ready for Pickup') {
       ready++;
-    } else if (st !== 'COMPLETED' && o.status !== 'Collected' && o.status !== 'Completed' && st !== 'CANCELLED') {
-      pending++;
+    } else if (st === 'COMPLETED' || o.status === 'Collected' || o.status === 'Completed') {
+      completedCount++;
     }
   }
   updateStatsUI({
     totalOrders: orders.length,
-    newCount,
-    newRequestsCount: newCount,
+    newCount, newRequestsCount: newCount,
     inProgressCount: pending,
-    readyCount: ready,
+    acceptedCount, printingCount, printedCount,
+    readyCount: ready, completedCount,
     totalRevenue: revenue
   });
 }
@@ -724,9 +750,9 @@ if (searchInput) {
 const statusFilters = document.getElementById('status-filters');
 if (statusFilters) {
   statusFilters.addEventListener('click', (e) => {
-    const btn = e.target.closest('.filter-pill');
+    const btn = e.target.closest('.filter-pill, .fpill');
     if (!btn) return;
-    document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.filter-pill, .fpill').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     activeFilter = btn.getAttribute('data-filter');
     renderOrders();
@@ -738,6 +764,28 @@ if (refreshBtn) {
   refreshBtn.addEventListener('click', () => {
     loadDashboardData();
     showToast('Orders refreshed!', 'info');
+  });
+}
+
+// Status card click handlers (new card-grid UI)
+const statusCardsRow = document.getElementById('status-cards-row');
+if (statusCardsRow) {
+  statusCardsRow.addEventListener('click', (e) => {
+    const card = e.target.closest('.status-card[data-filter]');
+    if (!card) return;
+    // Toggle active on cards
+    document.querySelectorAll('.status-card').forEach(c => c.classList.remove('active-filter'));
+    card.classList.add('active-filter');
+    const filter = card.getAttribute('data-filter');
+    // Also update pill active state
+    document.querySelectorAll('.filter-pill, .fpill').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-filter') === filter);
+    });
+    activeFilter = filter;
+    // Update panel title
+    const titleEl = document.getElementById('orders-panel-title');
+    if (titleEl) titleEl.textContent = card.querySelector('.status-card-label')?.textContent + ' Requests';
+    renderOrders();
   });
 }
 
@@ -763,6 +811,7 @@ tabBtnAssignments?.addEventListener('click', () => {
   if (tabAssignmentsView) tabAssignmentsView.style.display = 'block';
   loadAdminAssignments();
 });
+
 
 // ===================================================================
 // Admin Subject Assignments Manager
@@ -968,25 +1017,19 @@ addAsgnForm?.addEventListener('submit', async (e) => {
   }
 
   const subject = document.getElementById('asgn-subject-input')?.value.trim();
-  const expNo = document.getElementById('asgn-expno-input')?.value.trim();
-  const title = document.getElementById('asgn-title-input')?.value.trim();
-  const info = document.getElementById('asgn-info-input')?.value.trim();
-  const guidelines = document.getElementById('asgn-guidelines-input')?.value.trim();
-  const deadline = document.getElementById('asgn-deadline-input')?.value;
+  const deadline = document.getElementById('asgn-deadline-input')?.value || '';
+
+  if (!subject) {
+    alert('Subject is required.');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Publish Assignment'; }
+    return;
+  }
 
   try {
     const res = await fetch('/api/admin/assignments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        subject,
-        experimentNo: expNo,
-        title,
-        info,
-        submissionGuidelines: guidelines,
-        deadline,
-        attachment: attachedFileObject
-      })
+      body: JSON.stringify({ subject, deadline, attachment: attachedFileObject })
     });
     const data = await res.json();
 
