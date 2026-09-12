@@ -1033,6 +1033,12 @@ addAsgnForm?.addEventListener('submit', async (e) => {
     });
     const data = await res.json();
 
+    if (res.status === 401) {
+      alert('Session expired. Please log in again.');
+      window.location.href = '/admin';
+      return;
+    }
+
     if (!res.ok) {
       alert(data.error || 'Failed to publish assignment.');
       return;

@@ -358,6 +358,11 @@ function wireEventListeners() {
         body: JSON.stringify({ subject, deadline, attachment: attachedFileObject })
       });
       const data = await res.json();
+      if (res.status === 401) {
+        alert('Session expired. Please log in again.');
+        window.location.href = '/admin';
+        return;
+      }
       if (!res.ok) throw new Error(data.error || 'Failed');
       showToast('Assignment published!', 'success');
       document.getElementById('add-asgn-form').reset();
