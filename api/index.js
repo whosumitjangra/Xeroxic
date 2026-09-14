@@ -1107,9 +1107,6 @@ async function handler(req, res) {
 
     // ---------------- ASSIGNMENTS: LIST (STUDENTS & ADMIN) ----------------
     if (pathname === '/api/assignments' && req.method === 'GET') {
-      const session = getSessionFromReq(req);
-      if (!session) return sendJSON(res, 401, { error: 'Not logged in.' });
-
       const assignments = await getAssignments();
       const sanitized = assignments.map(a => ({
         id: a.id,
@@ -1180,9 +1177,6 @@ async function handler(req, res) {
 
     // ---------------- ASSIGNMENTS: DOWNLOAD / PREVIEW DEMO ATTACHMENT ----------------
     if (pathname.startsWith('/api/assignments/') && pathname.endsWith('/attachment') && req.method === 'GET') {
-      const session = getSessionFromReq(req);
-      if (!session) return sendJSON(res, 401, { error: 'Not logged in.' });
-
       const parts = pathname.split('/');
       const id = parts[3];
       const assignments = await getAssignments();

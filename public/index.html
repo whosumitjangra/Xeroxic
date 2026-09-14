@@ -19,6 +19,7 @@
       <div class="sub">AIT, PUNE — ONLINE CAMPUS PRINTING PORTAL</div>
     </div>
     <div class="spacer"></div>
+    <button class="track-link" data-target="assignments" style="margin-right:8px;">📚 Subject Assignments</button>
     <button class="signin" onclick="window.location.href='login.html'">Student Sign In</button>
   </header>
 
@@ -39,8 +40,9 @@
         <li><span>✓</span> Automatic Server Price Calculator</li>
         <li><span>✓</span> 5-Stage Live Order Tracking</li>
       </ul>
-      <div class="role-card-actions">
+      <div class="role-card-actions" style="display:flex; flex-direction:column; gap:8px;">
         <a href="login.html" class="upload-btn role-launch-btn">Student Sign In / Register →</a>
+        <button type="button" class="upload-btn role-launch-btn" data-target="assignments" style="background:#eef7f1; color:#1e6b38; border:1.5px solid #c2e2d8;">📚 Browse Subject Assignments</button>
       </div>
     </div>
 
@@ -373,7 +375,7 @@
     <h2 class="centre-title">Subject Lab Assignments</h2>
   </header>
 
-  <button class="back-btn" data-target="dashboard">← Back to Dashboard</button>
+  <button class="back-btn" id="asgn-back-btn">← Back</button>
 
   <div class="asgn-container">
     <div class="asgn-header-card">

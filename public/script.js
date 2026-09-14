@@ -98,6 +98,15 @@ document.addEventListener('click', (e) => {
   }
 });
 
+document.getElementById('asgn-back-btn')?.addEventListener('click', () => {
+  const nameEl = document.getElementById('welcome-name');
+  if (nameEl && nameEl.textContent) {
+    showPage('dashboard');
+  } else {
+    showPage('landing');
+  }
+});
+
 // ---------- Image compression helper for fast & reliable cloud uploads ----------
 async function compressImageIfLarge(file) {
   if (!file.type.startsWith('image/') || file.size <= 1.5 * 1024 * 1024) {
