@@ -105,6 +105,33 @@
   .content-panel-sub { font-size:12px;color:#6c8072;margin:3px 0 0; }
   .panel-body { padding:24px; }
 
+  /* Filter row */
+  .filter-row {
+    padding: 14px 24px;
+    border-bottom: 1.5px solid #f0f5f1;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .search-box-wrap { position: relative; flex: 1; min-width: 200px; }
+  .search-box-wrap .s-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 14px; color: #7d9183; pointer-events: none;
+  }
+  .search-box-input {
+    width: 100%; padding: 9px 14px 9px 36px;
+    border: 1.5px solid #dce5dc; border-radius: 12px;
+    font-family: 'Poppins',sans-serif; font-size: 13px; color: #1e3d2a;
+    outline: none; box-sizing: border-box; transition: border 0.2s;
+  }
+  .search-box-input:focus { border-color: #2d8f4e; }
+  .filter-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .fpill {
+    padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    border: 1.5px solid #dce5dc; background: #f9fbf9; color: #556b5d;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .fpill:hover { border-color: #2d8f4e; color: #1e6b38; }
+  .fpill.active { background: #2d8f4e; color: #fff; border-color: #2d8f4e; }
+
   /* ===== CREATE STAFF FORM ===== */
   .create-staff-panel {
     background:#f8fbf9; border:1.5px solid #dce5dc;
@@ -250,6 +277,15 @@
           <p class="content-panel-sub">Add new assignments visible to all students</p>
         </div>
         <button class="btn-green" id="btn-open-add-asgn">➕ Add Assignment</button>
+      </div>
+      <div class="filter-row">
+        <div class="search-box-wrap">
+          <span class="s-icon">🔍</span>
+          <input type="text" class="search-box-input" id="sa-asgn-search-input" placeholder="Search assignments…">
+        </div>
+        <div class="filter-pills" id="sa-asgn-subject-filters">
+          <button type="button" class="fpill active" data-subject="all">All Subjects</button>
+        </div>
       </div>
       <div class="panel-body">
         <div id="sa-asgn-loading"><div class="spinner"></div><p style="color:#7d9183;font-size:13px;">Loading…</p></div>
@@ -427,28 +463,6 @@
 
 <div id="super-toast" class="admin-toast"></div>
 
-<script>
-// Section switcher for action cards
-function showSection(name) {
-  ['assignments','staff','pricing'].forEach(s => {
-    document.getElementById('section-' + s).style.display = s === name ? 'block' : 'none';
-    const card = document.getElementById('acard-' + s);
-    if (card) card.classList.toggle('active-action', s === name);
-  });
-}
-
-// Wire up assignment grid/modal for super admin using same admin.js functions
-// (super-admin.js will handle its own flow, this just wires the section toggle)
-document.getElementById('btn-open-add-asgn')?.addEventListener('click', () => {
-  document.getElementById('admin-asgn-modal').style.display = 'flex';
-});
-document.getElementById('modal-asgn-close')?.addEventListener('click', () => {
-  document.getElementById('admin-asgn-modal').style.display = 'none';
-});
-document.getElementById('modal-asgn-cancel')?.addEventListener('click', () => {
-  document.getElementById('admin-asgn-modal').style.display = 'none';
-});
-</script>
 <script src="/super-admin.js"></script>
 </body>
 </html>

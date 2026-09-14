@@ -52,6 +52,18 @@ function loadAllData() {
 // ===================================================================
 // SECTION: ASSIGNMENTS
 // ===================================================================
+let allSuperAssignments = [];
+let currentSuperSubjectFilter = 'all';
+let currentSuperSearch = '';
+
+function formatSuperBytes(bytes) {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
 async function loadAssignments() {
   const loadingEl = document.getElementById('sa-asgn-loading');
   const gridEl    = document.getElementById('sa-asgn-grid');
@@ -67,72 +79,150 @@ async function loadAssignments() {
     });
     if (!res.ok) throw new Error('Failed to load assignments');
     const data = await res.json();
-    const assignments = data.assignments || [];
+    allSuperAssignments = data.assignments || [];
 
-    if (loadingEl) loadingEl.style.display = 'none';
-
-    if (assignments.length === 0) {
-      if (emptyEl) emptyEl.style.display = 'block';
-      return;
-    }
-
-    if (emptyEl) emptyEl.style.display = 'none';
-    if (gridEl)  gridEl.style.display = 'grid';
-    gridEl.innerHTML = '';
-
-    assignments.forEach(a => {
-      const card = document.createElement('div');
-      card.className = 'asgn-card';
-      card.id = `sa-asgn-${a.id}`;
-      const hasAtt = a.hasAttachment;
-      const previewBtn = hasAtt
-        ? `<button type="button" class="action-btn preview-btn"
-             onclick="openPreview('${a.id}','${encodeURIComponent(a.attachmentName||'file')}')">
-             👁 Preview
-           </button>
-           <a href="/api/assignments/${a.id}/attachment" class="action-btn download-btn"
-              download="${a.attachmentName||'file'}">⬇ Download</a>`
-        : `<span style="font-size:12px;color:#7d9183;">No file</span>`;
-      card.innerHTML = `
-        <div class="asgn-card-top">
-          <span class="asgn-subject-tag">${a.subject}</span>
-          ${a.deadline ? `<span class="asgn-deadline-pill">Due: ${a.deadline}</span>` : ''}
-        </div>
-        <h3 class="asgn-title">${a.title || a.subject}</h3>
-        <div class="asgn-card-footer">
-          <div class="asgn-actions">
-            ${previewBtn}
-            <button type="button" class="action-btn delete-asgn-btn" style="margin-left:auto;"
-              onclick="deleteAssignment('${a.id}')">🗑 Delete</button>
-          </div>
-        </div>
-      `;
-      gridEl.appendChild(card);
-    });
+    setupSuperSubjectFilters(allSuperAssignments);
+    renderSuperAssignments();
   } catch (err) {
     showToast('Failed to load assignments: ' + err.message, 'error');
+  } finally {
     if (loadingEl) loadingEl.style.display = 'none';
   }
+}
+
+function setupSuperSubjectFilters(assignments) {
+  const container = document.getElementById('sa-asgn-subject-filters');
+  if (!container) return;
+  const subjects = Array.from(new Set(assignments.map(a => a.subject).filter(Boolean)));
+
+  if (currentSuperSubjectFilter !== 'all' && !subjects.includes(currentSuperSubjectFilter)) {
+    currentSuperSubjectFilter = 'all';
+  }
+
+  const isAllActive = currentSuperSubjectFilter === 'all';
+  container.innerHTML = `<button type="button" class="fpill ${isAllActive ? 'active' : ''}" data-subject="all">All Subjects (${assignments.length})</button>`;
+
+  subjects.forEach(subj => {
+    const count = assignments.filter(a => a.subject === subj).length;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `fpill ${currentSuperSubjectFilter === subj ? 'active' : ''}`;
+    btn.dataset.subject = subj;
+    btn.textContent = `${subj} (${count})`;
+    btn.onclick = () => {
+      container.querySelectorAll('.fpill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentSuperSubjectFilter = subj;
+      renderSuperAssignments();
+    };
+    container.appendChild(btn);
+  });
+
+  const allBtn = container.querySelector('[data-subject="all"]');
+  if (allBtn) {
+    allBtn.onclick = () => {
+      container.querySelectorAll('.fpill').forEach(b => b.classList.remove('active'));
+      allBtn.classList.add('active');
+      currentSuperSubjectFilter = 'all';
+      renderSuperAssignments();
+    };
+  }
+}
+
+function renderSuperAssignments() {
+  const gridEl = document.getElementById('sa-asgn-grid');
+  const emptyEl = document.getElementById('sa-asgn-empty');
+  if (!gridEl) return;
+
+  const filtered = allSuperAssignments.filter(a => {
+    const matchesSubject = currentSuperSubjectFilter === 'all' || a.subject === currentSuperSubjectFilter;
+    const q = currentSuperSearch.toLowerCase();
+    const matchesSearch = !q ||
+      (a.subject && a.subject.toLowerCase().includes(q)) ||
+      (a.title && a.title.toLowerCase().includes(q)) ||
+      (a.attachmentName && a.attachmentName.toLowerCase().includes(q));
+    return matchesSubject && matchesSearch;
+  });
+
+  if (filtered.length === 0) {
+    gridEl.style.display = 'none';
+    if (emptyEl) {
+      emptyEl.style.display = 'block';
+      const p = emptyEl.querySelector('p');
+      if (p) p.textContent = allSuperAssignments.length === 0 ? 'No assignments published yet.' : 'No assignments match your search or filter.';
+    }
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = 'none';
+  gridEl.style.display = 'grid';
+  gridEl.innerHTML = '';
+
+  filtered.forEach(a => {
+    const card = document.createElement('div');
+    card.className = 'asgn-card';
+    card.id = `sa-asgn-${a.id}`;
+    const hasAtt = a.hasAttachment;
+    const previewBtn = hasAtt
+      ? `<button type="button" class="action-btn preview-btn"
+           onclick="openPreview('${a.id}','${encodeURIComponent(a.attachmentName||'file')}')">
+           👁 Preview
+         </button>
+         <a href="/api/assignments/${a.id}/attachment" class="action-btn download-btn"
+            download="${a.attachmentName||'file'}">⬇ Download</a>`
+      : '';
+
+    const attChipHTML = hasAtt ? `
+      <div class="asgn-att-chip">
+        <span class="att-icon">📎</span>
+        <div class="att-info">
+          <span class="att-name" title="${a.attachmentName || 'Attachment'}">${a.attachmentName || 'Attachment'}</span>
+          <span class="att-size">${formatSuperBytes(a.attachmentSize)}</span>
+        </div>
+      </div>
+    ` : `
+      <div class="asgn-att-chip no-file">
+        <span class="att-icon">📄</span>
+        <div class="att-info">
+          <span class="att-name">No file attached</span>
+        </div>
+      </div>
+    `;
+
+    card.innerHTML = `
+      <div>
+        <div class="asgn-card-top">
+          <span class="asgn-subject-tag">📘 ${a.subject}</span>
+          ${a.deadline ? `<span class="asgn-deadline-pill">📅 Due: ${a.deadline}</span>` : '<span class="asgn-deadline-pill" style="background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;">No Deadline</span>'}
+        </div>
+        <h3 class="asgn-title">${a.title || a.subject}</h3>
+        ${attChipHTML}
+      </div>
+      <div class="asgn-card-footer">
+        <div class="asgn-actions">
+          ${previewBtn}
+          <button type="button" class="action-btn delete-asgn-btn" style="margin-left:auto;"
+            onclick="deleteAssignment('${a.id}')">🗑 Delete</button>
+        </div>
+      </div>
+    `;
+    gridEl.appendChild(card);
+  });
 }
 
 window.deleteAssignment = async function(id) {
   if (!confirm('Permanently delete this assignment?')) return;
   // Optimistic UI remove
-  const card = document.getElementById(`sa-asgn-${id}`);
-  if (card) card.remove();
+  allSuperAssignments = allSuperAssignments.filter(a => a.id !== id);
+  renderSuperAssignments();
+  setupSuperSubjectFilters(allSuperAssignments);
+
   try {
     const res = await fetch(`/api/admin/assignments/${encodeURIComponent(id)}`, {
       method: 'DELETE', headers: { 'Cache-Control': 'no-cache' }
     });
     if (!res.ok) throw new Error('Delete failed');
     showToast('Assignment deleted.', 'info');
-    // Check if grid is now empty
-    const gridEl = document.getElementById('sa-asgn-grid');
-    if (gridEl && !gridEl.children.length) {
-      gridEl.style.display = 'none';
-      const emptyEl = document.getElementById('sa-asgn-empty');
-      if (emptyEl) emptyEl.style.display = 'block';
-    }
   } catch (err) {
     showToast('Delete failed: ' + err.message, 'error');
     loadAssignments(); // recover on error
@@ -326,7 +416,26 @@ function wireEventListeners() {
     finally { if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '💾 Save Pricing'; } }
   });
 
-  // Assignment modal
+  // Search listener for assignments
+  document.getElementById('sa-asgn-search-input')?.addEventListener('input', (e) => {
+    currentSuperSearch = e.target.value.trim();
+    renderSuperAssignments();
+  });
+
+  // Assignment modal controls
+  document.getElementById('btn-open-add-asgn')?.addEventListener('click', () => {
+    const m = document.getElementById('admin-asgn-modal');
+    if (m) m.style.display = 'flex';
+  });
+  document.getElementById('modal-asgn-close')?.addEventListener('click', () => {
+    const m = document.getElementById('admin-asgn-modal');
+    if (m) m.style.display = 'none';
+  });
+  document.getElementById('modal-asgn-cancel')?.addEventListener('click', () => {
+    const m = document.getElementById('admin-asgn-modal');
+    if (m) m.style.display = 'none';
+  });
+
   const asgnFileInput = document.getElementById('asgn-file-input');
   const asgnFileStatus = document.getElementById('asgn-file-status');
   const asgnDropzone = document.getElementById('asgn-dropzone');

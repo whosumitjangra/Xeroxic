@@ -1011,18 +1011,34 @@ async function loadAssignments() {
   }
 }
 
+function formatAsgnBytes(bytes) {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
 function setupSubjectFilters(assignments) {
   const container = document.getElementById('asgn-subject-filters');
   if (!container) return;
   const subjects = Array.from(new Set(assignments.map(a => a.subject).filter(Boolean)));
-  container.innerHTML = '<button type="button" class="filter-pill active" data-subject="all">All Subjects</button>';
+
+  // If current filter subject is no longer in the list, reset to 'all'
+  if (currentSubjectFilter !== 'all' && !subjects.includes(currentSubjectFilter)) {
+    currentSubjectFilter = 'all';
+  }
+
+  const isAllActive = currentSubjectFilter === 'all';
+  container.innerHTML = `<button type="button" class="filter-pill ${isAllActive ? 'active' : ''}" data-subject="all">All Subjects (${assignments.length})</button>`;
 
   subjects.forEach(subj => {
+    const count = assignments.filter(a => a.subject === subj).length;
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'filter-pill';
+    btn.className = `filter-pill ${currentSubjectFilter === subj ? 'active' : ''}`;
     btn.dataset.subject = subj;
-    btn.textContent = subj;
+    btn.textContent = `${subj} (${count})`;
     btn.onclick = () => {
       container.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -1051,16 +1067,21 @@ function renderAssignmentsList() {
   const filtered = allAssignments.filter(a => {
     const matchesSubject = currentSubjectFilter === 'all' || a.subject === currentSubjectFilter;
     const matchesSearch = !search ||
-      (a.title && a.title.toLowerCase().includes(search)) ||
       (a.subject && a.subject.toLowerCase().includes(search)) ||
-      (a.experimentNo && a.experimentNo.toLowerCase().includes(search)) ||
-      (a.info && a.info.toLowerCase().includes(search));
+      (a.title && a.title.toLowerCase().includes(search)) ||
+      (a.attachmentName && a.attachmentName.toLowerCase().includes(search));
     return matchesSubject && matchesSearch;
   });
 
   if (filtered.length === 0) {
     if (gridEl) gridEl.style.display = 'none';
-    if (emptyEl) emptyEl.style.display = 'block';
+    if (emptyEl) {
+      emptyEl.style.display = 'block';
+      const emptyTitle = emptyEl.querySelector('h3');
+      const emptyDesc = emptyEl.querySelector('p');
+      if (emptyTitle) emptyTitle.textContent = allAssignments.length === 0 ? 'No Assignments Yet' : 'No Matching Assignments';
+      if (emptyDesc) emptyDesc.textContent = allAssignments.length === 0 ? 'Staff have not uploaded any subject assignments yet.' : 'Try changing your subject filter or search keyword.';
+    }
     return;
   }
 
@@ -1076,34 +1097,43 @@ function renderAssignmentsList() {
 
     const hasAtt = a.hasAttachment;
     const previewBtnHTML = hasAtt ? `
-      <button type="button" class="action-btn preview-btn" onclick="openAttachmentPreview('${a.id}', '${encodeURIComponent(a.title)}', '${encodeURIComponent(a.attachmentName || 'Demo Assignment')}')">
+      <button type="button" class="action-btn preview-btn" onclick="openAttachmentPreview('${a.id}', '${encodeURIComponent(a.subject)}', '${encodeURIComponent(a.attachmentName || 'Demo Assignment')}')">
         👁 Preview Demo
       </button>
       <a href="/api/assignments/${a.id}/attachment" class="action-btn download-btn" download="${a.attachmentName || 'demo_assignment'}">
         ⬇ Download
       </a>
-      <button type="button" class="action-btn print-direct-btn" onclick="orderAssignmentPrint('${a.id}', '${encodeURIComponent(a.attachmentName || a.title + '.pdf')}')">
+      <button type="button" class="action-btn print-direct-btn" onclick="orderAssignmentPrint('${a.id}', '${encodeURIComponent(a.attachmentName || a.subject + '.pdf')}')">
         🖨 Print This Report
       </button>
-    ` : '<span class="no-att-note">No demo attachment</span>';
+    ` : '';
+
+    const attChipHTML = hasAtt ? `
+      <div class="asgn-att-chip">
+        <span class="att-icon">📎</span>
+        <div class="att-info">
+          <span class="att-name" title="${a.attachmentName || 'Attachment'}">${a.attachmentName || 'Attachment'}</span>
+          <span class="att-size">${formatAsgnBytes(a.attachmentSize)}</span>
+        </div>
+      </div>
+    ` : `
+      <div class="asgn-att-chip no-file">
+        <span class="att-icon">📄</span>
+        <div class="att-info">
+          <span class="att-name">No file attached</span>
+        </div>
+      </div>
+    `;
 
     card.innerHTML = `
-      <div class="asgn-card-top">
-        <span class="asgn-subject-tag">${a.subject}</span>
-        ${a.experimentNo ? `<span class="asgn-exp-badge">${a.experimentNo}</span>` : ''}
-        ${a.deadline ? `<span class="asgn-deadline-pill">Due: ${a.deadline}</span>` : ''}
-      </div>
-      <h3 class="asgn-title">${a.title}</h3>
-      <div class="asgn-section-block">
-        <div class="asgn-section-label">🔬 Experiment Info &amp; Objectives:</div>
-        <p class="asgn-text">${a.info || 'No experiment description provided.'}</p>
-      </div>
-      ${a.submissionGuidelines ? `
-        <div class="asgn-guide-box">
-          <span class="guide-title">📌 Submission Guidelines:</span>
-          <p class="asgn-guide-text">${a.submissionGuidelines}</p>
+      <div>
+        <div class="asgn-card-top">
+          <span class="asgn-subject-tag">📘 ${a.subject}</span>
+          ${a.deadline ? `<span class="asgn-deadline-pill">📅 Due: ${a.deadline}</span>` : '<span class="asgn-deadline-pill" style="background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;">No Deadline</span>'}
         </div>
-      ` : ''}
+        <h3 class="asgn-title">${a.title || a.subject}</h3>
+        ${attChipHTML}
+      </div>
       <div class="asgn-card-footer">
         <div class="asgn-actions">
           ${previewBtnHTML}
