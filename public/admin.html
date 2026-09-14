@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="/style.css">
 <style>
   /* ===== PORTAL SHELL ===== */
-  body { margin:0; background:#eef5f0; font-family:'Poppins',sans-serif; }
+  body { margin:0; background: #eef5f0 url('/site-bg.png') center/cover fixed no-repeat; font-family:'Poppins',sans-serif; }
 
   .portal-header {
     background: linear-gradient(135deg,#2d8f4e,#1e6b38);
@@ -376,7 +376,7 @@
       <div class="status-card card-queue" data-filter="Accepted" id="scard-queue">
         <span class="status-card-beacon" style="background:#93c5fd;"></span>
         <div class="status-card-icon">🕐</div>
-        <div class="status-card-label">Queue</div>
+        <div class="status-card-label">In Queue</div>
         <div class="status-card-count" id="scard-count-queue">0</div>
       </div>
       <div class="status-card card-print" data-filter="Printing" id="scard-print">
@@ -385,16 +385,10 @@
         <div class="status-card-label">Printing</div>
         <div class="status-card-count" id="scard-count-print">0</div>
       </div>
-      <div class="status-card card-ready" data-filter="Printed" id="scard-printed">
-        <span class="status-card-beacon" style="background:#a78bfa;"></span>
-        <div class="status-card-icon">🖨️</div>
-        <div class="status-card-label">Printed</div>
-        <div class="status-card-count" id="scard-count-printed">0</div>
-      </div>
       <div class="status-card card-collect" data-filter="Ready for Collection" id="scard-collect">
         <span class="status-card-beacon" style="background:#34d399;"></span>
-        <div class="status-card-icon">✅</div>
-        <div class="status-card-label">Ready to be Collected</div>
+        <div class="status-card-icon">📍</div>
+        <div class="status-card-label">Ready for Pickup</div>
         <div class="status-card-count" id="scard-count-collect">0</div>
       </div>
       <div class="status-card card-done" data-filter="Collected" id="scard-done">
@@ -402,6 +396,12 @@
         <div class="status-card-icon">✨</div>
         <div class="status-card-label">Completed Tasks</div>
         <div class="status-card-count" id="scard-count-done">0</div>
+      </div>
+      <div class="status-card card-all" data-filter="all" id="scard-all" style="--icon-bg:#f0fdf4; --beacon:#22c55e; --icon-color:#15803d;">
+        <span class="status-card-beacon" style="background:#22c55e;"></span>
+        <div class="status-card-icon">📊</div>
+        <div class="status-card-label">All Print Requests</div>
+        <div class="status-card-count" id="scard-count-all">0</div>
       </div>
     </div>
 

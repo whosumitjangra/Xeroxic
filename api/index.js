@@ -1002,6 +1002,7 @@ async function handler(req, res) {
         printingCount,
         readyCount,
         collectedCount,
+        completedCount: collectedCount,
         inProgressCount: newCount + acceptedCount + printingCount,
         totalRevenue
       });

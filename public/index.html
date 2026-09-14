@@ -112,19 +112,34 @@
 
   <div class="dock">
     <button class="card teal" data-target="printcentre">
-      <span class="card-sticker sticker-teal">⚡ Fast Print</span>
-      <div class="card-title">Print Centre</div>
-      <div class="card-desc">Upload documents &amp; pick up in 5 mins.</div>
+      <div class="card-image-wrap">
+        <img src="/images/card-print.jpg" alt="Print Centre" class="card-img" loading="lazy">
+      </div>
+      <div class="card-content-wrap">
+        <span class="card-sticker sticker-teal">⚡ Fast Print</span>
+        <div class="card-title">Print Centre</div>
+        <div class="card-desc">Upload documents &amp; pick up in 5 mins.</div>
+      </div>
     </button>
     <button class="card blue" data-target="assignments">
-      <span class="card-sticker sticker-blue">📚 Lab Manuals</span>
-      <div class="card-title">Assignments</div>
-      <div class="card-desc">Subject lab experiments &amp; demo sheets.</div>
+      <div class="card-image-wrap">
+        <img src="/images/card-assignment.jpg" alt="Assignments" class="card-img" loading="lazy">
+      </div>
+      <div class="card-content-wrap">
+        <span class="card-sticker sticker-blue">📚 Lab Manuals</span>
+        <div class="card-title">Assignments</div>
+        <div class="card-desc">Subject lab experiments &amp; demo sheets.</div>
+      </div>
     </button>
-    <button class="card pink" data-alert="About Us page coming soon!">
-      <span class="card-sticker sticker-pink">🎓 Campus Xerox</span>
-      <div class="card-title">About Us</div>
-      <div class="card-desc">Fast, student-friendly campus printing.</div>
+    <button class="card pink" data-target="aboutus">
+      <div class="card-image-wrap">
+        <img src="/images/card-about.jpg" alt="About Us" class="card-img" loading="lazy">
+      </div>
+      <div class="card-content-wrap">
+        <span class="card-sticker sticker-pink">🎓 Campus Xerox</span>
+        <div class="card-title">About Us</div>
+        <div class="card-desc">Fast, student-friendly campus printing.</div>
+      </div>
     </button>
   </div>
 </div>
@@ -489,6 +504,156 @@
       <div class="empty-icon">📖</div>
       <h3>No Assignments Found</h3>
       <p>No lab assignments match your selected subject filter or search keyword.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ABOUT US PAGE -->
+<div class="page" id="aboutus">
+  <header class="light">
+    <h2 class="centre-title">About Xerox Centre</h2>
+  </header>
+
+  <button class="back-btn" data-target="dashboard">← Back to Dashboard</button>
+
+  <div class="about-hero-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <span class="card-sticker sticker-pink" style="position:static; margin-bottom:0;">🎓 Campus Technology</span>
+      <span class="tag-purged-shield" style="font-size:12px; padding:4px 10px;">⚡ High Performance Cloud Stack</span>
+    </div>
+
+    <h1 style="font-size:28px; font-weight:700; color:var(--ink); margin:16px 0 8px;">
+      Smart Campus Xerox Management System
+    </h1>
+    <p style="font-size:15px; color:#4a6352; margin:0 0 16px; line-height:1.6;">
+      Built with precision and love — <strong>Made by Antigravity with Sumit</strong> for Army Institute of Technology (AIT), Pune. Empowering students, faculty, and shop administrators with zero-queue smart printing.
+    </p>
+
+    <img src="/images/card-about.jpg" alt="Made by Antigravity with Sumit" class="about-banner-img">
+
+    <h2 style="font-size:20px; font-weight:700; color:var(--ink); margin-top:24px; margin-bottom:4px;">
+      System Architecture &amp; Technology Stack
+    </h2>
+    <p style="font-size:13.5px; color:#607266; margin:0;">
+      Here is a transparent look under the hood at the enterprise-grade database, APIs, and micro-services powering this platform:
+    </p>
+
+    <div class="tech-grid">
+      <!-- Card 1: MongoDB Atlas -->
+      <div class="tech-card">
+        <div class="tech-card-head">
+          <div class="tech-card-icon">🍃</div>
+          <span>MongoDB Atlas Cloud DB</span>
+        </div>
+        <p class="tech-card-desc">
+          High-performance, distributed cloud MongoDB cluster storing user profiles, print queue orders, lab assignments, and real-time status feeds with instant replication.
+        </p>
+        <div class="tech-chips-row">
+          <span class="tech-pill">MongoDB Atlas</span>
+          <span class="tech-pill">Mongoose ODM</span>
+          <span class="tech-pill">Connection Pooling</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Serverless APIs -->
+      <div class="tech-card">
+        <div class="tech-card-head">
+          <div class="tech-card-icon">⚡</div>
+          <span>Node.js Serverless APIs</span>
+        </div>
+        <p class="tech-card-desc">
+          Scalable Vercel Edge &amp; Serverless Node.js functions delivering sub-100ms RESTful endpoints for order submissions, assignment retrieval, and admin analytics.
+        </p>
+        <div class="tech-chips-row">
+          <span class="tech-pill">Node.js</span>
+          <span class="tech-pill">Vercel Serverless</span>
+          <span class="tech-pill">REST APIs</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Storage Reclaim -->
+      <div class="tech-card">
+        <div class="tech-card-head">
+          <div class="tech-card-icon">🛡️</div>
+          <span>Auto-Purge Storage Reclaim</span>
+        </div>
+        <p class="tech-card-desc">
+          Automated privacy and storage engine that zeroes uploaded document payloads immediately upon completion or cancellation, maintaining database health and zero document leaks.
+        </p>
+        <div class="tech-chips-row">
+          <span class="tech-pill">Auto-Purge</span>
+          <span class="tech-pill">Zero Data Retention</span>
+          <span class="tech-pill">Privacy First</span>
+        </div>
+      </div>
+
+      <!-- Card 4: Security & RBAC -->
+      <div class="tech-card">
+        <div class="tech-card-head">
+          <div class="tech-card-icon">🔐</div>
+          <span>HMAC Auth &amp; Multi-Role RBAC</span>
+        </div>
+        <p class="tech-card-desc">
+          Enterprise access control separating Students, Staff Operators, and Super Administrators with HMAC-SHA256 password hashing and secure token-based sessions.
+        </p>
+        <div class="tech-chips-row">
+          <span class="tech-pill">HMAC-SHA256</span>
+          <span class="tech-pill">Bearer Tokens</span>
+          <span class="tech-pill">Multi-Role RBAC</span>
+        </div>
+      </div>
+
+      <!-- Card 5: Modern UI & Animations -->
+      <div class="tech-card">
+        <div class="tech-card-head">
+          <div class="tech-card-icon">✨</div>
+          <span>Fluid UI &amp; Spring Animations</span>
+        </div>
+        <p class="tech-card-desc">
+          Handcrafted responsive design with CSS3 spring physics, celebratory animations, floating stickers, in-browser PDF attachment previews, and real-time polling.
+        </p>
+        <div class="tech-chips-row">
+          <span class="tech-pill">Vanilla ES6+</span>
+          <span class="tech-pill">CSS3 Keyframes</span>
+          <span class="tech-pill">Spring Physics</span>
+        </div>
+      </div>
+
+      <!-- Card 6: UPI Payments -->
+      <div class="tech-card">
+        <div class="tech-card-head">
+          <div class="tech-card-icon">💳</div>
+          <span>Dynamic Price &amp; UPI Engine</span>
+        </div>
+        <p class="tech-card-desc">
+          Real-time rate calculation accommodating color, double-sided, binding, and paper size options with dynamic QR generation for instant UPI verification.
+        </p>
+        <div class="tech-chips-row">
+          <span class="tech-pill">Dynamic Pricing</span>
+          <span class="tech-pill">UPI QR Codes</span>
+          <span class="tech-pill">Zero Commission</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Credits Box -->
+    <div class="credits-box">
+      <div>
+        <div style="font-size:18px; font-weight:700; margin-bottom:4px;">
+          🚀 Engineered with ❤️ by Antigravity with Sumit
+        </div>
+        <div style="font-size:13px; opacity:0.9;">
+          Army Institute of Technology (AIT) • Dighi Hills, Pune, Maharashtra 411015
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <span style="background:rgba(255,255,255,0.2); padding:6px 14px; border-radius:12px; font-size:12px; font-weight:600; letter-spacing:0.5px;">
+          Release v2.4.0 Live
+        </span>
+        <button class="upload-btn" data-target="dashboard" style="background:#ffffff; color:#1e6b38; padding:8px 16px; font-size:13px;">
+          Back to Home
+        </button>
+      </div>
     </div>
   </div>
 </div>

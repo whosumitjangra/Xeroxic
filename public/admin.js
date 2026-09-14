@@ -406,9 +406,9 @@ function updateStatsUI(stats) {
     new:     stats.newCount || stats.newRequestsCount || 0,
     queue:   stats.acceptedCount || 0,
     print:   stats.printingCount || 0,
-    printed: stats.printedCount || 0,
     collect: stats.readyCount || 0,
-    done:    stats.completedCount || 0
+    done:    stats.completedCount !== undefined ? stats.completedCount : (stats.collectedCount || 0),
+    all:     stats.totalOrders || (allOrders ? allOrders.length : 0)
   };
   Object.entries(scardCounts).forEach(([key, val]) => {
     const el = document.getElementById(`scard-count-${key}`);
@@ -424,35 +424,36 @@ function updateStatsUI(stats) {
   }
 }
 
-
 function computeStatsFromOrders(orders) {
   let pending = 0, ready = 0, revenue = 0, newCount = 0;
-  let acceptedCount = 0, printingCount = 0, printedCount = 0, completedCount = 0;
+  let acceptedCount = 0, printingCount = 0, completedCount = 0;
   for (const o of orders) {
     if (o.paymentStatus !== 'CANCELLED' && o.paymentStatus !== 'FAILED') {
       revenue += (o.total || 0);
     }
-    const st = (o.status || '').toUpperCase();
-    if (st === 'REQUEST_RECEIVED' || o.status === 'New' || o.status === 'Order Received') {
+    const st = String(o.status || '').toUpperCase().trim();
+    if (st === 'REQUEST_RECEIVED' || st === 'NEW' || st === 'ORDER RECEIVED') {
       newCount++; pending++;
-    } else if (st === 'ACCEPTED' || o.status === 'Accepted') {
+    } else if (st === 'ACCEPTED') {
       acceptedCount++; pending++;
-    } else if (st === 'PRINTING' || o.status === 'Printing' || o.status === 'Printing in Progress') {
+    } else if (st === 'PRINTING' || st === 'PRINTING IN PROGRESS') {
       printingCount++; pending++;
-    } else if (st === 'PRINTED' || o.status === 'Printed') {
-      printedCount++; pending++;
-    } else if (st === 'READY' || o.status === 'Ready for Collection' || o.status === 'Ready for Pickup') {
+    } else if (st === 'READY' || st === 'READY FOR COLLECTION' || st === 'READY FOR PICKUP') {
       ready++;
-    } else if (st === 'COMPLETED' || o.status === 'Collected' || o.status === 'Completed') {
+    } else if (st === 'COMPLETED' || st === 'COLLECTED') {
       completedCount++;
     }
   }
   updateStatsUI({
     totalOrders: orders.length,
-    newCount, newRequestsCount: newCount,
+    newCount,
+    newRequestsCount: newCount,
     inProgressCount: pending,
-    acceptedCount, printingCount, printedCount,
-    readyCount: ready, completedCount,
+    acceptedCount,
+    printingCount,
+    readyCount: ready,
+    collectedCount: completedCount,
+    completedCount,
     totalRevenue: revenue
   });
 }
