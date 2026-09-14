@@ -2060,3 +2060,403 @@ h1.centre-title{
   font-weight: 700;
 }
 
+/* ===================================================================
+   STUDENT PORTAL EXCLUSIVE ANIMATIONS & STICKERS
+   =================================================================== */
+
+@keyframes floatSticker {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(1.5deg);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 4px 14px rgba(92, 184, 92, 0.2);
+  }
+  50% {
+    box-shadow: 0 8px 24px rgba(92, 184, 92, 0.45);
+  }
+}
+
+@keyframes springIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Student Hero Stickers Banner */
+.student-stickers-banner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: -24px auto 32px;
+  max-width: 800px;
+  animation: springIn 0.5s ease-out;
+}
+
+.sticker-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  color: #274332;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #cce3d2;
+  box-shadow: 0 3px 10px rgba(43, 122, 43, 0.08);
+  transition: all 0.2s ease;
+  animation: floatSticker 4s ease-in-out infinite;
+}
+
+.sticker-chip:nth-child(2) { animation-delay: 0.8s; }
+.sticker-chip:nth-child(3) { animation-delay: 1.6s; }
+.sticker-chip:nth-child(4) { animation-delay: 2.4s; }
+
+.sticker-chip:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 6px 16px rgba(43, 122, 43, 0.16);
+  border-color: #5cb85c;
+}
+
+/* Card Floating Stickers */
+.card-sticker {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  animation: floatSticker 3.5s ease-in-out infinite;
+  z-index: 2;
+}
+
+.card-sticker.sticker-teal {
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.card-sticker.sticker-blue {
+  background: #0284c7;
+  color: #ffffff;
+  animation-delay: 0.9s;
+}
+
+.card-sticker.sticker-pink {
+  background: #be185d;
+  color: #ffffff;
+  animation-delay: 1.8s;
+}
+
+/* Student Dock Cards Hover Micro-animation */
+.dock .card {
+  position: relative;
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.28s ease, filter 0.28s ease !important;
+}
+
+.dock .card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 16px 32px rgba(22, 33, 28, 0.14) !important;
+}
+
+/* Student Action Buttons Shimmer */
+.upload-btn {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.upload-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(92, 184, 92, 0.3);
+}
+
+/* ===================================================================
+   DUAL-TAB PRINT REQUEST CARDS & ORDER TRACKING SYSTEM
+   =================================================================== */
+
+.track-orders-container {
+  background: #ffffff;
+  border: 1.5px solid #e0eae1;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+  animation: springIn 0.4s ease-out;
+}
+
+.orders-section-tabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 2px solid #eef3ee;
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.order-tab-btn {
+  background: transparent;
+  border: none;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #6c8072;
+  padding: 8px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.order-tab-btn:hover {
+  color: var(--ink);
+  background: #f4f8f4;
+}
+
+.order-tab-btn.active {
+  color: #1e6b38;
+  background: #e8f5ec;
+}
+
+.order-tab-badge {
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+}
+
+.order-tab-badge.active {
+  background: #5cb85c;
+  color: #ffffff;
+}
+
+.btn-refresh-orders {
+  background: #f0f7f2;
+  color: #2b7a2b;
+  border: 1px solid #cbe3d1;
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-refresh-orders:hover {
+  background: #2b7a2b;
+  color: #ffffff;
+  transform: rotate(180deg);
+}
+
+.orders-loading-box,
+.orders-empty-box {
+  text-align: center;
+  padding: 36px 20px;
+  color: #6c8072;
+  font-size: 14px;
+}
+
+.orders-empty-box .empty-icon-sticker {
+  font-size: 40px;
+  margin-bottom: 10px;
+  animation: floatSticker 3s ease-in-out infinite;
+}
+
+.orders-empty-box h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 6px 0;
+}
+
+.orders-empty-box p {
+  max-width: 480px;
+  margin: 0 auto;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.orders-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+/* Individual Print Request Card */
+.print-req-card {
+  background: #fafdfa;
+  border: 1.5px solid #dce8de;
+  border-radius: 18px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.24s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.print-req-card:hover {
+  transform: translateY(-4px);
+  border-color: #5cb85c;
+  box-shadow: 0 10px 24px rgba(43, 122, 43, 0.1);
+}
+
+.print-req-card.card-active {
+  border-color: #86efac;
+  background: #fbfefb;
+  box-shadow: 0 4px 18px rgba(74, 157, 74, 0.08);
+}
+
+.print-req-card.card-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #5cb85c, #38bdf8, #5cb85c);
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite linear;
+}
+
+.print-req-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.print-req-id {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.print-req-date {
+  font-size: 12px;
+  color: #6c8072;
+  margin-top: 2px;
+}
+
+.print-req-price {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1b6a38;
+}
+
+.print-req-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 14px;
+}
+
+/* Print Request Items Breakdown */
+.print-req-items {
+  background: #ffffff;
+  border: 1px solid #e2ede4;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.print-req-item-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  gap: 8px;
+}
+
+.print-req-item-name {
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.print-req-item-specs {
+  font-size: 11px;
+  color: #556b5e;
+  background: #f1f6f2;
+  padding: 2px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* Card Actions */
+.print-req-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed #e2ede4;
+}
+
+.btn-card-track {
+  background: #e8f7ee;
+  color: #1b6a38;
+  border: 1px solid #bce6c9;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-card-track:hover {
+  background: #1b6a38;
+  color: #ffffff;
+}
+
+/* Auto-Purge Privacy Shield Tag */
+.tag-purged-shield {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0369a1;
+  background: #e0f2fe;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #bae6fd;
+}
+

@@ -887,16 +887,143 @@ async function trackOrder(orderId) {
   _trackingPoller = setInterval(() => fetchAndRender(true), 8000);
 }
 
-// ---------- Load Student's Previous Orders ----------
-async function loadMyOrders() {
-  const loadingEl = document.getElementById('my-orders-loading');
-  const listEl = document.getElementById('my-orders-list');
-  const emptyEl = document.getElementById('my-orders-empty');
-  if (!listEl) return;
+// ---------- Dual-Tab Order History & In-Process Cards Tracker ----------
+function setupOrderTrackingTabs() {
+  const tabInProcess = document.getElementById('tab-in-process');
+  const tabCompleted = document.getElementById('tab-completed');
+  const viewInProcess = document.getElementById('view-in-process-orders');
+  const viewCompleted = document.getElementById('view-completed-orders');
 
-  if (loadingEl) loadingEl.style.display = 'block';
-  listEl.innerHTML = '';
-  if (emptyEl) emptyEl.style.display = 'none';
+  if (tabInProcess && tabCompleted) {
+    tabInProcess.onclick = () => {
+      tabInProcess.classList.add('active');
+      tabCompleted.classList.remove('active');
+      if (viewInProcess) viewInProcess.style.display = 'block';
+      if (viewCompleted) viewCompleted.style.display = 'none';
+    };
+
+    tabCompleted.onclick = () => {
+      tabCompleted.classList.add('active');
+      tabInProcess.classList.remove('active');
+      if (viewCompleted) viewCompleted.style.display = 'block';
+      if (viewInProcess) viewInProcess.style.display = 'none';
+    };
+  }
+}
+
+function renderPrintRequestCard(order, isActive = false) {
+  const card = document.createElement('div');
+  card.className = `print-req-card ${isActive ? 'card-active' : ''}`;
+  card.id = `order-card-${order.orderId}`;
+
+  const studentStatus = formatStudentStatus(order.status);
+  const beacon = getStatusBeacon(order.status);
+  const placedDate = new Date(order.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+
+  // 5-step progress pipeline
+  const steps = ['REQUEST_RECEIVED','ACCEPTED','PRINTING','READY','COMPLETED'];
+  const stUp = (order.status || '').toUpperCase();
+  const stepIdx = stUp === 'CANCELLED' ? -1 : steps.indexOf(stUp);
+  const progressHTML = stUp === 'CANCELLED' ? '' : `
+    <div class="track-progress-bar" style="margin:12px 0 14px;">
+      ${steps.map((s, i) => {
+        const done = i < stepIdx;
+        const active = i === stepIdx;
+        const names = ['Received','Accepted','Printing','Ready','Collected'];
+        return `<div class="track-step ${done ? 'step-done' : ''} ${active ? 'step-active' : ''}">
+          <div class="track-step-dot"></div>
+          <div class="track-step-label">${names[i]}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  // Item specs breakdown
+  let itemsHTML = '';
+  (order.items || []).forEach(item => {
+    const isPurged = item.filePurged || !isActive;
+    const purgeBadge = isPurged ? `<span class="tag-purged-shield" title="Binary data safely purged from database to reclaim storage">🔒 Purged</span>` : '';
+    const specs = `${item.color === 'color' ? '🎨 Color' : '📄 B&W'} • ${item.sides === 'double' ? 'Double-sided' : 'Single-sided'} • ${item.pages || 1} pgs`;
+    itemsHTML += `
+      <div class="print-req-item-line">
+        <div style="display:flex; align-items:center; gap:6px; overflow:hidden;">
+          <span class="print-req-item-name" title="${item.originalName || 'Document'}">📄 ${item.originalName || 'Document'}</span>
+          ${purgeBadge}
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="print-req-item-specs">${specs}</span>
+          <span style="font-weight:700; color:#1b6a38; font-size:12px;">₹${item.price || 0}</span>
+        </div>
+      </div>
+    `;
+  });
+
+  const liveBadge = isActive ? `<span class="status-beacon ${beacon.cls}"></span>` : '';
+
+  card.innerHTML = `
+    <div>
+      <div class="print-req-top">
+        <div>
+          <div class="print-req-id">
+            ${liveBadge}
+            <span>${order.orderId}</span>
+          </div>
+          <div class="print-req-date">📅 ${placedDate}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="print-req-price">₹${order.total}</div>
+          <span class="print-req-status-badge" style="${studentStatus.style}">${studentStatus.label}</span>
+        </div>
+      </div>
+
+      <div style="font-size:12.5px; color:#4a5e50; margin:4px 0 8px;">${studentStatus.sub}</div>
+
+      ${progressHTML}
+
+      <div class="print-req-items">
+        <div style="font-size:11px; font-weight:700; color:#6c8072; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Print Documents:</div>
+        ${itemsHTML}
+      </div>
+    </div>
+
+    <div class="print-req-footer">
+      <div style="font-size:12px; color:#6c8072;">
+        ${isActive && stUp === 'READY' ? '<strong style="color:#059669;">📍 Ready for pickup at Xerox counter</strong>' : (isActive ? '⏱ Live processing in Xerox queue' : '✅ Finished &amp; collected')}
+      </div>
+      <button type="button" class="btn-card-track" onclick="selectOrderToTrack('${order.orderId}')">
+        ${isActive ? '🔍 Track Live Progress →' : '📋 View Details →'}
+      </button>
+    </div>
+  `;
+
+  return card;
+}
+
+window.selectOrderToTrack = function(orderId) {
+  const trackInput = document.getElementById('track-input');
+  if (trackInput) trackInput.value = orderId;
+  trackOrder(orderId);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+async function loadMyOrders() {
+  setupOrderTrackingTabs();
+
+  const inProcessLoading = document.getElementById('in-process-loading');
+  const inProcessList = document.getElementById('in-process-orders-list');
+  const inProcessEmpty = document.getElementById('in-process-empty');
+  const inProcessBadge = document.getElementById('badge-in-process-count');
+
+  const completedLoading = document.getElementById('completed-loading');
+  const completedList = document.getElementById('completed-orders-list');
+  const completedEmpty = document.getElementById('completed-empty');
+  const completedBadge = document.getElementById('badge-completed-count');
+
+  if (inProcessLoading) inProcessLoading.style.display = 'block';
+  if (completedLoading) completedLoading.style.display = 'block';
+  if (inProcessList) inProcessList.innerHTML = '';
+  if (completedList) completedList.innerHTML = '';
+  if (inProcessEmpty) inProcessEmpty.style.display = 'none';
+  if (completedEmpty) completedEmpty.style.display = 'none';
 
   try {
     const res = await fetch('/api/orders');
@@ -904,57 +1031,50 @@ async function loadMyOrders() {
     const data = await res.json();
     const orders = data.orders || [];
 
-    if (loadingEl) loadingEl.style.display = 'none';
+    if (inProcessLoading) inProcessLoading.style.display = 'none';
+    if (completedLoading) completedLoading.style.display = 'none';
 
-    if (orders.length === 0) {
-      if (emptyEl) emptyEl.style.display = 'block';
-      return;
+    // Partition orders into In-Process vs Completed
+    const activeStatuses = ['REQUEST_RECEIVED', 'ACCEPTED', 'PRINTING', 'READY', 'NEW'];
+    const inProcessOrders = orders.filter(o => {
+      const st = (o.status || '').toUpperCase();
+      return activeStatuses.includes(st);
+    });
+
+    const completedOrders = orders.filter(o => {
+      const st = (o.status || '').toUpperCase();
+      return !activeStatuses.includes(st);
+    });
+
+    // Update badge counts
+    if (inProcessBadge) inProcessBadge.textContent = inProcessOrders.length;
+    if (completedBadge) completedBadge.textContent = completedOrders.length;
+
+    // Render In-Process Cards
+    if (inProcessOrders.length === 0) {
+      if (inProcessEmpty) inProcessEmpty.style.display = 'block';
+    } else {
+      inProcessOrders.forEach(o => {
+        if (inProcessList) inProcessList.appendChild(renderPrintRequestCard(o, true));
+      });
     }
 
-    orders.forEach(o => {
-      const card = document.createElement('div');
-      card.style.padding = '12px 14px';
-      card.style.background = '#f9fbf9';
-      card.style.borderRadius = '12px';
-      card.style.border = '1px solid #e0eae1';
-      card.style.display = 'flex';
-      card.style.justifyContent = 'space-between';
-      card.style.alignItems = 'center';
-      card.style.flexWrap = 'wrap';
-      card.style.gap = '10px';
-      card.style.cursor = 'pointer';
-      card.style.transition = 'all 0.15s ease';
-
-      card.onmouseenter = () => card.style.borderColor = '#5cb85c';
-      card.onmouseleave = () => card.style.borderColor = '#e0eae1';
-
-      const studentStatus = formatStudentStatus(o.status);
-
-      card.innerHTML = `
-        <div style="flex:1; min-width:180px;">
-          <div style="font-weight:700; font-size:14px; color:var(--ink);">${o.orderId} — ₹${o.total}</div>
-          <div style="font-size:12px; color:#6c8072; margin-top:2px;">📅 ${new Date(o.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</div>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-size:12px; font-weight:600; padding:4px 10px; border-radius:12px; ${studentStatus.style}">${studentStatus.label}</span>
-          <button type="button" style="background:#e8f8f0; color:#059669; border:none; border-radius:6px; padding:5px 10px; font-size:12px; font-weight:600; cursor:pointer;">Track →</button>
-        </div>
-      `;
-
-      card.addEventListener('click', () => {
-        const trackInput = document.getElementById('track-input');
-        if (trackInput) trackInput.value = o.orderId;
-        trackOrder(o.orderId);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Render Completed Cards
+    if (completedOrders.length === 0) {
+      if (completedEmpty) completedEmpty.style.display = 'block';
+    } else {
+      completedOrders.forEach(o => {
+        if (completedList) completedList.appendChild(renderPrintRequestCard(o, false));
       });
+    }
 
-      listEl.appendChild(card);
-    });
   } catch (err) {
-    if (loadingEl) loadingEl.style.display = 'none';
-    if (emptyEl) {
-      emptyEl.textContent = 'Could not load previous orders.';
-      emptyEl.style.display = 'block';
+    if (inProcessLoading) inProcessLoading.style.display = 'none';
+    if (completedLoading) completedLoading.style.display = 'none';
+    if (inProcessEmpty) {
+      inProcessEmpty.querySelector('h4').textContent = 'Could not load orders';
+      inProcessEmpty.querySelector('p').textContent = 'Please check your connection and try again.';
+      inProcessEmpty.style.display = 'block';
     }
   }
 }
@@ -962,6 +1082,7 @@ async function loadMyOrders() {
 document.getElementById('btn-refresh-my-orders')?.addEventListener('click', () => {
   loadMyOrders();
 });
+setupOrderTrackingTabs();
 
 // ---------- Blur-on-hover for dashboard cards ----------
 const dockCards = document.querySelectorAll('.dock .card');
@@ -1072,6 +1193,8 @@ function renderAssignmentsList() {
   const gridEl = document.getElementById('asgn-grid');
   const emptyEl = document.getElementById('asgn-empty');
   const search = (document.getElementById('asgn-search-input')?.value || '').toLowerCase().trim();
+  const classFilter = document.getElementById('asgn-filter-class')?.value || 'all';
+  const batchFilter = document.getElementById('asgn-filter-batch')?.value || 'all';
 
   const filtered = allAssignments.filter(a => {
     const matchesSubject = currentSubjectFilter === 'all' || a.subject === currentSubjectFilter;
@@ -1079,7 +1202,9 @@ function renderAssignmentsList() {
       (a.subject && a.subject.toLowerCase().includes(search)) ||
       (a.title && a.title.toLowerCase().includes(search)) ||
       (a.attachmentName && a.attachmentName.toLowerCase().includes(search));
-    return matchesSubject && matchesSearch;
+    const matchesClass = classFilter === 'all' || !a.targetClass || a.targetClass === 'All Classes' || a.targetClass.toLowerCase() === classFilter.toLowerCase();
+    const matchesBatch = batchFilter === 'all' || !a.batch || a.batch === 'All Batches' || a.batch.toLowerCase() === batchFilter.toLowerCase();
+    return matchesSubject && matchesSearch && matchesClass && matchesBatch;
   });
 
   if (filtered.length === 0) {
@@ -1089,7 +1214,7 @@ function renderAssignmentsList() {
       const emptyTitle = emptyEl.querySelector('h3');
       const emptyDesc = emptyEl.querySelector('p');
       if (emptyTitle) emptyTitle.textContent = allAssignments.length === 0 ? 'No Assignments Yet' : 'No Matching Assignments';
-      if (emptyDesc) emptyDesc.textContent = allAssignments.length === 0 ? 'Staff have not uploaded any subject assignments yet.' : 'Try changing your subject filter or search keyword.';
+      if (emptyDesc) emptyDesc.textContent = allAssignments.length === 0 ? 'Staff have not uploaded any subject assignments yet.' : 'Try changing your subject, class, batch filter or search keyword.';
     }
     return;
   }
@@ -1136,8 +1261,10 @@ function renderAssignmentsList() {
 
     card.innerHTML = `
       <div>
-        <div class="asgn-card-top">
+        <div class="asgn-card-top" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:8px;">
           <span class="asgn-subject-tag">📘 ${a.subject}</span>
+          <span class="asgn-batch-tag" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #bae6fd;">🏫 ${a.targetClass || 'All Classes'}</span>
+          <span class="asgn-batch-tag" style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #fde68a;">🏷️ ${a.batch || 'All Batches'}</span>
           ${a.deadline ? `<span class="asgn-deadline-pill">📅 Due: ${a.deadline}</span>` : '<span class="asgn-deadline-pill" style="background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;">No Deadline</span>'}
         </div>
         <h3 class="asgn-title">${a.title || a.subject}</h3>
@@ -1153,8 +1280,14 @@ function renderAssignmentsList() {
   });
 }
 
-// Search input listener for assignments
+// Search and filter listeners for assignments
 document.getElementById('asgn-search-input')?.addEventListener('input', () => {
+  renderAssignmentsList();
+});
+document.getElementById('asgn-filter-class')?.addEventListener('change', () => {
+  renderAssignmentsList();
+});
+document.getElementById('asgn-filter-batch')?.addEventListener('change', () => {
   renderAssignmentsList();
 });
 

@@ -306,7 +306,7 @@ async function runTests() {
     'Ready for Collection': 'READY',
     'Collected': 'COMPLETED'
   };
-  for (const st of ['Accepted', 'Printing', 'Ready for Collection', 'Collected']) {
+  for (const st of ['Accepted', 'Printing', 'Ready for Collection']) {
     const updateStatusRes = await invokeHandler({
       method: 'PATCH',
       url: `/api/admin/orders/${createdOrderId}/status`,
@@ -316,9 +316,9 @@ async function runTests() {
     assert.strictEqual(updateStatusRes.statusCode, 200, `Failed to update status to ${st}`);
     assert.strictEqual(updateStatusRes.json().status, expectedNorm[st]);
   }
-  console.log('   ✅ 5-stage status workflow passed (ACCEPTED → PRINTING → READY → COMPLETED)');
+  console.log('   ✅ Active status workflow passed (ACCEPTED → PRINTING → READY)');
 
-  // Test 17: Admin downloading student document
+  // Test 17: Admin downloading student document while in process
   console.log('17. Testing Admin document download permission (GET /api/download/:id)...');
   const adminDownloadRes = await invokeHandler({
     method: 'GET',
@@ -328,6 +328,25 @@ async function runTests() {
   assert.strictEqual(adminDownloadRes.statusCode, 200);
   assert.strictEqual(adminDownloadRes.text(), fileContent);
   console.log('   ✅ Admin document download verified successfully');
+
+  // Mark as Collected -> triggers auto-purge of file
+  const collectedRes = await invokeHandler({
+    method: 'PATCH',
+    url: `/api/admin/orders/${createdOrderId}/status`,
+    headers: { cookie: adminCookie },
+    body: { status: 'Collected' }
+  });
+  assert.strictEqual(collectedRes.statusCode, 200);
+  assert.strictEqual(collectedRes.json().status, 'COMPLETED');
+
+  // Verify file was auto-purged from storage to reclaim space
+  const postPurgeRes = await invokeHandler({
+    method: 'GET',
+    url: `/api/download/${uploadedFileId}`,
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(postPurgeRes.statusCode, 404, 'File should be auto-purged from storage upon collection');
+  console.log('   ✅ Auto-purge verified: File deleted from storage to reclaim space (404)');
 
   // Test 18: Fetching Public Assignments as Student
   console.log('18. Testing GET /api/assignments (student view)...');

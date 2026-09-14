@@ -19,6 +19,7 @@ const {
   getOrders,
   saveOrders,
   updateOrderStatus,
+  cleanupOrderFiles,
   normalizeRole,
   getPrintRequests,
   savePrintRequests,
@@ -597,6 +598,13 @@ async function handler(req, res) {
         order.updatedAt = new Date().toISOString();
         await saveOrders(orders);
 
+        // Auto-purge uploaded files to reclaim storage space
+        try {
+          await cleanupOrderFiles(order);
+        } catch (e) {
+          console.warn('Could not cleanup cancelled order files:', e.message);
+        }
+
         try {
           await updateNotificationByOrderId(order.orderId, {
             type: 'PAYMENT_CANCELLED',
@@ -937,6 +945,15 @@ async function handler(req, res) {
       const updated = await updateOrderStatus(orderId, normStatus);
       await updatePrintRequestStatus(orderId, normStatus);
 
+      // Auto-purge uploaded files when marked COMPLETED or CANCELLED to preserve database space
+      if (normStatus === 'COMPLETED' || normStatus === 'CANCELLED') {
+        try {
+          await cleanupOrderFiles(existingOrder || updated);
+        } catch (e) {
+          console.warn('Could not cleanup order files:', e.message);
+        }
+      }
+
       console.log('[Admin Review Action] Status update:', {
         orderId,
         previousStatus,
@@ -1150,7 +1167,9 @@ async function handler(req, res) {
       const newAssignment = await createAssignment({
         subject: subject.trim(),
         deadline: deadline || '',
-        attachment: cleanAttachment
+        attachment: cleanAttachment,
+        targetClass: body.targetClass || body.class || 'All Classes',
+        batch: body.batch || 'All Batches'
       });
 
       return sendJSON(res, 201, { success: true, assignment: newAssignment });

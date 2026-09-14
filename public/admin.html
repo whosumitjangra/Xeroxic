@@ -497,6 +497,41 @@
           <label>Subject *</label>
           <input type="text" id="asgn-subject-input" placeholder="e.g. Computer Networks, DBMS, OS…" required>
         </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="mfield">
+            <label>Target Class / Year</label>
+            <select id="asgn-class-input" style="width:100%; padding:10px 12px; border:1.5px solid #d0ddd4; border-radius:10px; font-family:'Poppins'; font-size:13.5px; background:#fff;">
+              <option value="All Classes">All Classes</option>
+              <option value="FE All">FE (First Year)</option>
+              <option value="SE Comp">SE Comp</option>
+              <option value="SE IT">SE IT</option>
+              <option value="SE ENTC">SE ENTC</option>
+              <option value="SE Mech">SE Mech</option>
+              <option value="TE Comp">TE Comp</option>
+              <option value="TE IT">TE IT</option>
+              <option value="TE ENTC">TE ENTC</option>
+              <option value="TE Mech">TE Mech</option>
+              <option value="BE Comp">BE Comp</option>
+              <option value="BE IT">BE IT</option>
+              <option value="BE ENTC">BE ENTC</option>
+              <option value="BE Mech">BE Mech</option>
+            </select>
+          </div>
+          <div class="mfield">
+            <label>Target Batch</label>
+            <select id="asgn-batch-input" style="width:100%; padding:10px 12px; border:1.5px solid #d0ddd4; border-radius:10px; font-family:'Poppins'; font-size:13.5px; background:#fff;">
+              <option value="All Batches">All Batches</option>
+              <option value="Batch A">Batch A</option>
+              <option value="Batch B">Batch B</option>
+              <option value="Batch C">Batch C</option>
+              <option value="Batch D">Batch D</option>
+              <option value="Batch 1">Batch 1</option>
+              <option value="Batch 2">Batch 2</option>
+              <option value="Batch 3">Batch 3</option>
+              <option value="Batch 4">Batch 4</option>
+            </select>
+          </div>
+        </div>
         <div class="mfield">
           <label>Submission Due Date</label>
           <input type="date" id="asgn-deadline-input">

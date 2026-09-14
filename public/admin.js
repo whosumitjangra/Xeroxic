@@ -954,8 +954,10 @@ function renderAdminAssignments() {
 
     card.innerHTML = `
       <div>
-        <div class="asgn-card-top">
+        <div class="asgn-card-top" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:8px;">
           <span class="asgn-subject-tag">📘 ${a.subject}</span>
+          <span class="asgn-batch-tag" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #bae6fd;">🏫 ${a.targetClass || 'All Classes'}</span>
+          <span class="asgn-batch-tag" style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #fde68a;">🏷️ ${a.batch || 'All Batches'}</span>
           ${a.deadline ? `<span class="asgn-deadline-pill">📅 Due: ${a.deadline}</span>` : '<span class="asgn-deadline-pill" style="background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;">No Deadline</span>'}
         </div>
         <h3 class="asgn-title">${a.title || a.subject}</h3>
@@ -1038,6 +1040,8 @@ addAsgnForm?.addEventListener('submit', async (e) => {
   }
 
   const subject = document.getElementById('asgn-subject-input')?.value.trim();
+  const targetClass = document.getElementById('asgn-class-input')?.value || 'All Classes';
+  const batch = document.getElementById('asgn-batch-input')?.value || 'All Batches';
   const deadline = document.getElementById('asgn-deadline-input')?.value || '';
 
   if (!subject) {
@@ -1050,7 +1054,7 @@ addAsgnForm?.addEventListener('submit', async (e) => {
     const res = await fetch('/api/admin/assignments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subject, deadline, attachment: attachedFileObject })
+      body: JSON.stringify({ subject, targetClass, batch, deadline, attachment: attachedFileObject })
     });
     const data = await res.json();
 
