@@ -497,39 +497,64 @@
           <label>Subject *</label>
           <input type="text" id="asgn-subject-input" placeholder="e.g. Computer Networks, DBMS, OS…" required>
         </div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
           <div class="mfield">
-            <label>Target Class / Year</label>
-            <select id="asgn-class-input" style="width:100%; padding:10px 12px; border:1.5px solid #d0ddd4; border-radius:10px; font-family:'Poppins'; font-size:13.5px; background:#fff;">
-              <option value="All Classes">All Classes</option>
-              <option value="FE All">FE (First Year)</option>
-              <option value="SE Comp">SE Comp</option>
-              <option value="SE IT">SE IT</option>
-              <option value="SE ENTC">SE ENTC</option>
-              <option value="SE Mech">SE Mech</option>
-              <option value="TE Comp">TE Comp</option>
-              <option value="TE IT">TE IT</option>
-              <option value="TE ENTC">TE ENTC</option>
-              <option value="TE Mech">TE Mech</option>
-              <option value="BE Comp">BE Comp</option>
-              <option value="BE IT">BE IT</option>
-              <option value="BE ENTC">BE ENTC</option>
-              <option value="BE Mech">BE Mech</option>
+            <label>Target Year</label>
+            <select id="asgn-year-input" style="width:100%; padding:10px 12px; border:1.5px solid #d0ddd4; border-radius:10px; font-family:'Poppins'; font-size:13.5px; background:#fff;">
+              <option value="All Years">All Years</option>
+              <option value="FE">FE (First Year)</option>
+              <option value="SE">SE (Second Year)</option>
+              <option value="TE">TE (Third Year)</option>
+              <option value="BE">BE (Final Year)</option>
             </select>
           </div>
           <div class="mfield">
-            <label>Target Batch</label>
-            <select id="asgn-batch-input" style="width:100%; padding:10px 12px; border:1.5px solid #d0ddd4; border-radius:10px; font-family:'Poppins'; font-size:13.5px; background:#fff;">
-              <option value="All Batches">All Batches</option>
-              <option value="Batch A">Batch A</option>
-              <option value="Batch B">Batch B</option>
-              <option value="Batch C">Batch C</option>
-              <option value="Batch D">Batch D</option>
-              <option value="Batch 1">Batch 1</option>
-              <option value="Batch 2">Batch 2</option>
-              <option value="Batch 3">Batch 3</option>
-              <option value="Batch 4">Batch 4</option>
+            <label>Target Branch</label>
+            <select id="asgn-branch-input" style="width:100%; padding:10px 12px; border:1.5px solid #d0ddd4; border-radius:10px; font-family:'Poppins'; font-size:13.5px; background:#fff;">
+              <option value="All Branches">All Branches</option>
+              <option value="CSE">CSE</option>
+              <option value="IT">IT</option>
+              <option value="MECH">MECH</option>
+              <option value="ARE">ARE</option>
+              <option value="ENTC">ENTC</option>
             </select>
+          </div>
+          <div class="mfield">
+            <label>Target Batch (A1..Z6)</label>
+            <input list="asgn-batch-list" id="asgn-batch-input" placeholder="e.g. All Batches, A1, B2, Z6..." value="All Batches" style="width:100%; padding:10px 12px; border:1.5px solid #d0ddd4; border-radius:10px; font-family:'Poppins'; font-size:13.5px; background:#fff;">
+            <datalist id="asgn-batch-list">
+              <option value="All Batches">
+              <option value="A1">
+              <option value="A2">
+              <option value="A3">
+              <option value="A4">
+              <option value="A5">
+              <option value="A6">
+              <option value="B1">
+              <option value="B2">
+              <option value="B3">
+              <option value="B4">
+              <option value="B5">
+              <option value="B6">
+              <option value="C1">
+              <option value="C2">
+              <option value="C3">
+              <option value="C4">
+              <option value="C5">
+              <option value="C6">
+              <option value="D1">
+              <option value="D2">
+              <option value="D3">
+              <option value="D4">
+              <option value="D5">
+              <option value="D6">
+              <option value="Z1">
+              <option value="Z2">
+              <option value="Z3">
+              <option value="Z4">
+              <option value="Z5">
+              <option value="Z6">
+            </datalist>
           </div>
         </div>
         <div class="mfield">

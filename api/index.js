@@ -1137,7 +1137,11 @@ async function handler(req, res) {
         createdAt: a.createdAt,
         hasAttachment: !!a.attachment,
         attachmentName: a.attachment ? a.attachment.originalName : null,
-        attachmentSize: a.attachment ? a.attachment.size : null
+        attachmentSize: a.attachment ? a.attachment.size : null,
+        year: a.year || (a.targetClass && a.targetClass !== 'All Classes' ? a.targetClass.split(' ')[0] : 'All'),
+        branch: a.branch || (a.targetClass && a.targetClass !== 'All Classes' ? a.targetClass.split(' ').slice(1).join(' ') || 'All' : 'All'),
+        targetClass: a.targetClass || 'All Classes',
+        batch: a.batch || 'All Batches'
       }));
 
       return sendJSON(res, 200, { success: true, assignments: sanitized });
@@ -1169,6 +1173,8 @@ async function handler(req, res) {
         subject: subject.trim(),
         deadline: deadline || '',
         attachment: cleanAttachment,
+        year: body.year || '',
+        branch: body.branch || '',
         targetClass: body.targetClass || body.class || 'All Classes',
         batch: body.batch || 'All Batches'
       });

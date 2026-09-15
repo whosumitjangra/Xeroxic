@@ -1110,6 +1110,254 @@ dockCards.forEach(card => {
 let allAssignments = [];
 let currentSubjectFilter = 'all';
 
+// Academic Year, Branch & Batch Wizard State
+let selectedYear = null;
+let selectedBranch = null;
+let selectedBatchLetter = 'A';
+let selectedBatchNum = null;
+let selectedBatch = null;
+let activeClassFilter = null; // { year: 'TE', branch: 'IT', batch: 'A2' }
+
+function initBatchLetters() {
+  const container = document.getElementById('wizard-batch-letters');
+  if (!container || container.children.length > 0) return;
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  alphabet.forEach(letter => {
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.className = `batch-letter-pill ${letter === selectedBatchLetter ? 'active' : ''}`;
+    pill.textContent = letter;
+    pill.dataset.letter = letter;
+    pill.onclick = () => {
+      container.querySelectorAll('.batch-letter-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      selectedBatchLetter = letter;
+      updateBatchNumberChips();
+      if (selectedBatchNum) {
+        setBatchSelection(`${selectedBatchLetter}${selectedBatchNum}`);
+      }
+    };
+    container.appendChild(pill);
+  });
+}
+
+function updateBatchNumberChips() {
+  const numChips = document.querySelectorAll('#wizard-batch-numbers .batch-num-chip');
+  numChips.forEach(chip => {
+    const num = chip.dataset.num;
+    chip.textContent = `${selectedBatchLetter}${num}`;
+    if (selectedBatch === `${selectedBatchLetter}${num}`) {
+      chip.classList.add('selected');
+    } else {
+      chip.classList.remove('selected');
+    }
+  });
+}
+
+function setYearSelection(year) {
+  selectedYear = year;
+  const yearCards = document.querySelectorAll('#wizard-year-cards .wizard-select-card');
+  yearCards.forEach(c => {
+    c.classList.toggle('selected', c.dataset.year === year);
+  });
+
+  const yearBadge = document.getElementById('wizard-year-chosen-badge');
+  if (yearBadge) {
+    yearBadge.textContent = `Selected: ${year}`;
+    yearBadge.style.display = 'inline-block';
+  }
+
+  const ind1 = document.getElementById('step-ind-1');
+  const ind2 = document.getElementById('step-ind-2');
+  if (ind1) ind1.classList.add('completed');
+  if (ind2) ind2.classList.add('active');
+
+  updateWizardSummary();
+}
+
+function setBranchSelection(branch) {
+  selectedBranch = branch;
+  const branchCards = document.querySelectorAll('#wizard-branch-cards .wizard-select-card');
+  branchCards.forEach(c => {
+    c.classList.toggle('selected', c.dataset.branch === branch);
+  });
+
+  const branchBadge = document.getElementById('wizard-branch-chosen-badge');
+  if (branchBadge) {
+    branchBadge.textContent = `Selected: ${branch}`;
+    branchBadge.style.display = 'inline-block';
+  }
+
+  const ind2 = document.getElementById('step-ind-2');
+  const ind3 = document.getElementById('step-ind-3');
+  if (ind2) ind2.classList.add('completed');
+  if (ind3) ind3.classList.add('active');
+
+  updateWizardSummary();
+}
+
+function setBatchSelection(batch) {
+  if (!batch) return;
+  selectedBatch = batch.trim().toUpperCase();
+
+  // Extract letter and num if standard format (e.g. B3)
+  const match = selectedBatch.match(/^([A-Z])([1-6])$/);
+  if (match) {
+    selectedBatchLetter = match[1];
+    selectedBatchNum = match[2];
+    const letterPills = document.querySelectorAll('#wizard-batch-letters .batch-letter-pill');
+    letterPills.forEach(p => p.classList.toggle('active', p.dataset.letter === selectedBatchLetter));
+    updateBatchNumberChips();
+  }
+
+  // Highlight quick batches if matches
+  const quickPills = document.querySelectorAll('#wizard-quick-batches .quick-batch-pill');
+  quickPills.forEach(p => {
+    p.classList.toggle('selected', p.dataset.batch.toUpperCase() === selectedBatch);
+  });
+
+  const directInput = document.getElementById('wizard-direct-batch');
+  if (directInput && directInput.value.toUpperCase() !== selectedBatch) {
+    directInput.value = selectedBatch;
+  }
+
+  const batchBadge = document.getElementById('wizard-batch-chosen-badge');
+  if (batchBadge) {
+    batchBadge.textContent = `Selected: ${selectedBatch}`;
+    batchBadge.style.display = 'inline-block';
+  }
+
+  const ind3 = document.getElementById('step-ind-3');
+  if (ind3) ind3.classList.add('completed');
+
+  updateWizardSummary();
+}
+
+function updateWizardSummary() {
+  const summaryEl = document.getElementById('wizard-active-summary');
+  const submitBtn = document.getElementById('wizard-btn-submit');
+
+  const yText = selectedYear || 'Select Year';
+  const bText = selectedBranch || 'Select Branch';
+  const batchText = selectedBatch || 'Select Batch';
+
+  if (summaryEl) {
+    summaryEl.textContent = `${yText} • ${bText} • Batch ${batchText}`;
+  }
+
+  const isComplete = Boolean(selectedYear && selectedBranch && selectedBatch);
+  if (submitBtn) {
+    submitBtn.disabled = !isComplete;
+    submitBtn.style.opacity = isComplete ? '1' : '0.6';
+    submitBtn.style.cursor = isComplete ? 'pointer' : 'not-allowed';
+  }
+}
+
+function initWizardUI() {
+  initBatchLetters();
+  updateBatchNumberChips();
+
+  // Year Card Clicks
+  const yearCards = document.querySelectorAll('#wizard-year-cards .wizard-select-card');
+  yearCards.forEach(c => {
+    c.onclick = () => {
+      setYearSelection(c.dataset.year);
+    };
+  });
+
+  // Branch Card Clicks
+  const branchCards = document.querySelectorAll('#wizard-branch-cards .wizard-select-card');
+  branchCards.forEach(c => {
+    c.onclick = () => {
+      setBranchSelection(c.dataset.branch);
+    };
+  });
+
+  // Batch Numbers 1 to 6 Clicks
+  const numChips = document.querySelectorAll('#wizard-batch-numbers .batch-num-chip');
+  numChips.forEach(chip => {
+    chip.onclick = () => {
+      selectedBatchNum = chip.dataset.num;
+      setBatchSelection(`${selectedBatchLetter}${selectedBatchNum}`);
+    };
+  });
+
+  // Quick Batch Pills
+  const quickPills = document.querySelectorAll('#wizard-quick-batches .quick-batch-pill');
+  quickPills.forEach(pill => {
+    pill.onclick = () => {
+      setBatchSelection(pill.dataset.batch);
+    };
+  });
+
+  // Direct Batch Input
+  const directInput = document.getElementById('wizard-direct-batch');
+  if (directInput) {
+    directInput.oninput = (e) => {
+      const val = e.target.value.trim().toUpperCase();
+      if (val) {
+        setBatchSelection(val);
+      }
+    };
+  }
+
+  // Wizard Confirmation Button
+  const submitBtn = document.getElementById('wizard-btn-submit');
+  if (submitBtn) {
+    submitBtn.onclick = () => {
+      if (selectedYear && selectedBranch && selectedBatch) {
+        applyClassSelection(selectedYear, selectedBranch, selectedBatch);
+      }
+    };
+  }
+
+  // Restore pre-selected values if present
+  if (activeClassFilter) {
+    if (activeClassFilter.year) setYearSelection(activeClassFilter.year);
+    if (activeClassFilter.branch) setBranchSelection(activeClassFilter.branch);
+    if (activeClassFilter.batch) setBatchSelection(activeClassFilter.batch);
+  } else {
+    updateWizardSummary();
+  }
+}
+
+function applyClassSelection(year, branch, batch) {
+  activeClassFilter = { year, branch, batch };
+  try {
+    localStorage.setItem('xerox_student_class', JSON.stringify(activeClassFilter));
+  } catch(e) {}
+
+  const wizardView = document.getElementById('asgn-wizard-view');
+  const contentView = document.getElementById('asgn-content-view');
+
+  if (wizardView) wizardView.style.display = 'none';
+  if (contentView) contentView.style.display = 'block';
+
+  const yearPill = document.getElementById('asgn-active-year-pill');
+  const branchPill = document.getElementById('asgn-active-branch-pill');
+  const batchPill = document.getElementById('asgn-active-batch-pill');
+
+  if (yearPill) yearPill.textContent = year;
+  if (branchPill) branchPill.textContent = branch;
+  if (batchPill) batchPill.textContent = `Batch ${batch}`;
+
+  setupSubjectFilters(allAssignments);
+  renderAssignmentsList();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function openClassSelectorWizard() {
+  const wizardView = document.getElementById('asgn-wizard-view');
+  const contentView = document.getElementById('asgn-content-view');
+
+  if (contentView) contentView.style.display = 'none';
+  if (wizardView) {
+    wizardView.style.display = 'block';
+    initWizardUI();
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 async function loadAssignments() {
   const loadingEl = document.getElementById('asgn-loading');
   const gridEl = document.getElementById('asgn-grid');
@@ -1117,6 +1365,40 @@ async function loadAssignments() {
   if (loadingEl) loadingEl.style.display = 'block';
   if (gridEl) gridEl.style.display = 'none';
   if (emptyEl) emptyEl.style.display = 'none';
+
+  // Read saved student class selection from storage
+  if (!activeClassFilter) {
+    const saved = localStorage.getItem('xerox_student_class');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.year && parsed.branch && parsed.batch) {
+          activeClassFilter = parsed;
+          selectedYear = parsed.year;
+          selectedBranch = parsed.branch;
+          selectedBatch = parsed.batch;
+        }
+      } catch (e) {}
+    }
+  }
+
+  const wizardView = document.getElementById('asgn-wizard-view');
+  const contentView = document.getElementById('asgn-content-view');
+
+  if (!activeClassFilter) {
+    if (wizardView) wizardView.style.display = 'block';
+    if (contentView) contentView.style.display = 'none';
+    initWizardUI();
+  } else {
+    if (wizardView) wizardView.style.display = 'none';
+    if (contentView) contentView.style.display = 'block';
+    const yearPill = document.getElementById('asgn-active-year-pill');
+    const branchPill = document.getElementById('asgn-active-branch-pill');
+    const batchPill = document.getElementById('asgn-active-batch-pill');
+    if (yearPill) yearPill.textContent = activeClassFilter.year;
+    if (branchPill) branchPill.textContent = activeClassFilter.branch;
+    if (batchPill) batchPill.textContent = `Batch ${activeClassFilter.batch}`;
+  }
 
   try {
     const res = await fetch(`/api/assignments?_t=${Date.now()}`, {
@@ -1128,13 +1410,17 @@ async function loadAssignments() {
     allAssignments = data.assignments || [];
 
     setupSubjectFilters(allAssignments);
-    renderAssignmentsList();
+    if (activeClassFilter) {
+      renderAssignmentsList();
+    }
   } catch (err) {
     if (loadingEl) loadingEl.style.display = 'none';
     if (emptyEl) {
       emptyEl.style.display = 'block';
-      emptyEl.querySelector('h3').textContent = 'Could not load assignments';
-      emptyEl.querySelector('p').textContent = 'Please check your connection and try again.';
+      const emptyTitle = emptyEl.querySelector('h3');
+      const emptyDesc = emptyEl.querySelector('p');
+      if (emptyTitle) emptyTitle.textContent = 'Could not load assignments';
+      if (emptyDesc) emptyDesc.textContent = 'Please check your connection and try again.';
     }
   } finally {
     if (loadingEl) loadingEl.style.display = 'none';
@@ -1149,21 +1435,66 @@ function formatAsgnBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
+function matchesYearFilter(asgnYear, targetClass, chosenYear) {
+  if (!chosenYear) return true;
+  const y = String(asgnYear || '').toUpperCase().trim();
+  const tc = String(targetClass || '').toUpperCase().trim();
+  const cy = String(chosenYear).toUpperCase().trim();
+  if (y === 'ALL' || y === 'ALL YEARS' || tc === 'ALL CLASSES' || tc === 'ALL' || !tc) return true;
+  if (y === cy) return true;
+  if (tc.startsWith(cy) || tc.includes(cy)) return true;
+  return false;
+}
+
+function matchesBranchFilter(asgnBranch, targetClass, chosenBranch) {
+  if (!chosenBranch) return true;
+  const b = String(asgnBranch || '').toUpperCase().trim();
+  const tc = String(targetClass || '').toUpperCase().trim();
+  const cb = String(chosenBranch).toUpperCase().trim();
+  if (b === 'ALL' || b === 'ALL BRANCHES' || tc === 'ALL CLASSES' || tc === 'ALL' || !tc) return true;
+  if (b === cb) return true;
+  if (cb === 'CSE' && (b === 'COMP' || tc.includes('COMP') || tc.includes('CSE'))) return true;
+  if (cb === 'IT' && (b === 'IT' || tc.includes('IT'))) return true;
+  if (cb === 'MECH' && (b === 'MECH' || tc.includes('MECH'))) return true;
+  if (cb === 'ARE' && (b === 'ARE' || tc.includes('ARE') || tc.includes('ROBOTICS'))) return true;
+  if (cb === 'ENTC' && (b === 'ENTC' || tc.includes('ENTC') || tc.includes('ETC'))) return true;
+  return false;
+}
+
+function matchesBatchFilter(asgnBatch, chosenBatch) {
+  if (!chosenBatch) return true;
+  const b = String(asgnBatch || '').toUpperCase().replace(/[\s-_]/g, '');
+  const cb = String(chosenBatch).toUpperCase().replace(/[\s-_]/g, '');
+  if (b === 'ALL' || b === 'ALLBATCHES' || !b) return true;
+  if (cb === 'ALL' || cb === 'ALLBATCHES') return true;
+  if (b === cb) return true;
+  if (b === 'BATCH' + cb || cb === 'BATCH' + b) return true;
+  return false;
+}
+
 function setupSubjectFilters(assignments) {
   const container = document.getElementById('asgn-subject-filters');
   if (!container) return;
-  const subjects = Array.from(new Set(assignments.map(a => a.subject).filter(Boolean)));
 
-  // If current filter subject is no longer in the list, reset to 'all'
+  // Only subjects matching the active class filter
+  const relevantAssignments = assignments.filter(a => {
+    if (!activeClassFilter) return true;
+    return matchesYearFilter(a.year, a.targetClass, activeClassFilter.year) &&
+           matchesBranchFilter(a.branch, a.targetClass, activeClassFilter.branch) &&
+           matchesBatchFilter(a.batch, activeClassFilter.batch);
+  });
+
+  const subjects = Array.from(new Set(relevantAssignments.map(a => a.subject).filter(Boolean)));
+
   if (currentSubjectFilter !== 'all' && !subjects.includes(currentSubjectFilter)) {
     currentSubjectFilter = 'all';
   }
 
   const isAllActive = currentSubjectFilter === 'all';
-  container.innerHTML = `<button type="button" class="filter-pill ${isAllActive ? 'active' : ''}" data-subject="all">All Subjects (${assignments.length})</button>`;
+  container.innerHTML = `<button type="button" class="filter-pill ${isAllActive ? 'active' : ''}" data-subject="all">All Subjects (${relevantAssignments.length})</button>`;
 
   subjects.forEach(subj => {
-    const count = assignments.filter(a => a.subject === subj).length;
+    const count = relevantAssignments.filter(a => a.subject === subj).length;
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `filter-pill ${currentSubjectFilter === subj ? 'active' : ''}`;
@@ -1193,8 +1524,10 @@ function renderAssignmentsList() {
   const gridEl = document.getElementById('asgn-grid');
   const emptyEl = document.getElementById('asgn-empty');
   const search = (document.getElementById('asgn-search-input')?.value || '').toLowerCase().trim();
-  const classFilter = document.getElementById('asgn-filter-class')?.value || 'all';
-  const batchFilter = document.getElementById('asgn-filter-batch')?.value || 'all';
+
+  const chosenYear = activeClassFilter ? activeClassFilter.year : null;
+  const chosenBranch = activeClassFilter ? activeClassFilter.branch : null;
+  const chosenBatch = activeClassFilter ? activeClassFilter.batch : null;
 
   const filtered = allAssignments.filter(a => {
     const matchesSubject = currentSubjectFilter === 'all' || a.subject === currentSubjectFilter;
@@ -1202,19 +1535,25 @@ function renderAssignmentsList() {
       (a.subject && a.subject.toLowerCase().includes(search)) ||
       (a.title && a.title.toLowerCase().includes(search)) ||
       (a.attachmentName && a.attachmentName.toLowerCase().includes(search));
-    const matchesClass = classFilter === 'all' || !a.targetClass || a.targetClass === 'All Classes' || a.targetClass.toLowerCase() === classFilter.toLowerCase();
-    const matchesBatch = batchFilter === 'all' || !a.batch || a.batch === 'All Batches' || a.batch.toLowerCase() === batchFilter.toLowerCase();
-    return matchesSubject && matchesSearch && matchesClass && matchesBatch;
+    const yearMatch = matchesYearFilter(a.year, a.targetClass, chosenYear);
+    const branchMatch = matchesBranchFilter(a.branch, a.targetClass, chosenBranch);
+    const batchMatch = matchesBatchFilter(a.batch, chosenBatch);
+    return matchesSubject && matchesSearch && yearMatch && branchMatch && batchMatch;
   });
 
   if (filtered.length === 0) {
     if (gridEl) gridEl.style.display = 'none';
     if (emptyEl) {
       emptyEl.style.display = 'block';
-      const emptyTitle = emptyEl.querySelector('h3');
-      const emptyDesc = emptyEl.querySelector('p');
-      if (emptyTitle) emptyTitle.textContent = allAssignments.length === 0 ? 'No Assignments Yet' : 'No Matching Assignments';
-      if (emptyDesc) emptyDesc.textContent = allAssignments.length === 0 ? 'Staff have not uploaded any subject assignments yet.' : 'Try changing your subject, class, batch filter or search keyword.';
+      const emptyTitle = document.getElementById('asgn-empty-title') || emptyEl.querySelector('h3');
+      const emptyDesc = document.getElementById('asgn-empty-desc') || emptyEl.querySelector('p');
+      if (activeClassFilter) {
+        if (emptyTitle) emptyTitle.textContent = `No Assignments for ${activeClassFilter.year} ${activeClassFilter.branch} (Batch ${activeClassFilter.batch})`;
+        if (emptyDesc) emptyDesc.textContent = 'Staff have not uploaded assignments for your batch yet. Check back soon or change your selection.';
+      } else {
+        if (emptyTitle) emptyTitle.textContent = allAssignments.length === 0 ? 'No Assignments Yet' : 'No Matching Assignments';
+        if (emptyDesc) emptyDesc.textContent = allAssignments.length === 0 ? 'Staff have not uploaded any subject assignments yet.' : 'Try changing your subject filter or search keyword.';
+      }
     }
     return;
   }
@@ -1284,12 +1623,8 @@ function renderAssignmentsList() {
 document.getElementById('asgn-search-input')?.addEventListener('input', () => {
   renderAssignmentsList();
 });
-document.getElementById('asgn-filter-class')?.addEventListener('change', () => {
-  renderAssignmentsList();
-});
-document.getElementById('asgn-filter-batch')?.addEventListener('change', () => {
-  renderAssignmentsList();
-});
+document.getElementById('btn-change-class')?.addEventListener('click', openClassSelectorWizard);
+document.getElementById('btn-empty-change')?.addEventListener('click', openClassSelectorWizard);
 
 // Attachment Preview Modal
 window.openAttachmentPreview = function(asgnId, titleEncoded, fnameEncoded) {

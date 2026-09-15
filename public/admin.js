@@ -1041,8 +1041,10 @@ addAsgnForm?.addEventListener('submit', async (e) => {
   }
 
   const subject = document.getElementById('asgn-subject-input')?.value.trim();
-  const targetClass = document.getElementById('asgn-class-input')?.value || 'All Classes';
-  const batch = document.getElementById('asgn-batch-input')?.value || 'All Batches';
+  const year = document.getElementById('asgn-year-input')?.value || 'All Years';
+  const branch = document.getElementById('asgn-branch-input')?.value || 'All Branches';
+  const batch = document.getElementById('asgn-batch-input')?.value?.trim() || 'All Batches';
+  const targetClass = (year !== 'All Years' || branch !== 'All Branches') ? `${year} ${branch}`.trim() : 'All Classes';
   const deadline = document.getElementById('asgn-deadline-input')?.value || '';
 
   if (!subject) {
@@ -1055,7 +1057,7 @@ addAsgnForm?.addEventListener('submit', async (e) => {
     const res = await fetch('/api/admin/assignments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subject, targetClass, batch, deadline, attachment: attachedFileObject })
+      body: JSON.stringify({ subject, year, branch, targetClass, batch, deadline, attachment: attachedFileObject })
     });
     const data = await res.json();
 
