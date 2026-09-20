@@ -265,12 +265,94 @@
   }
   .mfield input:focus, .mfield select:focus { border-color: #2d8f4e; }
   .file-drop {
-    border: 2px dashed #c8dbd0; border-radius: 14px; padding: 22px;
+    border: 2px dashed #c8dbd0; border-radius: 14px; padding: 18px;
     text-align: center; cursor: pointer; transition: all 0.2s; background: #f8fbf9;
   }
   .file-drop:hover { border-color: #2d8f4e; background: #f0f9f3; }
   .file-drop p { margin: 0 0 4px; font-weight: 600; color: #2d8f4e; font-size: 14px; }
   .file-drop span { font-size: 12px; color: #7d9183; }
+
+  /* ===== STAGED PREVIEW WINDOW & MULTI-IMAGE CAROUSEL ===== */
+  .staged-preview-box {
+    margin-top: 12px; border: 1.5px solid #d4e3d8; border-radius: 12px;
+    background: #ffffff; overflow: hidden; box-shadow: 0 4px 14px rgba(28,61,40,0.06);
+  }
+  .staged-preview-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 12px; background: #f0f7f2; border-bottom: 1.5px solid #e1ece4;
+    font-size: 12.5px; font-weight: 600; color: #1e3d2a;
+  }
+  .staged-header-actions { display: flex; gap: 8px; align-items: center; }
+  .staged-mini-btn {
+    background: #fff; border: 1.5px solid #c9ded0; border-radius: 8px;
+    padding: 4px 10px; font-size: 11.5px; font-weight: 600; color: #2d8f4e;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .staged-mini-btn:hover { background: #2d8f4e; color: #fff; border-color: #2d8f4e; }
+  .staged-mini-btn.danger { color: #dc2626; border-color: #fca5a5; }
+  .staged-mini-btn.danger:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
+  
+  .staged-viewer-pane {
+    position: relative; background: #0f1c14; min-height: 180px; max-height: 240px;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; user-select: none;
+  }
+  .staged-viewer-pane img {
+    max-height: 230px; max-width: 100%; object-fit: contain;
+    transition: opacity 0.2s ease;
+  }
+  .staged-viewer-pane .doc-preview-icon {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; color: #e0eee4;
+  }
+  .staged-viewer-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 50%;
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; cursor: pointer; transition: background 0.15s; z-index: 2;
+  }
+  .staged-viewer-nav:hover { background: #2d8f4e; }
+  .staged-viewer-nav.prev { left: 8px; }
+  .staged-viewer-nav.next { right: 8px; }
+  .staged-viewer-caption {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.75));
+    color: #fff; font-size: 11.5px; padding: 6px 12px; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .staged-thumbnails-tray {
+    display: flex; gap: 8px; padding: 10px 12px; overflow-x: auto;
+    background: #fbfdfc; border-top: 1px solid #eef4f0;
+  }
+  .staged-thumb-item {
+    position: relative; flex-shrink: 0; width: 68px; height: 68px;
+    border-radius: 8px; border: 2px solid #d6e4da; overflow: hidden;
+    cursor: pointer; transition: all 0.15s; background: #fff;
+  }
+  .staged-thumb-item.active {
+    border-color: #2d8f4e; box-shadow: 0 0 0 2px rgba(45,143,78,0.3);
+  }
+  .staged-thumb-item img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .staged-thumb-fallback {
+    width: 100%; height: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; font-size: 10px; color: #4a5e50;
+    background: #f2f7f3; text-align: center; padding: 2px;
+  }
+  .staged-thumb-remove {
+    position: absolute; top: 2px; right: 2px; width: 18px; height: 18px;
+    border-radius: 50%; background: rgba(220,38,38,0.9); color: #fff;
+    border: none; font-size: 10px; font-weight: bold; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.1s; z-index: 3;
+  }
+  .staged-thumb-remove:hover { transform: scale(1.15); }
+  .staged-thumb-index {
+    position: absolute; bottom: 2px; left: 2px; background: rgba(0,0,0,0.65);
+    color: #fff; font-size: 9.5px; font-weight: bold; padding: 1px 4px;
+    border-radius: 4px; z-index: 2;
+  }
   .modal-foot {
     padding: 16px 22px; border-top: 1.5px solid #f0f5f1;
     display: flex; gap: 10px; justify-content: flex-end;
@@ -596,11 +678,30 @@
           <input type="date" id="asgn-deadline-input">
         </div>
         <div class="mfield">
-          <label>Assignment Attachment (PDF, Image, Doc)</label>
+          <label>Assignment Images & Attachments (Upload 1 or More)</label>
           <div class="file-drop" id="asgn-dropzone">
-            <p>📎 Select or Drop File</p>
-            <span id="asgn-file-status">Supports PDF, JPG, PNG, DOC (max 4 MB)</span>
-            <input type="file" id="asgn-file-input" style="display:none;" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.txt">
+            <p>📷 Click or Drop Images / Files (Multiple Supported)</p>
+            <span id="asgn-file-status">Supports JPG, PNG, WEBP, PDF, DOC (Upload 1 or multiple images)</span>
+            <input type="file" id="asgn-file-input" style="display:none;" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.txt" multiple>
+          </div>
+          <!-- Staged Multi-Image Preview Window -->
+          <div id="asgn-staged-container" class="staged-preview-box" style="display:none;">
+            <div class="staged-preview-header">
+              <span id="asgn-staged-count">📷 0 Images Selected</span>
+              <div class="staged-header-actions">
+                <button type="button" class="staged-mini-btn" id="asgn-add-more-btn">➕ Add More</button>
+                <button type="button" class="staged-mini-btn danger" id="asgn-clear-all-btn">Clear All</button>
+              </div>
+            </div>
+            <!-- Live Preview Window Pane -->
+            <div class="staged-viewer-pane" id="asgn-viewer-pane">
+              <button type="button" class="staged-viewer-nav prev" id="asgn-prev-img-btn" title="Previous Image">◀</button>
+              <div id="asgn-viewer-media" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;"></div>
+              <button type="button" class="staged-viewer-nav next" id="asgn-next-img-btn" title="Next Image">▶</button>
+              <div class="staged-viewer-caption" id="asgn-viewer-caption">Image 1 of 1</div>
+            </div>
+            <!-- Thumbnails Strip Tray -->
+            <div class="staged-thumbnails-tray" id="asgn-thumbnails-tray"></div>
           </div>
         </div>
       </div>
@@ -614,14 +715,27 @@
 
 <!-- ===== PREVIEW MODAL ===== -->
 <div id="admin-preview-modal" class="modal-overlay" style="display:none;">
-  <div class="modal-box" style="max-width:700px;">
-    <div class="modal-head">
-      <h3 id="admin-preview-title">Attachment Preview</h3>
-      <button type="button" class="modal-x" id="admin-preview-close">✕</button>
+  <div class="modal-box" style="max-width:760px; width:95%;">
+    <div class="modal-head" style="flex-wrap:wrap; gap:10px;">
+      <div>
+        <h3 id="admin-preview-title" style="margin:0;">Attachment Preview</h3>
+        <span id="admin-preview-subtitle" style="font-size:12px; color:#60796b; display:none;"></span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div id="admin-preview-nav" style="display:none; align-items:center; gap:6px;">
+          <button type="button" class="btn-cancel" id="admin-preview-prev" style="padding:4px 10px; font-size:12px;">◀ Prev</button>
+          <span id="admin-preview-counter" style="font-size:12px; font-weight:600; color:#1e3d2a; min-width:80px; text-align:center;">1 / 1</span>
+          <button type="button" class="btn-cancel" id="admin-preview-next" style="padding:4px 10px; font-size:12px;">Next ▶</button>
+        </div>
+        <button type="button" class="modal-x" id="admin-preview-close">✕</button>
+      </div>
     </div>
-    <div class="modal-body-pad" id="admin-preview-body" style="padding:0; max-height:75vh; overflow:auto;"></div>
-    <div class="modal-foot">
-      <a href="#" id="admin-preview-dl-link" class="btn-submit" download>⬇ Download File</a>
+    <!-- Multi-attachment Thumbnail Strip -->
+    <div id="admin-preview-thumbs" style="display:none; gap:8px; padding:8px 16px; overflow-x:auto; background:#f4f7f5; border-bottom:1.5px solid #e2ece5;"></div>
+    <div class="modal-body-pad" id="admin-preview-body" style="padding:0; max-height:72vh; overflow:auto; display:flex; align-items:center; justify-content:center; background:#0f1c14;"></div>
+    <div class="modal-foot" style="justify-content:space-between; align-items:center;">
+      <span id="admin-preview-meta" style="font-size:12px; color:#667e70;"></span>
+      <a href="#" id="admin-preview-dl-link" class="btn-submit" download>⬇ Download Current File</a>
     </div>
   </div>
 </div>

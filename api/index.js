@@ -1126,24 +1126,42 @@ async function handler(req, res) {
     // ---------------- ASSIGNMENTS: LIST (STUDENTS & ADMIN) ----------------
     if (pathname === '/api/assignments' && req.method === 'GET') {
       const assignments = await getAssignments();
-      const sanitized = assignments.map(a => ({
-        id: a.id,
-        subject: a.subject,
-        experimentNo: a.experimentNo,
-        title: a.title,
-        info: a.info,
-        submissionGuidelines: a.submissionGuidelines,
-        deadline: a.deadline,
-        createdAt: a.createdAt,
-        hasAttachment: !!a.attachment,
-        attachmentName: a.attachment ? a.attachment.originalName : null,
-        attachmentSize: a.attachment ? a.attachment.size : null,
-        year: a.year || (a.targetClass && a.targetClass !== 'All Classes' ? a.targetClass.split(' ')[0] : 'All'),
-        branch: a.branch || (a.targetClass && a.targetClass !== 'All Classes' ? a.targetClass.split(' ').slice(1).join(' ') || 'All' : 'All'),
-        targetClass: a.targetClass || 'All Classes',
-        batch: a.batch || 'All Batches',
-        category: a.category || 'Lab Experiments'
-      }));
+      const sanitized = assignments.map(a => {
+        const rawAtts = (Array.isArray(a.attachments) && a.attachments.length > 0)
+          ? a.attachments
+          : (a.attachment ? [a.attachment] : []);
+        const sanitizedAtts = rawAtts.map((att, idx) => ({
+          index: idx,
+          originalName: att.originalName || `file_${idx + 1}`,
+          mimeType: att.mimeType || 'application/octet-stream',
+          size: att.size || 0
+        }));
+        const totalSize = sanitizedAtts.reduce((acc, curr) => acc + (curr.size || 0), 0);
+        const primaryName = sanitizedAtts.length > 1
+          ? `${sanitizedAtts.length} Files (${sanitizedAtts[0].originalName})`
+          : (sanitizedAtts[0] ? sanitizedAtts[0].originalName : null);
+
+        return {
+          id: a.id,
+          subject: a.subject,
+          experimentNo: a.experimentNo,
+          title: a.title,
+          info: a.info,
+          submissionGuidelines: a.submissionGuidelines,
+          deadline: a.deadline,
+          createdAt: a.createdAt,
+          hasAttachment: sanitizedAtts.length > 0,
+          attachmentCount: sanitizedAtts.length,
+          attachments: sanitizedAtts,
+          attachmentName: primaryName,
+          attachmentSize: totalSize,
+          year: a.year || (a.targetClass && a.targetClass !== 'All Classes' ? a.targetClass.split(' ')[0] : 'All'),
+          branch: a.branch || (a.targetClass && a.targetClass !== 'All Classes' ? a.targetClass.split(' ').slice(1).join(' ') || 'All' : 'All'),
+          targetClass: a.targetClass || 'All Classes',
+          batch: a.batch || 'All Batches',
+          category: a.category || 'Lab Experiments'
+        };
+      });
 
       return sendJSON(res, 200, { success: true, assignments: sanitized });
     }
@@ -1154,27 +1172,35 @@ async function handler(req, res) {
       if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
 
       const body = await readJSONBody(req);
-      const { subject, category, deadline, attachment } = body;
+      const { subject, category, deadline, attachment, attachments } = body;
 
       if (!subject || !subject.trim()) {
         return sendJSON(res, 400, { error: 'Subject is required.' });
       }
 
-      let cleanAttachment = null;
-      if (attachment && attachment.dataBase64) {
-        cleanAttachment = {
+      let cleanAttachments = [];
+      if (Array.isArray(attachments) && attachments.length > 0) {
+        cleanAttachments = attachments.filter(att => att && att.dataBase64).map((att, idx) => ({
+          originalName: att.originalName || `image_${idx + 1}`,
+          mimeType: att.mimeType || 'application/octet-stream',
+          size: att.size || Buffer.byteLength(att.dataBase64, 'base64'),
+          dataBase64: att.dataBase64
+        }));
+      } else if (attachment && attachment.dataBase64) {
+        cleanAttachments = [{
           originalName: attachment.originalName || 'assignment_file',
           mimeType: attachment.mimeType || 'application/octet-stream',
           size: attachment.size || Buffer.byteLength(attachment.dataBase64, 'base64'),
           dataBase64: attachment.dataBase64
-        };
+        }];
       }
 
       const newAssignment = await createAssignment({
         subject: subject.trim(),
         category: (category && category.trim()) || 'Lab Experiments',
         deadline: deadline || '',
-        attachment: cleanAttachment,
+        attachment: cleanAttachments[0] || null,
+        attachments: cleanAttachments,
         year: body.year || '',
         branch: body.branch || '',
         targetClass: body.targetClass || body.class || 'All Classes',
@@ -1210,11 +1236,22 @@ async function handler(req, res) {
       const assignments = await getAssignments();
       const assignment = assignments.find(a => a.id === id);
 
-      if (!assignment || !assignment.attachment || !assignment.attachment.dataBase64) {
+      if (!assignment) {
+        return sendJSON(res, 404, { error: 'Assignment not found.' });
+      }
+
+      const reqIndex = parseInt(parsed.searchParams.get('index') || '0', 10) || 0;
+      let att = null;
+      if (Array.isArray(assignment.attachments) && assignment.attachments.length > 0) {
+        att = assignment.attachments[reqIndex] || assignment.attachments[0];
+      } else if (assignment.attachment && assignment.attachment.dataBase64) {
+        att = assignment.attachment;
+      }
+
+      if (!att || !att.dataBase64) {
         return sendJSON(res, 404, { error: 'No demo attachment found for this assignment.' });
       }
 
-      const att = assignment.attachment;
       const fileBuffer = Buffer.from(att.dataBase64, 'base64');
       const ext = path.extname(att.originalName).toLowerCase();
       const contentType = att.mimeType || MIME[ext] || 'application/octet-stream';

@@ -421,6 +421,61 @@ async function runTests() {
   assert.strictEqual(attachRes.text(), demoContent);
   console.log('   ✅ Demo attachment download/preview verified successfully');
 
+  // Test 21b: Multi-Image Assignment Upload & Indexed Preview
+  console.log('21b. Testing Multi-Image Assignment Upload and Indexed Preview (attachments: [img1, img2, img3])...');
+  const img1Content = 'DEMO_PAGE_1_DIAGRAM_DATA';
+  const img2Content = 'DEMO_PAGE_2_QUESTION_DATA';
+  const img3Content = 'DEMO_PAGE_3_FORMULAS_DATA';
+
+  const multiAsgnRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/admin/assignments',
+    headers: { cookie: adminCookie },
+    body: {
+      subject: 'Computer Vision',
+      category: 'Lab Experiments',
+      year: 'TE',
+      branch: 'CSE',
+      batch: 'A1',
+      deadline: '2026-11-01',
+      attachments: [
+        { originalName: 'page1_diagram.png', mimeType: 'image/png', size: img1Content.length, dataBase64: Buffer.from(img1Content).toString('base64') },
+        { originalName: 'page2_questions.png', mimeType: 'image/png', size: img2Content.length, dataBase64: Buffer.from(img2Content).toString('base64') },
+        { originalName: 'page3_formulas.png', mimeType: 'image/png', size: img3Content.length, dataBase64: Buffer.from(img3Content).toString('base64') }
+      ]
+    }
+  });
+  assert.strictEqual(multiAsgnRes.statusCode, 201);
+  const multiAsgn = multiAsgnRes.json().assignment;
+  assert(multiAsgn.id);
+  assert.strictEqual(multiAsgn.attachments.length, 3);
+
+  // Check GET /api/assignments exposes sanitized attachments list
+  const listCheckRes = await invokeHandler({ method: 'GET', url: '/api/assignments' });
+  const fetchedMulti = listCheckRes.json().assignments.find(a => a.id === multiAsgn.id);
+  assert(fetchedMulti, 'Multi-image assignment must be returned in GET list');
+  assert.strictEqual(fetchedMulti.attachmentCount, 3);
+  assert.strictEqual(fetchedMulti.hasAttachment, true);
+  assert.strictEqual(fetchedMulti.attachments.length, 3);
+  assert.strictEqual(fetchedMulti.attachments[0].originalName, 'page1_diagram.png');
+  assert.strictEqual(fetchedMulti.attachments[1].originalName, 'page2_questions.png');
+  assert.strictEqual(fetchedMulti.attachments[2].originalName, 'page3_formulas.png');
+
+  // Verify indexed preview endpoints
+  const p1Res = await invokeHandler({ method: 'GET', url: `/api/assignments/${multiAsgn.id}/attachment?index=0` });
+  assert.strictEqual(p1Res.statusCode, 200);
+  assert.strictEqual(p1Res.text(), img1Content);
+
+  const p2Res = await invokeHandler({ method: 'GET', url: `/api/assignments/${multiAsgn.id}/attachment?index=1` });
+  assert.strictEqual(p2Res.statusCode, 200);
+  assert.strictEqual(p2Res.text(), img2Content);
+
+  const p3Res = await invokeHandler({ method: 'GET', url: `/api/assignments/${multiAsgn.id}/attachment?index=2` });
+  assert.strictEqual(p3Res.statusCode, 200);
+  assert.strictEqual(p3Res.text(), img3Content);
+
+  console.log('   ✅ Multi-image upload, thumbnail metadata, and indexed previews verified successfully');
+
   // Test 22: Placing Order with UPI Gateway & UTR Reference
   console.log('22. Testing POST /api/orders with UPI Payment & UTR reference...');
   const upiOrderRes = await invokeHandler({

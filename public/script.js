@@ -1534,9 +1534,12 @@ function renderAssignmentsList() {
       card.className = 'asgn-card';
 
       const hasAtt = a.hasAttachment;
+      const attCount = a.attachmentCount || (a.attachments && a.attachments.length) || (hasAtt ? 1 : 0);
+      const isMulti = attCount > 1;
+
       const previewBtnHTML = hasAtt ? `
         <button type="button" class="action-btn preview-btn" onclick="openAttachmentPreview('${a.id}', '${encodeURIComponent(a.subject)}', '${encodeURIComponent(a.attachmentName || 'Demo Assignment')}')">
-          👁 Preview Demo
+          👁 Preview Demo ${isMulti ? `(${attCount})` : ''}
         </button>
         <a href="/api/assignments/${a.id}/attachment" class="action-btn download-btn" download="${a.attachmentName || 'demo_assignment'}">
           ⬇ Download
@@ -1548,9 +1551,9 @@ function renderAssignmentsList() {
 
       const attChipHTML = hasAtt ? `
         <div class="asgn-att-chip">
-          <span class="att-icon">📎</span>
+          <span class="att-icon">${isMulti ? '📷' : '📎'}</span>
           <div class="att-info">
-            <span class="att-name" title="${a.attachmentName || 'Attachment'}">${a.attachmentName || 'Attachment'}</span>
+            <span class="att-name" title="${escapeHtml(a.attachmentName || 'Attachment')}">${isMulti ? `📷 ${attCount} Images / Files Attached` : escapeHtml(a.attachmentName || 'Attachment')}</span>
             <span class="att-size">${formatAsgnBytes(a.attachmentSize)}</span>
           </div>
         </div>
@@ -1597,47 +1600,135 @@ document.getElementById('asgn-search-input')?.addEventListener('input', () => {
 document.getElementById('btn-change-class')?.addEventListener('click', openClassSelectorWizard);
 document.getElementById('btn-empty-change')?.addEventListener('click', openClassSelectorWizard);
 
-// Attachment Preview Modal
+function escapeHtml(str) {
+  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Multi-Attachment Student Preview State & Logic
+let currentStudentPreviewAsgn = null;
+let currentStudentPreviewIndex = 0;
+
 window.openAttachmentPreview = function(asgnId, titleEncoded, fnameEncoded) {
+  const asgn = allAssignments.find(a => a.id === asgnId) || {
+    id: asgnId,
+    subject: titleEncoded ? decodeURIComponent(titleEncoded) : 'Assignment',
+    attachmentName: fnameEncoded ? decodeURIComponent(fnameEncoded) : 'file',
+    attachments: [{ originalName: fnameEncoded ? decodeURIComponent(fnameEncoded) : 'file', index: 0 }]
+  };
+
+  currentStudentPreviewAsgn = asgn;
+  currentStudentPreviewIndex = 0;
+
   const modal = document.getElementById('preview-modal');
+  if (modal) modal.style.display = 'flex';
+
+  renderStudentPreviewSlide();
+};
+
+function renderStudentPreviewSlide() {
+  if (!currentStudentPreviewAsgn) return;
+  const asgn = currentStudentPreviewAsgn;
+  const rawAtts = (Array.isArray(asgn.attachments) && asgn.attachments.length > 0)
+    ? asgn.attachments
+    : (asgn.hasAttachment ? [{ index: 0, originalName: asgn.attachmentName || 'file', size: asgn.attachmentSize }] : []);
+
+  const total = rawAtts.length || 1;
+  if (currentStudentPreviewIndex >= total) currentStudentPreviewIndex = 0;
+  if (currentStudentPreviewIndex < 0) currentStudentPreviewIndex = total - 1;
+  const currentAtt = rawAtts[currentStudentPreviewIndex] || { originalName: 'file', size: 0, index: 0 };
+
   const titleEl = document.getElementById('modal-title');
+  const subtitleEl = document.getElementById('modal-subtitle');
+  const navEl = document.getElementById('student-preview-nav');
+  const counterEl = document.getElementById('student-preview-counter');
+  const thumbsEl = document.getElementById('student-preview-thumbs');
   const bodyEl = document.getElementById('modal-body');
   const dlLink = document.getElementById('modal-download-link');
   const printBtn = document.getElementById('modal-print-btn');
+  const metaEl = document.getElementById('student-preview-meta');
 
-  const title = decodeURIComponent(titleEncoded);
-  const fname = decodeURIComponent(fnameEncoded);
+  if (titleEl) titleEl.textContent = `${asgn.subject || 'Assignment'}`;
+  if (subtitleEl) {
+    subtitleEl.style.display = 'block';
+    subtitleEl.textContent = `${asgn.category || 'Lab Experiments'} • ${asgn.targetClass || ''} • ${asgn.batch || ''}`;
+  }
 
-  if (titleEl) titleEl.textContent = `${title} — ${fname}`;
+  if (navEl) navEl.style.display = total > 1 ? 'flex' : 'none';
+  if (counterEl) counterEl.textContent = `${currentStudentPreviewIndex + 1} / ${total}`;
+
+  if (metaEl) {
+    metaEl.textContent = `📄 ${currentAtt.originalName} ${currentAtt.size ? `(${formatAsgnBytes(currentAtt.size)})` : ''}`;
+  }
+
   if (dlLink) {
-    dlLink.href = `/api/assignments/${asgnId}/attachment`;
-    dlLink.setAttribute('download', fname);
+    dlLink.href = `/api/assignments/${asgn.id}/attachment?index=${currentStudentPreviewIndex}`;
+    dlLink.setAttribute('download', currentAtt.originalName || 'file');
   }
 
   if (printBtn) {
     printBtn.onclick = () => {
+      const modal = document.getElementById('preview-modal');
       if (modal) modal.style.display = 'none';
-      orderAssignmentPrint(asgnId, fnameEncoded);
+      orderAssignmentPrint(asgn.id, encodeURIComponent(currentAtt.originalName || 'file'), currentStudentPreviewIndex);
     };
   }
 
-  const isImg = /\.(png|jpg|jpeg|gif|svg)$/i.test(fname);
+  const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(currentAtt.originalName || '');
   if (bodyEl) {
     if (isImg) {
-      bodyEl.innerHTML = `<img src="/api/assignments/${asgnId}/attachment?inline=1" alt="Demo preview" style="max-width:100%; max-height:70vh; object-fit:contain; border-radius:8px;">`;
+      bodyEl.innerHTML = `<img src="/api/assignments/${asgn.id}/attachment?index=${currentStudentPreviewIndex}&inline=1" alt="Demo preview" style="max-width:100%; max-height:70vh; object-fit:contain; border-radius:8px;">`;
     } else {
-      bodyEl.innerHTML = `<iframe src="/api/assignments/${asgnId}/attachment?inline=1" style="width:100%; height:65vh; border:none; border-radius:8px;"></iframe>`;
+      bodyEl.innerHTML = `<iframe src="/api/assignments/${asgn.id}/attachment?index=${currentStudentPreviewIndex}&inline=1" style="width:100%; height:65vh; border:none; border-radius:8px; background:#fff;"></iframe>`;
     }
   }
 
-  if (modal) modal.style.display = 'flex';
-};
+  if (thumbsEl) {
+    if (total > 1) {
+      thumbsEl.style.display = 'flex';
+      thumbsEl.innerHTML = '';
+      rawAtts.forEach((att, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'upload-btn secondary-btn';
+        btn.style.padding = '4px 10px';
+        btn.style.fontSize = '11.5px';
+        if (idx === currentStudentPreviewIndex) {
+          btn.style.background = '#2d8f4e';
+          btn.style.color = '#fff';
+          btn.style.borderColor = '#2d8f4e';
+        }
+        btn.innerHTML = `${/\.(png|jpg|jpeg|webp)$/i.test(att.originalName) ? '🖼️' : '📄'} Page ${idx + 1}`;
+        btn.onclick = () => {
+          currentStudentPreviewIndex = idx;
+          renderStudentPreviewSlide();
+        };
+        thumbsEl.appendChild(btn);
+      });
+    } else {
+      thumbsEl.style.display = 'none';
+    }
+  }
+}
+
+document.getElementById('student-preview-prev')?.addEventListener('click', () => {
+  if (!currentStudentPreviewAsgn) return;
+  const count = (currentStudentPreviewAsgn.attachments && currentStudentPreviewAsgn.attachments.length) || 1;
+  currentStudentPreviewIndex = (currentStudentPreviewIndex - 1 + count) % count;
+  renderStudentPreviewSlide();
+});
+
+document.getElementById('student-preview-next')?.addEventListener('click', () => {
+  if (!currentStudentPreviewAsgn) return;
+  const count = (currentStudentPreviewAsgn.attachments && currentStudentPreviewAsgn.attachments.length) || 1;
+  currentStudentPreviewIndex = (currentStudentPreviewIndex + 1) % count;
+  renderStudentPreviewSlide();
+});
 
 // 1-Click Send Demo Assignment to Print Centre
-window.orderAssignmentPrint = async function(asgnId, fnameEncoded) {
+window.orderAssignmentPrint = async function(asgnId, fnameEncoded, index = 0) {
   const fname = decodeURIComponent(fnameEncoded);
   try {
-    const res = await fetch(`/api/assignments/${asgnId}/attachment`);
+    const res = await fetch(`/api/assignments/${asgnId}/attachment?index=${index}`);
     if (!res.ok) throw new Error('Could not fetch assignment demo file');
     const blob = await res.blob();
     const file = new File([blob], fname, { type: blob.type || 'application/pdf' });

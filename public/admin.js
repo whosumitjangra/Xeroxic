@@ -820,7 +820,14 @@ tabBtnAssignments?.addEventListener('click', () => {
 let allAdminAssignments = [];
 let currentAdminSubjectFilter = 'all';
 let currentAdminSearch = '';
-let attachedFileObject = null;
+let stagedAttachments = [];
+let activeStagedIndex = 0;
+let currentPreviewAsgn = null;
+let currentPreviewIndex = 0;
+
+function escapeHtml(str) {
+  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 async function loadAdminAssignments() {
   const loadingEl = document.getElementById('admin-asgn-loading');
@@ -927,20 +934,22 @@ function renderAdminAssignments() {
     card.id = `admin-asgn-${a.id}`;
 
     const hasAtt = a.hasAttachment;
+    const attCount = a.attachmentCount || (a.attachments && a.attachments.length) || (hasAtt ? 1 : 0);
+    const isMulti = attCount > 1;
     const previewBtn = hasAtt ? `
       <button type="button" class="action-btn preview-btn" onclick="openAdminAttachmentPreview('${a.id}', '${encodeURIComponent(a.subject)}', '${encodeURIComponent(a.attachmentName || 'file')}')">
-        👁 Preview
+        👁 Preview ${isMulti ? `(${attCount})` : ''}
       </button>
-      <a href="/api/assignments/${a.id}/attachment" class="action-btn download-btn" download="${a.attachmentName || 'file'}">
+      <a href="/api/assignments/${a.id}/attachment" class="action-btn download-btn" download="${a.attachmentName || 'assignment_file'}">
         ⬇ Download
       </a>
     ` : '';
 
     const attChipHTML = hasAtt ? `
       <div class="asgn-att-chip">
-        <span class="att-icon">📎</span>
+        <span class="att-icon">${isMulti ? '📷' : '📎'}</span>
         <div class="att-info">
-          <span class="att-name" title="${a.attachmentName || 'Attachment'}">${a.attachmentName || 'Attachment'}</span>
+          <span class="att-name" title="${escapeHtml(a.attachmentName || 'Attachment')}">${isMulti ? `📷 ${attCount} Images / Files Attached` : escapeHtml(a.attachmentName || 'Attachment')}</span>
           <span class="att-size">${formatBytes(a.attachmentSize)}</span>
         </div>
       </div>
@@ -1006,31 +1015,212 @@ modalCancel?.addEventListener('click', () => {
   if (addModal) addModal.style.display = 'none';
 });
 
-asgnDropzone?.addEventListener('click', () => {
+// Multi-Image Staging & Live Preview Window Controller
+function updateStagedPreviewUI() {
+  const container = document.getElementById('asgn-staged-container');
+  const countEl = document.getElementById('asgn-staged-count');
+  const viewerMedia = document.getElementById('asgn-viewer-media');
+  const viewerCaption = document.getElementById('asgn-viewer-caption');
+  const tray = document.getElementById('asgn-thumbnails-tray');
+  const prevBtn = document.getElementById('asgn-prev-img-btn');
+  const nextBtn = document.getElementById('asgn-next-img-btn');
+  const fileStatus = document.getElementById('asgn-file-status');
+
+  if (!container) return;
+
+  if (stagedAttachments.length === 0) {
+    container.style.display = 'none';
+    if (fileStatus) fileStatus.textContent = 'Supports JPG, PNG, WEBP, PDF, DOC (Upload 1 or multiple images)';
+    return;
+  }
+
+  container.style.display = 'block';
+  const totalSize = stagedAttachments.reduce((sum, a) => sum + (a.size || 0), 0);
+  const imgCount = stagedAttachments.filter(a => a.isImg).length;
+  if (countEl) {
+    countEl.textContent = `📷 ${stagedAttachments.length} ${stagedAttachments.length === 1 ? 'Attachment' : 'Attachments'} (${imgCount} ${imgCount === 1 ? 'Image' : 'Images'}) • ${formatBytes(totalSize)}`;
+  }
+  if (fileStatus) {
+    fileStatus.textContent = `✅ Ready: ${stagedAttachments.length} file(s) staged (${formatBytes(totalSize)})`;
+  }
+
+  if (activeStagedIndex >= stagedAttachments.length) {
+    activeStagedIndex = Math.max(0, stagedAttachments.length - 1);
+  }
+
+  const activeItem = stagedAttachments[activeStagedIndex];
+  if (activeItem && viewerMedia) {
+    if (activeItem.isImg) {
+      viewerMedia.innerHTML = `<img src="data:${activeItem.mimeType};base64,${activeItem.dataBase64}" alt="${escapeHtml(activeItem.originalName)}" style="max-height:220px; max-width:100%; object-fit:contain; border-radius:6px;">`;
+    } else {
+      viewerMedia.innerHTML = `
+        <div class="doc-preview-icon" style="text-align:center;">
+          <span style="font-size:42px; display:block; margin-bottom:4px;">📄</span>
+          <span style="font-weight:600; font-size:13px; color:#fff; display:block;">${escapeHtml(activeItem.originalName)}</span>
+          <span style="font-size:11px; opacity:0.8; color:#d1e7dd; display:block;">${formatBytes(activeItem.size)} • Document</span>
+        </div>
+      `;
+    }
+  }
+
+  if (viewerCaption && activeItem) {
+    viewerCaption.textContent = `${activeItem.isImg ? '🖼️ Image' : '📄 File'} ${activeStagedIndex + 1} of ${stagedAttachments.length}: ${activeItem.originalName} (${formatBytes(activeItem.size)})`;
+  }
+
+  if (prevBtn) prevBtn.style.display = stagedAttachments.length > 1 ? 'flex' : 'none';
+  if (nextBtn) nextBtn.style.display = stagedAttachments.length > 1 ? 'flex' : 'none';
+
+  if (tray) {
+    tray.innerHTML = '';
+    stagedAttachments.forEach((att, idx) => {
+      const thumb = document.createElement('div');
+      thumb.className = `staged-thumb-item ${idx === activeStagedIndex ? 'active' : ''}`;
+      thumb.title = `${att.originalName} (${formatBytes(att.size)})`;
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'staged-thumb-remove';
+      delBtn.innerHTML = '✕';
+      delBtn.title = 'Remove this file';
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        removeStagedAttachment(idx);
+      };
+
+      const idxBadge = document.createElement('span');
+      idxBadge.className = 'staged-thumb-index';
+      idxBadge.textContent = idx + 1;
+
+      if (att.isImg) {
+        const img = document.createElement('img');
+        img.src = `data:${att.mimeType};base64,${att.dataBase64}`;
+        img.alt = att.originalName;
+        thumb.appendChild(img);
+      } else {
+        const fallback = document.createElement('div');
+        fallback.className = 'staged-thumb-fallback';
+        fallback.innerHTML = `📄<span style="overflow:hidden; text-overflow:ellipsis; max-width:60px; white-space:nowrap;">${escapeHtml(att.originalName)}</span>`;
+        thumb.appendChild(fallback);
+      }
+
+      thumb.appendChild(delBtn);
+      thumb.appendChild(idxBadge);
+      thumb.onclick = () => {
+        activeStagedIndex = idx;
+        updateStagedPreviewUI();
+      };
+      tray.appendChild(thumb);
+    });
+  }
+}
+
+function removeStagedAttachment(index) {
+  stagedAttachments.splice(index, 1);
+  if (activeStagedIndex >= stagedAttachments.length) {
+    activeStagedIndex = Math.max(0, stagedAttachments.length - 1);
+  }
+  updateStagedPreviewUI();
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleFilesSelected(files) {
+  if (!files || files.length === 0) return;
+  const asgnFileStatus = document.getElementById('asgn-file-status');
+  if (asgnFileStatus) asgnFileStatus.textContent = `Reading ${files.length} file(s)...`;
+
+  const filesArray = Array.from(files);
+  for (const file of filesArray) {
+    if (file.size > 8 * 1024 * 1024) {
+      alert(`File "${file.name}" exceeds 8 MB limit.`);
+      continue;
+    }
+    const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(file.name) || (file.type && file.type.startsWith('image/'));
+    try {
+      const base64Data = await readFileAsBase64(file);
+      stagedAttachments.push({
+        id: 'stg-' + Math.random().toString(36).substr(2, 9),
+        originalName: file.name,
+        mimeType: file.type || (isImg ? 'image/jpeg' : 'application/octet-stream'),
+        size: file.size,
+        dataBase64: base64Data,
+        isImg
+      });
+    } catch (err) {
+      console.error('Error reading file:', err);
+    }
+  }
+  activeStagedIndex = stagedAttachments.length - 1;
+  updateStagedPreviewUI();
+}
+
+asgnDropzone?.addEventListener('click', (e) => {
+  if (e.target.closest('#asgn-staged-container')) return;
   asgnFileInput?.click();
 });
 
-asgnFileInput?.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  if (file.size > 4.5 * 1024 * 1024) {
-    alert('Attachment file must be under 4.5 MB.');
-    return;
-  }
-  asgnFileStatus.textContent = `Reading ${file.name} (${(file.size / 1024).toFixed(1)} KB)...`;
+asgnDropzone?.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  asgnDropzone.style.borderColor = '#2d8f4e';
+  asgnDropzone.style.background = '#f0f9f3';
+});
 
-  const reader = new FileReader();
-  reader.onload = () => {
-    const base64Data = reader.result.split(',')[1];
-    attachedFileObject = {
-      originalName: file.name,
-      mimeType: file.type || 'application/octet-stream',
-      size: file.size,
-      dataBase64: base64Data
-    };
-    asgnFileStatus.textContent = `✅ Ready: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-  };
-  reader.readAsDataURL(file);
+asgnDropzone?.addEventListener('dragleave', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  asgnDropzone.style.borderColor = '#c8dbd0';
+  asgnDropzone.style.background = '#f8fbf9';
+});
+
+asgnDropzone?.addEventListener('drop', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  asgnDropzone.style.borderColor = '#c8dbd0';
+  asgnDropzone.style.background = '#f8fbf9';
+  if (e.dataTransfer && e.dataTransfer.files) {
+    handleFilesSelected(e.dataTransfer.files);
+  }
+});
+
+asgnFileInput?.addEventListener('change', (e) => {
+  if (e.target.files && e.target.files.length > 0) {
+    handleFilesSelected(e.target.files);
+    e.target.value = '';
+  }
+});
+
+document.getElementById('asgn-add-more-btn')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  asgnFileInput?.click();
+});
+
+document.getElementById('asgn-clear-all-btn')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  stagedAttachments = [];
+  activeStagedIndex = 0;
+  updateStagedPreviewUI();
+});
+
+document.getElementById('asgn-prev-img-btn')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (stagedAttachments.length <= 1) return;
+  activeStagedIndex = (activeStagedIndex - 1 + stagedAttachments.length) % stagedAttachments.length;
+  updateStagedPreviewUI();
+});
+
+document.getElementById('asgn-next-img-btn')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (stagedAttachments.length <= 1) return;
+  activeStagedIndex = (activeStagedIndex + 1) % stagedAttachments.length;
+  updateStagedPreviewUI();
 });
 
 addAsgnForm?.addEventListener('submit', async (e) => {
@@ -1055,11 +1245,28 @@ addAsgnForm?.addEventListener('submit', async (e) => {
     return;
   }
 
+  const payloadAttachments = stagedAttachments.map(a => ({
+    originalName: a.originalName,
+    mimeType: a.mimeType,
+    size: a.size,
+    dataBase64: a.dataBase64
+  }));
+
   try {
     const res = await fetch('/api/admin/assignments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subject, category, year, branch, targetClass, batch, deadline, attachment: attachedFileObject })
+      body: JSON.stringify({
+        subject,
+        category,
+        year,
+        branch,
+        targetClass,
+        batch,
+        deadline,
+        attachments: payloadAttachments,
+        attachment: payloadAttachments[0] || null
+      })
     });
     const data = await res.json();
 
@@ -1074,10 +1281,11 @@ addAsgnForm?.addEventListener('submit', async (e) => {
       return;
     }
 
-    showToast('Assignment published successfully!', 'success');
+    showToast('Assignment published successfully with preview!', 'success');
     addAsgnForm.reset();
-    attachedFileObject = null;
-    asgnFileStatus.textContent = 'Supports PDF, JPG, PNG, DOC (max 4 MB)';
+    stagedAttachments = [];
+    activeStagedIndex = 0;
+    updateStagedPreviewUI();
     if (addModal) addModal.style.display = 'none';
     loadAdminAssignments();
   } catch (err) {
@@ -1107,43 +1315,117 @@ window.deleteAdminAssignment = async function(id) {
     });
     if (!res.ok) throw new Error('Delete failed');
     showToast('Assignment permanently deleted.', 'info');
-    // NOTE: Do NOT re-fetch here — the KV write may not have propagated yet,
-    // and re-fetching would restore the deleted item from stale KV data.
-    // The optimistic state above is the source of truth until next page load.
   } catch (err) {
     showToast('Could not delete assignment: ' + err.message, 'error');
-    // On error, re-sync from backend to restore consistent state
     await loadAdminAssignments();
   }
 };
 
-// Preview Modal for Admin
+// Preview Modal for Admin (Supports Multi-Attachment Gallery)
 window.openAdminAttachmentPreview = function(asgnId, titleEncoded, fnameEncoded) {
+  const asgn = allAdminAssignments.find(a => a.id === asgnId) || {
+    id: asgnId,
+    subject: titleEncoded ? decodeURIComponent(titleEncoded) : 'Assignment',
+    attachmentName: fnameEncoded ? decodeURIComponent(fnameEncoded) : 'file',
+    attachments: [{ originalName: fnameEncoded ? decodeURIComponent(fnameEncoded) : 'file', index: 0 }]
+  };
+
+  currentPreviewAsgn = asgn;
+  currentPreviewIndex = 0;
+
   const modal = document.getElementById('admin-preview-modal');
+  if (modal) modal.style.display = 'flex';
+
+  renderAdminPreviewModalSlide();
+};
+
+function renderAdminPreviewModalSlide() {
+  if (!currentPreviewAsgn) return;
+  const asgn = currentPreviewAsgn;
+  const rawAtts = (Array.isArray(asgn.attachments) && asgn.attachments.length > 0)
+    ? asgn.attachments
+    : (asgn.hasAttachment ? [{ index: 0, originalName: asgn.attachmentName || 'attachment', size: asgn.attachmentSize }] : []);
+
+  const total = rawAtts.length || 1;
+  if (currentPreviewIndex >= total) currentPreviewIndex = 0;
+  if (currentPreviewIndex < 0) currentPreviewIndex = total - 1;
+  const currentAtt = rawAtts[currentPreviewIndex] || { originalName: 'file', size: 0, index: 0 };
+
   const titleEl = document.getElementById('admin-preview-title');
+  const subtitleEl = document.getElementById('admin-preview-subtitle');
+  const navEl = document.getElementById('admin-preview-nav');
+  const counterEl = document.getElementById('admin-preview-counter');
+  const thumbsEl = document.getElementById('admin-preview-thumbs');
   const bodyEl = document.getElementById('admin-preview-body');
   const dlLink = document.getElementById('admin-preview-dl-link');
+  const metaEl = document.getElementById('admin-preview-meta');
 
-  const title = decodeURIComponent(titleEncoded);
-  const fname = decodeURIComponent(fnameEncoded);
-
-  if (titleEl) titleEl.textContent = `${title} — ${fname}`;
-  if (dlLink) {
-    dlLink.href = `/api/assignments/${asgnId}/attachment`;
-    dlLink.setAttribute('download', fname);
+  if (titleEl) titleEl.textContent = `${asgn.subject || 'Assignment'}`;
+  if (subtitleEl) {
+    subtitleEl.style.display = 'block';
+    subtitleEl.textContent = `${asgn.category || 'Lab Experiments'} • ${asgn.targetClass || ''} • ${asgn.batch || ''}`;
   }
 
-  const isImg = /\.(png|jpg|jpeg|gif|svg)$/i.test(fname);
+  if (navEl) navEl.style.display = total > 1 ? 'flex' : 'none';
+  if (counterEl) counterEl.textContent = `${currentPreviewIndex + 1} / ${total}`;
+
+  if (metaEl) {
+    metaEl.textContent = `📄 ${currentAtt.originalName} ${currentAtt.size ? `(${formatBytes(currentAtt.size)})` : ''}`;
+  }
+
+  if (dlLink) {
+    dlLink.href = `/api/assignments/${asgn.id}/attachment?index=${currentPreviewIndex}`;
+    dlLink.setAttribute('download', currentAtt.originalName || 'file');
+  }
+
+  const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(currentAtt.originalName || '');
   if (bodyEl) {
     if (isImg) {
-      bodyEl.innerHTML = `<img src="/api/assignments/${asgnId}/attachment?inline=1" alt="Demo preview" style="max-width:100%; max-height:70vh; object-fit:contain; border-radius:8px;">`;
+      bodyEl.innerHTML = `<img src="/api/assignments/${asgn.id}/attachment?index=${currentPreviewIndex}&inline=1" alt="Attachment preview" style="max-width:100%; max-height:70vh; object-fit:contain; border-radius:8px;">`;
     } else {
-      bodyEl.innerHTML = `<iframe src="/api/assignments/${asgnId}/attachment?inline=1" style="width:100%; height:65vh; border:none; border-radius:8px;"></iframe>`;
+      bodyEl.innerHTML = `<iframe src="/api/assignments/${asgn.id}/attachment?index=${currentPreviewIndex}&inline=1" style="width:100%; height:65vh; border:none; border-radius:8px; background:#fff;"></iframe>`;
     }
   }
 
-  if (modal) modal.style.display = 'flex';
-};
+  if (thumbsEl) {
+    if (total > 1) {
+      thumbsEl.style.display = 'flex';
+      thumbsEl.innerHTML = '';
+      rawAtts.forEach((att, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'staged-mini-btn';
+        if (idx === currentPreviewIndex) {
+          btn.style.background = '#2d8f4e';
+          btn.style.color = '#fff';
+          btn.style.borderColor = '#2d8f4e';
+        }
+        btn.innerHTML = `${/\.(png|jpg|jpeg|webp)$/i.test(att.originalName) ? '🖼️' : '📄'} Page ${idx + 1}`;
+        btn.onclick = () => {
+          currentPreviewIndex = idx;
+          renderAdminPreviewModalSlide();
+        };
+        thumbsEl.appendChild(btn);
+      });
+    } else {
+      thumbsEl.style.display = 'none';
+    }
+  }
+}
+
+document.getElementById('admin-preview-prev')?.addEventListener('click', () => {
+  if (!currentPreviewAsgn) return;
+  const count = (currentPreviewAsgn.attachments && currentPreviewAsgn.attachments.length) || 1;
+  currentPreviewIndex = (currentPreviewIndex - 1 + count) % count;
+  renderAdminPreviewModalSlide();
+});
+
+document.getElementById('admin-preview-next')?.addEventListener('click', () => {
+  if (!currentPreviewAsgn) return;
+  const count = (currentPreviewAsgn.attachments && currentPreviewAsgn.attachments.length) || 1;
+  currentPreviewIndex = (currentPreviewIndex + 1) % count;
+  renderAdminPreviewModalSlide();
+});
 
 document.getElementById('admin-preview-close')?.addEventListener('click', () => {
   const modal = document.getElementById('admin-preview-modal');
