@@ -1534,16 +1534,39 @@ function renderAssignmentsList() {
       card.className = 'asgn-card';
 
       const hasAtt = a.hasAttachment;
-      const attCount = a.attachmentCount || (a.attachments && a.attachments.length) || (hasAtt ? 1 : 0);
+      const rawAtts = (Array.isArray(a.attachments) && a.attachments.length > 0)
+        ? a.attachments
+        : (hasAtt ? [{ index: 0, originalName: a.attachmentName || 'demo_assignment', size: a.attachmentSize }] : []);
+      const attCount = a.attachmentCount || rawAtts.length || (hasAtt ? 1 : 0);
       const isMulti = attCount > 1;
+
+      // Clickable pills for each page / photo
+      const filePillsHTML = (hasAtt && isMulti) ? `
+        <div class="asgn-files-list">
+          ${rawAtts.map((att, idx) => `
+            <a href="/api/assignments/${a.id}/attachment?index=${idx}" class="asgn-file-pill" download="${escapeHtml(att.originalName || `page_${idx+1}`)}" title="Download ${escapeHtml(att.originalName || `Page ${idx+1}`)}">
+              ⬇ ${/\.(png|jpg|jpeg|webp)$/i.test(att.originalName || '') ? '📷' : '📄'} Page ${idx + 1}
+              <span style="opacity:0.75; font-size:10.5px;">(${formatAsgnBytes(att.size)})</span>
+            </a>
+          `).join('')}
+        </div>
+      ` : '';
+
+      const downloadActionHTML = isMulti ? `
+        <button type="button" class="action-btn download-btn" onclick="downloadAllAssignmentFiles('${a.id}')" style="background:#1e6b38; color:#ffffff; font-weight:600;">
+          ⬇ Download All (${attCount} Photos)
+        </button>
+      ` : (hasAtt ? `
+        <a href="/api/assignments/${a.id}/attachment" class="action-btn download-btn" download="${escapeHtml(a.attachmentName || 'demo_assignment')}">
+          ⬇ Download
+        </a>
+      ` : '');
 
       const previewBtnHTML = hasAtt ? `
         <button type="button" class="action-btn preview-btn" onclick="openAttachmentPreview('${a.id}', '${encodeURIComponent(a.subject)}', '${encodeURIComponent(a.attachmentName || 'Demo Assignment')}')">
           👁 Preview Demo ${isMulti ? `(${attCount})` : ''}
         </button>
-        <a href="/api/assignments/${a.id}/attachment" class="action-btn download-btn" download="${a.attachmentName || 'demo_assignment'}">
-          ⬇ Download
-        </a>
+        ${downloadActionHTML}
         <button type="button" class="action-btn print-direct-btn" onclick="orderAssignmentPrint('${a.id}', '${encodeURIComponent(a.attachmentName || a.subject + '.pdf')}')">
           🖨 Print This Report
         </button>
@@ -1577,6 +1600,7 @@ function renderAssignmentsList() {
           </div>
           <h3 class="asgn-title">${a.title || a.subject}</h3>
           ${attChipHTML}
+          ${filePillsHTML}
         </div>
         <div class="asgn-card-footer">
           <div class="asgn-actions">
@@ -1644,6 +1668,7 @@ function renderStudentPreviewSlide() {
   const thumbsEl = document.getElementById('student-preview-thumbs');
   const bodyEl = document.getElementById('modal-body');
   const dlLink = document.getElementById('modal-download-link');
+  const dlAllBtn = document.getElementById('modal-download-all-btn');
   const printBtn = document.getElementById('modal-print-btn');
   const metaEl = document.getElementById('student-preview-meta');
 
@@ -1663,6 +1688,17 @@ function renderStudentPreviewSlide() {
   if (dlLink) {
     dlLink.href = `/api/assignments/${asgn.id}/attachment?index=${currentStudentPreviewIndex}`;
     dlLink.setAttribute('download', currentAtt.originalName || 'file');
+    dlLink.textContent = total > 1 ? `⬇ Download Current (Page ${currentStudentPreviewIndex + 1})` : '⬇ Download File';
+  }
+
+  if (dlAllBtn) {
+    if (total > 1) {
+      dlAllBtn.style.display = 'inline-flex';
+      dlAllBtn.textContent = `⬇ Download All (${total} Photos)`;
+      dlAllBtn.onclick = () => downloadAllAssignmentFiles(asgn.id);
+    } else {
+      dlAllBtn.style.display = 'none';
+    }
   }
 
   if (printBtn) {
@@ -1723,6 +1759,34 @@ document.getElementById('student-preview-next')?.addEventListener('click', () =>
   currentStudentPreviewIndex = (currentStudentPreviewIndex + 1) % count;
   renderStudentPreviewSlide();
 });
+
+// Multi-File Bulk Download Handler for Students
+window.downloadAllAssignmentFiles = async function(asgnId) {
+  const asgn = allAssignments.find(a => a.id === asgnId) || (currentStudentPreviewAsgn && currentStudentPreviewAsgn.id === asgnId ? currentStudentPreviewAsgn : null);
+  if (!asgn) return;
+
+  const rawAtts = (Array.isArray(asgn.attachments) && asgn.attachments.length > 0)
+    ? asgn.attachments
+    : (asgn.hasAttachment ? [{ index: 0, originalName: asgn.attachmentName || 'assignment_file' }] : []);
+
+  if (rawAtts.length === 0) {
+    alert('No files found to download.');
+    return;
+  }
+
+  for (let i = 0; i < rawAtts.length; i++) {
+    const att = rawAtts[i];
+    const link = document.createElement('a');
+    link.href = `/api/assignments/${asgn.id}/attachment?index=${i}`;
+    link.setAttribute('download', att.originalName || `page_${i + 1}`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    if (i < rawAtts.length - 1) {
+      await new Promise(r => setTimeout(r, 380));
+    }
+  }
+};
 
 // 1-Click Send Demo Assignment to Print Centre
 window.orderAssignmentPrint = async function(asgnId, fnameEncoded, index = 0) {

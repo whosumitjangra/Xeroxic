@@ -49,8 +49,13 @@ header.light{
 }
 .search{
   flex:1; max-width: 420px;
-  padding: 10px 16px; border-radius: 20px; border:none;
-  font-family:'Poppins'; font-size:14px;
+  padding: 10px 16px; border-radius: 20px; border: 1.5px solid #d0ded4;
+  font-family:'Poppins', sans-serif; font-size:14px;
+  background: #ffffff !important;
+  color: #16211c !important;
+}
+.search::placeholder{
+  color: #6b8072;
 }
 .spacer{ flex:1; }
 .brand{ color:#fff; text-align:left; }
@@ -347,18 +352,24 @@ h1.centre-title{
 
 /* ---------------- Track link (header) ---------------- */
 .track-link{
-  background: rgba(255,255,255,0.35);
-  color:#fff;
-  border:none;
-  padding: 9px 16px;
+  background: #ffffff !important;
+  color: #1e6b38 !important;
+  border: 1.5px solid rgba(255,255,255,0.85);
+  padding: 8px 16px;
   border-radius: 18px;
-  font-family:'Poppins';
+  font-family:'Poppins', sans-serif;
   font-size: 13px;
-  font-weight:600;
+  font-weight:700 !important;
   cursor:pointer;
   white-space:nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  transition: all 0.2s ease;
 }
-.track-link:hover{ background: rgba(255,255,255,0.5); }
+.track-link:hover{
+  background: #e8f5ec !important;
+  color: #145229 !important;
+  transform: translateY(-1px);
+}
 
 /* ---------------- Proceed to print options ---------------- */
 .proceed-wrap{
@@ -665,12 +676,16 @@ h1.centre-title{
 }
 
 .secondary-btn{
-  background: rgba(255,255,255,0.25) !important;
-  color: #fff !important;
-  border: 1.5px solid rgba(255,255,255,0.4) !important;
+  background: #ffffff !important;
+  color: #1e6b38 !important;
+  border: 1.5px solid #2d8f4e !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05) !important;
+  font-weight: 600;
 }
 .secondary-btn:hover{
-  background: rgba(255,255,255,0.35) !important;
+  background: #f0fdf4 !important;
+  color: #145229 !important;
+  border-color: #145229 !important;
 }
 
 .admin-main{
@@ -2829,8 +2844,8 @@ h1.centre-title{
 
 /* Active Class & Batch Banner */
 .asgn-active-banner {
-  background: linear-gradient(135deg, #ffffff, #f3f9f4);
-  border: 1.5px solid #cde2d3;
+  background: linear-gradient(135deg, #1e6b38, #145229);
+  border: 1.5px solid #145229;
   border-radius: 20px;
   padding: 16px 24px;
   margin-bottom: 20px;
@@ -2839,7 +2854,8 @@ h1.centre-title{
   align-items: center;
   flex-wrap: wrap;
   gap: 14px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  color: #ffffff;
 }
 
 .asgn-active-pills {
@@ -2849,17 +2865,66 @@ h1.centre-title{
   gap: 8px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--ink);
+  color: #ffffff;
 }
 
 .asgn-pill-badge {
-  background: #e8f5ec;
-  color: #1e6b38;
-  border: 1px solid #c2e2cc;
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
   padding: 4px 12px;
   border-radius: 12px;
   font-size: 12.5px;
   font-weight: 700;
+  backdrop-filter: blur(4px);
+}
+
+#btn-change-class {
+  background: #ffffff !important;
+  color: #145229 !important;
+  border: 1.5px solid #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+#btn-change-class:hover {
+  background: #e8f5ec !important;
+  color: #0f3d1e !important;
+  transform: translateY(-1px);
+}
+
+/* Individual Attachment Page Pills */
+.asgn-files-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 12px;
+}
+
+.asgn-file-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f0f7f2;
+  color: #1b5e20;
+  border: 1.5px solid #bce1c5;
+  padding: 5px 11px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.asgn-file-pill:hover {
+  background: #1e6b38;
+  color: #ffffff;
+  border-color: #1e6b38;
+  text-decoration: none;
+  transform: translateY(-1px);
 }
 
 /* Category Section Header */
@@ -2920,6 +2985,9 @@ h1.centre-title{
     margin-top: 4px;
     font-size: 13px;
     padding: 8px 14px;
+    background: #ffffff !important;
+    color: #16211c !important;
+    border: 1.5px solid #d0ded4;
   }
 
   .spacer {
@@ -2927,8 +2995,11 @@ h1.centre-title{
   }
 
   .track-link {
-    padding: 6px 12px;
+    padding: 6px 14px;
     font-size: 12px;
+    background: #ffffff !important;
+    color: #1e6b38 !important;
+    font-weight: 700 !important;
   }
 
   .welcome-name {
