@@ -1,0 +1,12 @@
+# robots.txt for Xerox Centre AIT Pune
+User-agent: *
+Allow: /
+Allow: /login.html
+Allow: /signup.html
+Disallow: /admin*
+Disallow: /super-admin*
+Disallow: /api/
+Disallow: /uploads/
+
+# Sitemap location
+Sitemap: https://xerox-fullstack.vercel.app/sitemap.xml
