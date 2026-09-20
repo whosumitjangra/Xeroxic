@@ -2,7 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const { MongoClient } = require('mongodb');
 
-const uri = process.env.MONGODB_URI || 'mongodb+srv://sumit345jangra_db_user:sumit88148@cluster0.qkxvsjs.mongodb.net/xerox?retryWrites=true&w=majority&appName=Cluster0';
+const uri = process.env.MONGODB_URI;
+if (!uri) {
+  console.error('Error: MONGODB_URI environment variable is required to run seed-mongo.');
+  process.exit(1);
+}
 
 async function seed() {
   const client = new MongoClient(uri);

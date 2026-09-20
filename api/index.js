@@ -8,9 +8,13 @@ const crypto = require('crypto');
 const {
   hashPassword,
   makeSalt,
+  verifyPassword,
+  dummyVerifyPassword,
+  formatSessionCookie,
   createSessionToken,
   getSessionFromReq
 } = require('../lib/auth');
+const { getClientIp, checkRateLimit } = require('../lib/rateLimiter');
 const {
   getUsers,
   saveUsers,
@@ -120,15 +124,20 @@ const MIME = {
   '.json': 'application/json; charset=utf-8'
 };
 
-// Response helpers
+// Response helpers with OWASP security headers
 function sendJSON(res, statusCode, obj) {
   const body = JSON.stringify(obj);
   res.writeHead(statusCode, {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
     'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
     'Pragma': 'no-cache',
-    'Expires': '0'
+    'Expires': '0',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'X-XSS-Protection': '1; mode=block',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload'
   });
   res.end(body);
 }
@@ -136,13 +145,19 @@ function sendJSON(res, statusCode, obj) {
 function sendFile(res, filePath, contentType) {
   fs.readFile(filePath, (err, data) => {
     if (err) {
-      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.writeHead(404, {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'X-Content-Type-Options': 'nosniff'
+      });
       res.end('Not found');
       return;
     }
     res.writeHead(200, {
       'Content-Type': contentType,
-      'Content-Length': data.length
+      'Content-Length': data.length,
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'SAMEORIGIN',
+      'Referrer-Policy': 'strict-origin-when-cross-origin'
     });
     res.end(data);
   });
@@ -241,6 +256,28 @@ async function parseMultipart(req) {
 // ===================================================================
 
 async function handler(req, res) {
+  // ---------------- CORS & PREFLIGHT ----------------
+  const origin = req.headers.origin;
+  const isAllowedOrigin = !origin || 
+    origin === 'https://xerox-fullstack.vercel.app' ||
+    origin.startsWith('http://localhost:') ||
+    origin.startsWith('http://127.0.0.1:') ||
+    origin.endsWith('.vercel.app');
+
+  if (origin && isAllowedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie, X-Requested-With');
+  }
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    return res.end();
+  }
+
+  const isSecure = process.env.NODE_ENV === 'production' || !!process.env.VERCEL || (req.headers['x-forwarded-proto'] === 'https');
+
   const parsed = new URL(req.url, 'http://localhost');
   let pathname = decodeURIComponent(parsed.pathname || '');
 
@@ -255,12 +292,38 @@ async function handler(req, res) {
   }
 
   try {
-    // ---------------- AUTH: SIGNUP ----------------
+    // ---------------- AUTH: SIGNUP (RATE LIMITED & VALIDATED) ----------------
     if (pathname === '/api/signup' && req.method === 'POST') {
+      const clientIp = getClientIp(req);
+      const signupLimit = checkRateLimit('signup', clientIp, 15, 60 * 60 * 1000);
+      if (!signupLimit.allowed) {
+        res.setHeader('Retry-After', signupLimit.retryAfter);
+        return sendJSON(res, 429, { error: 'Too many registration attempts. Please try again later.' });
+      }
+
       const { name, email, password, role = 'STUDENT', adminPasscode } = await readJSONBody(req);
-      if (!name || !email || !password) {
+      if (!name || !email || !password || typeof email !== 'string' || typeof password !== 'string') {
         return sendJSON(res, 400, { error: 'Name, email and password are required.' });
       }
+
+      const cleanEmail = email.trim().toLowerCase();
+      const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!EMAIL_REGEX.test(cleanEmail)) {
+        return sendJSON(res, 400, { error: 'Please enter a valid email address.' });
+      }
+
+      if (password.length < 6) {
+        return sendJSON(res, 400, { error: 'Password must be at least 6 characters long.' });
+      }
+      if (password.length > 128) {
+        return sendJSON(res, 400, { error: 'Password exceeds maximum length.' });
+      }
+
+      const cleanName = String(name).replace(/[\x00-\x1F\x7F]/g, '').trim();
+      if (!cleanName || cleanName.length > 100) {
+        return sendJSON(res, 400, { error: 'Invalid name provided.' });
+      }
+
       const targetRole = normalizeRole(role);
       if (targetRole === 'ADMIN' || targetRole === 'SUPER_ADMIN') {
         const expectedPasscode = process.env.ADMIN_PASSCODE || 'AITXEROX2026';
@@ -268,16 +331,18 @@ async function handler(req, res) {
           return sendJSON(res, 403, { error: 'Invalid Admin Passcode. Contact Xerox in-charge.' });
         }
       }
+
       const users = await getUsers();
-      if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
+      if (users.find(u => u.email && u.email.toLowerCase() === cleanEmail)) {
         return sendJSON(res, 409, { error: 'An account with this email already exists.' });
       }
+
       const salt = makeSalt();
       const passwordHash = hashPassword(password, salt);
       const newUser = {
         id: crypto.randomBytes(8).toString('hex'),
-        name,
-        email,
+        name: cleanName,
+        email: cleanEmail,
         role: targetRole,
         salt,
         passwordHash,
@@ -287,7 +352,7 @@ async function handler(req, res) {
       await saveUsers(users);
 
       const token = createSessionToken(newUser);
-      res.setHeader('Set-Cookie', `session=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=604800`);
+      res.setHeader('Set-Cookie', formatSessionCookie(token, isSecure));
       return sendJSON(res, 200, {
         success: true,
         name: newUser.name,
@@ -297,19 +362,34 @@ async function handler(req, res) {
       });
     }
 
-    // ---------------- AUTH: LOGIN ----------------
+    // ---------------- AUTH: LOGIN (RATE LIMITED & TIMING-SAFE) ----------------
     if (pathname === '/api/login' && req.method === 'POST') {
+      const clientIp = getClientIp(req);
+      const loginLimit = checkRateLimit('login', clientIp, 20, 15 * 60 * 1000);
+      if (!loginLimit.allowed) {
+        res.setHeader('Retry-After', loginLimit.retryAfter);
+        return sendJSON(res, 429, {
+          error: `Too many login attempts. Please try again in ${loginLimit.retryAfter} seconds.`
+        });
+      }
+
       const { email, password, role } = await readJSONBody(req);
-      if (!email || !password) {
+      if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
         return sendJSON(res, 400, { error: 'Email and password are required.' });
       }
+
+      const cleanEmail = email.trim().toLowerCase();
       const users = await getUsers();
-      const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+      const user = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
+
+      // Perform dummy hashing if user is not found to prevent user enumeration timing attacks
       if (!user) {
+        dummyVerifyPassword(password);
         return sendJSON(res, 401, { error: 'Invalid email or password.' });
       }
-      const hash = hashPassword(password, user.salt);
-      if (hash !== user.passwordHash) {
+
+      const isMatch = verifyPassword(password, user.salt, user.passwordHash);
+      if (!isMatch) {
         return sendJSON(res, 401, { error: 'Invalid email or password.' });
       }
 
@@ -333,7 +413,7 @@ async function handler(req, res) {
       }
 
       const token = createSessionToken(user);
-      res.setHeader('Set-Cookie', `session=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=604800`);
+      res.setHeader('Set-Cookie', formatSessionCookie(token, isSecure));
 
       let redirect = 'index.html';
       if (userRole === 'SUPER_ADMIN') {
@@ -353,7 +433,7 @@ async function handler(req, res) {
 
     // ---------------- AUTH: LOGOUT ----------------
     if (pathname === '/api/logout' && req.method === 'POST') {
-      res.setHeader('Set-Cookie', 'session=; HttpOnly; Path=/; Max-Age=0');
+      res.setHeader('Set-Cookie', 'session=; HttpOnly; Path=/; Max-Age=0' + (isSecure ? '; Secure' : ''));
       return sendJSON(res, 200, { success: true });
     }
 
@@ -366,6 +446,36 @@ async function handler(req, res) {
         email: session.email,
         role: normalizeRole(session.role)
       });
+    }
+
+    // ---------------- AUTH: CHANGE PASSWORD (AUTHENTICATED USERS) ----------------
+    if (pathname === '/api/auth/change-password' && req.method === 'POST') {
+      const session = getSessionFromReq(req);
+      if (!session) return sendJSON(res, 401, { error: 'Authentication required.' });
+
+      const { currentPassword, newPassword } = await readJSONBody(req);
+      if (!currentPassword || !newPassword || typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+        return sendJSON(res, 400, { error: 'Current password and new password are required.' });
+      }
+      if (newPassword.length < 6) {
+        return sendJSON(res, 400, { error: 'New password must be at least 6 characters long.' });
+      }
+
+      const users = await getUsers();
+      const user = users.find(u => u.id === session.userId);
+      if (!user) return sendJSON(res, 404, { error: 'User account not found.' });
+
+      const isCurrentValid = verifyPassword(currentPassword, user.salt, user.passwordHash);
+      if (!isCurrentValid) {
+        return sendJSON(res, 401, { error: 'Current password does not match.' });
+      }
+
+      const newSalt = makeSalt();
+      user.salt = newSalt;
+      user.passwordHash = hashPassword(newPassword, newSalt);
+      await saveUsers(users);
+
+      return sendJSON(res, 200, { success: true, message: 'Password updated successfully.' });
     }
 
     // ---------------- FILES: UPLOAD (STUDENTS ONLY) ----------------
@@ -1344,8 +1454,8 @@ async function handler(req, res) {
     res.end('404 Not Found');
 
   } catch (err) {
-    console.error('Server error:', err);
-    sendJSON(res, 500, { error: 'Server error: ' + err.message });
+    console.error('Unhandled API exception:', err && err.message);
+    sendJSON(res, 500, { error: 'An unexpected internal server error occurred.' });
   }
 }
 

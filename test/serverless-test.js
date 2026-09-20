@@ -1231,7 +1231,119 @@ async function runTests() {
   assert.strictEqual(verifiedOptionsOrder.pageRange, '1-5');
   console.log('   ✅ Scenario 8 passed: 100% options fidelity verified on admin dashboard');
 
-  console.log('\n🎉 ALL 50 TESTS PASSED SUCCESSFULLY! All 8 admin workflow audit scenarios verified.\n');
+  // ===================================================================
+  // OWASP TOP 10 SECURITY AUDIT & HARDENING VERIFICATION TESTS
+  // ===================================================================
+  console.log('\n--- OWASP TOP 10 SECURITY VERIFICATION TESTS ---');
+
+  // Test 51: Security Headers Verification
+  console.log('51. Testing OWASP Security Headers (X-Content-Type-Options, X-Frame-Options, etc.)...');
+  const headersRes = await invokeHandler({ method: 'GET', url: '/api/pricing' });
+  assert.strictEqual(headersRes.statusCode, 200);
+  assert.strictEqual(headersRes.headers['x-content-type-options'], 'nosniff');
+  assert.strictEqual(headersRes.headers['x-frame-options'], 'SAMEORIGIN');
+  assert.strictEqual(headersRes.headers['referrer-policy'], 'strict-origin-when-cross-origin');
+  assert(headersRes.headers['strict-transport-security'], 'HSTS header must be present');
+  console.log('   ✅ Security headers verified: nosniff, SAMEORIGIN, strict-origin, HSTS');
+
+  // Test 52: Authentication Rate Limiting
+  console.log('52. Testing Rate Limiting on /api/login (HTTP 429 after threshold)...');
+  let blocked = false;
+  const attackerIp = '198.51.100.42';
+  for (let i = 0; i < 25; i++) {
+    const rateRes = await invokeHandler({
+      method: 'POST',
+      url: '/api/login',
+      headers: { 'x-forwarded-for': attackerIp },
+      body: { email: 'wrong@aitpune.edu.in', password: 'wrong' }
+    });
+    if (rateRes.statusCode === 429) {
+      blocked = true;
+      assert(rateRes.headers['retry-after'], 'Retry-After header must be present on 429');
+      break;
+    }
+  }
+  assert(blocked, 'Rate limiter must block brute-force attempts with HTTP 429');
+  console.log('   ✅ Rate limiting enforced: Brute force login blocked with HTTP 429 & Retry-After');
+
+  // Test 53: File Upload Extension Whitelist & Path Traversal Prevention
+  console.log('53. Testing File Upload Security (reject dangerous extensions like .exe, .html, .svg)...');
+  // Attempt to upload dangerous executable
+  const malBoundary = '----SecurityBoundary' + Date.now();
+  const malPayload = Buffer.concat([
+    Buffer.from(`--${malBoundary}\r\nContent-Disposition: form-data; name="files"; filename="exploit.exe"\r\nContent-Type: application/octet-stream\r\n\r\nMALICIOUS_BYTES\r\n--${malBoundary}--\r\n`)
+  ]);
+  const malUploadRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/upload',
+    headers: {
+      cookie: priyaCookie,
+      'content-type': `multipart/form-data; boundary=${malBoundary}`
+    },
+    body: malPayload
+  });
+  assert.strictEqual(malUploadRes.statusCode, 400);
+  assert(malUploadRes.json().error.includes('not permitted'), 'Dangerous file extensions must be rejected');
+  console.log('   ✅ File upload security verified: Dangerous executable extensions (.exe) rejected with 400');
+
+  // Test 54: User Enumeration Prevention on Login
+  console.log('54. Testing User Enumeration Prevention (Identical generic 401 response)...');
+  const nonExistentRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/login',
+    headers: { 'x-forwarded-for': '198.51.100.99' },
+    body: { email: 'nonexistent_ghost_student@aitpune.edu.in', password: 'SomePassword123' }
+  });
+  assert.strictEqual(nonExistentRes.statusCode, 401);
+  assert.strictEqual(nonExistentRes.json().error, 'Invalid email or password.');
+  console.log('   ✅ User enumeration prevented: Non-existent users receive generic 401 message');
+
+  // Test 55: Registration Input Validation (Weak password & malformed email rejected)
+  console.log('55. Testing Registration Validation (Password < 6 chars & invalid email)...');
+  const weakPassRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/signup',
+    headers: { 'x-forwarded-for': '198.51.100.88' },
+    body: { name: 'Bad User', email: 'bad@aitpune.edu.in', password: '123' }
+  });
+  assert.strictEqual(weakPassRes.statusCode, 400);
+  assert(weakPassRes.json().error.includes('6 characters'));
+
+  const badEmailRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/signup',
+    headers: { 'x-forwarded-for': '198.51.100.88' },
+    body: { name: 'Bad User', email: 'not-an-email', password: 'ValidPassword123' }
+  });
+  assert.strictEqual(badEmailRes.statusCode, 400);
+  console.log('   ✅ Registration validation verified: Weak passwords and malformed emails rejected with 400');
+
+  // Test 56: Authenticated Password Change Workflow
+  console.log('56. Testing Authenticated Student Password Change (POST /api/auth/change-password)...');
+  const changePassRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/auth/change-password',
+    headers: { cookie: sessionCookie },
+    body: {
+      currentPassword: 'password123',
+      newPassword: 'NewSecurePassword2026!'
+    }
+  });
+  assert.strictEqual(changePassRes.statusCode, 200, `Change password failed: ${changePassRes.text()}`);
+  assert.strictEqual(changePassRes.json().success, true);
+
+  // Verify login with new password succeeds
+  const reLoginRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/login',
+    headers: { 'x-forwarded-for': '198.51.100.77' },
+    body: { email: newEmail, password: 'NewSecurePassword2026!' }
+  });
+  assert.strictEqual(reLoginRes.statusCode, 200, `Re-login failed: ${reLoginRes.text()}`);
+  assert.strictEqual(reLoginRes.json().success, true);
+  console.log('   ✅ Password change workflow passed: Securely changed password and verified new credentials');
+
+  console.log('\n🎉 ALL 56 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP Top 10 security tests verified.\n');
 }
 
 runTests().catch(err => {
