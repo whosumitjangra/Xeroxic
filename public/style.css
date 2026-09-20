@@ -2862,4 +2862,451 @@ h1.centre-title{
   font-weight: 700;
 }
 
+/* Category Section Header */
+.asgn-category-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  border: 1.5px solid #dce8de;
+  padding: 14px 20px;
+  border-radius: 18px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.asgn-category-group {
+  margin-bottom: 32px;
+}
+
+/* ===================================================================
+   COMPREHENSIVE MOBILE & TABLET RESPONSIVE STYLES
+   =================================================================== */
+@media (max-width: 768px) {
+  /* Global Layout & Padding */
+  body {
+    background-attachment: scroll;
+  }
+  
+  .page {
+    padding: 0 14px 40px;
+  }
+
+  /* Header Navigation */
+  header {
+    padding: 14px 16px;
+    border-radius: 0 0 22px 22px;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    width: 38px;
+    height: 38px;
+  }
+
+  .brand .title {
+    font-size: 13.5px;
+  }
+
+  .brand .sub {
+    font-size: 10px;
+  }
+
+  .search {
+    order: 10;
+    width: 100%;
+    max-width: 100%;
+    margin-top: 4px;
+    font-size: 13px;
+    padding: 8px 14px;
+  }
+
+  .spacer {
+    display: none;
+  }
+
+  .track-link {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .welcome-name {
+    font-size: 12px;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .signin {
+    padding: 8px 14px;
+    font-size: 12.5px;
+  }
+
+  /* Typography */
+  h1.page-title {
+    font-size: 38px;
+    margin: 0 0 24px;
+    line-height: 1.15;
+  }
+
+  h1.centre-title {
+    font-size: 28px;
+  }
+
+  /* Landing Page */
+  .landing-header {
+    padding: 24px 16px 16px;
+  }
+
+  .landing-badge {
+    font-size: 11.5px;
+    padding: 4px 12px;
+  }
+
+  .landing-title {
+    font-size: 26px;
+  }
+
+  .landing-subtitle {
+    font-size: 13.5px;
+    padding: 0 4px;
+  }
+
+  .landing-role-cards {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    margin-top: 20px;
+  }
+
+  .landing-role-card {
+    padding: 22px 18px;
+    border-radius: 20px;
+  }
+
+  .role-card-title {
+    font-size: 18px;
+  }
+
+  .role-card-desc {
+    font-size: 12.5px;
+  }
+
+  /* Dashboard Dock Cards */
+  .dock {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .card {
+    width: 100%;
+    height: auto;
+    min-height: 190px;
+    flex: none;
+  }
+
+  .card-image-wrap {
+    height: 110px;
+  }
+
+  .card-content-wrap {
+    padding: 14px 16px;
+  }
+
+  .card-title {
+    font-size: 18px;
+  }
+
+  .card-desc {
+    font-size: 12px;
+  }
+
+  /* Print Centre Grid & Dropzone */
+  .pc-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .panel {
+    padding: 20px 16px;
+    border-radius: 20px;
+  }
+
+  .dropzone {
+    padding: 24px 14px;
+    min-height: 150px;
+    border-radius: 16px;
+  }
+
+  .dropzone-icon {
+    font-size: 32px;
+  }
+
+  .dropzone-text {
+    font-size: 14px;
+  }
+
+  .dropzone-sub {
+    font-size: 11.5px;
+  }
+
+  .upload-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 18px;
+    font-size: 13.5px;
+  }
+
+  /* Print Options Page */
+  .options-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .order-item {
+    grid-template-columns: 1fr;
+    padding: 16px 14px;
+  }
+
+  .file-item {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* Payment & UPI Screen */
+  #payment-card {
+    padding: 20px 14px;
+    border-radius: 20px;
+  }
+
+  .payment-layout-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .qr-wrap img {
+    max-width: 180px;
+    height: auto;
+  }
+
+  .utr-input-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .utr-input-group input {
+    width: 100% !important;
+  }
+
+  /* Track Order Page */
+  .track-order-card {
+    padding: 18px 14px;
+    border-radius: 20px;
+  }
+
+  .track-header-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .order-tracker-steps {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 4px 14px;
+    gap: 12px;
+  }
+
+  .track-step-node {
+    flex-shrink: 0;
+    min-width: 80px;
+  }
+
+  .step-label {
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  /* Assignment Wizard */
+  .asgn-wizard-card {
+    padding: 22px 16px;
+    border-radius: 20px;
+  }
+
+  .wizard-steps-nav {
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .wizard-step-indicator {
+    font-size: 11.5px;
+    padding: 6px 12px;
+  }
+
+  .wizard-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .wizard-grid-5 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .wizard-select-card {
+    padding: 16px 10px;
+    border-radius: 14px;
+  }
+
+  .wizard-card-badge {
+    font-size: 20px;
+  }
+
+  .wizard-card-icon {
+    font-size: 26px;
+  }
+
+  .wizard-card-title {
+    font-size: 13.5px;
+  }
+
+  .wizard-card-sub {
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  /* Active Class Banner */
+  .asgn-active-banner {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  #btn-change-class {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .asgn-controls-card {
+    padding: 16px 14px;
+    border-radius: 18px;
+  }
+
+  .asgn-filter-pills {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    padding-bottom: 6px;
+    gap: 8px;
+  }
+
+  .filter-pill {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  .asgn-category-section-header {
+    padding: 10px 14px;
+    border-radius: 14px;
+  }
+
+  .asgn-category-section-header h2 {
+    font-size: 15px !important;
+  }
+
+  .asgn-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .asgn-card {
+    padding: 16px 14px;
+    border-radius: 16px;
+  }
+
+  .asgn-card-footer {
+    margin-top: 14px;
+  }
+
+  .asgn-actions {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .asgn-actions .action-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* About Us Page */
+  .about-hero-card {
+    padding: 20px 16px;
+    border-radius: 20px;
+  }
+
+  .about-banner-img {
+    max-height: 200px;
+    border-radius: 14px;
+  }
+
+  .tech-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .credits-box {
+    padding: 20px 16px;
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    gap: 14px;
+  }
+
+  /* Modals */
+  .modal-card, .modal-box {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    margin: 10px auto;
+    border-radius: 18px;
+    max-height: 90vh;
+  }
+
+  .modal-body, .modal-body-pad {
+    padding: 16px 14px;
+  }
+
+  .modal-footer, .modal-foot {
+    flex-direction: column-reverse;
+    gap: 8px;
+    padding: 14px 16px;
+  }
+
+  .modal-footer button, .modal-footer a, .modal-foot button, .modal-foot a {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .wizard-grid-4 {
+    grid-template-columns: 1fr;
+  }
+  
+  .wizard-grid-5 {
+    grid-template-columns: 1fr;
+  }
+
+  h1.page-title {
+    font-size: 32px;
+  }
+}
+
+
 

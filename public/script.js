@@ -1110,49 +1110,11 @@ dockCards.forEach(card => {
 let allAssignments = [];
 let currentSubjectFilter = 'all';
 
-// Academic Year, Branch & Batch Wizard State
+// Academic Year & Branch Wizard State (Divided by Admin Categories)
 let selectedYear = null;
 let selectedBranch = null;
-let selectedBatchLetter = 'A';
-let selectedBatchNum = null;
-let selectedBatch = null;
-let activeClassFilter = null; // { year: 'TE', branch: 'IT', batch: 'A2' }
-
-function initBatchLetters() {
-  const container = document.getElementById('wizard-batch-letters');
-  if (!container || container.children.length > 0) return;
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-  alphabet.forEach(letter => {
-    const pill = document.createElement('button');
-    pill.type = 'button';
-    pill.className = `batch-letter-pill ${letter === selectedBatchLetter ? 'active' : ''}`;
-    pill.textContent = letter;
-    pill.dataset.letter = letter;
-    pill.onclick = () => {
-      container.querySelectorAll('.batch-letter-pill').forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
-      selectedBatchLetter = letter;
-      updateBatchNumberChips();
-      if (selectedBatchNum) {
-        setBatchSelection(`${selectedBatchLetter}${selectedBatchNum}`);
-      }
-    };
-    container.appendChild(pill);
-  });
-}
-
-function updateBatchNumberChips() {
-  const numChips = document.querySelectorAll('#wizard-batch-numbers .batch-num-chip');
-  numChips.forEach(chip => {
-    const num = chip.dataset.num;
-    chip.textContent = `${selectedBatchLetter}${num}`;
-    if (selectedBatch === `${selectedBatchLetter}${num}`) {
-      chip.classList.add('selected');
-    } else {
-      chip.classList.remove('selected');
-    }
-  });
-}
+let activeClassFilter = null; // { year: 'TE', branch: 'IT' }
+let currentCategoryFilter = 'all';
 
 function setYearSelection(year) {
   selectedYear = year;
@@ -1173,6 +1135,12 @@ function setYearSelection(year) {
   if (ind2) ind2.classList.add('active');
 
   updateWizardSummary();
+
+  // Scroll smoothly down to branch panel
+  const branchPanel = document.getElementById('wizard-panel-branch');
+  if (branchPanel) {
+    branchPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 function setBranchSelection(branch) {
@@ -1189,48 +1157,16 @@ function setBranchSelection(branch) {
   }
 
   const ind2 = document.getElementById('step-ind-2');
-  const ind3 = document.getElementById('step-ind-3');
   if (ind2) ind2.classList.add('completed');
-  if (ind3) ind3.classList.add('active');
 
   updateWizardSummary();
-}
 
-function setBatchSelection(batch) {
-  if (!batch) return;
-  selectedBatch = batch.trim().toUpperCase();
-
-  // Extract letter and num if standard format (e.g. B3)
-  const match = selectedBatch.match(/^([A-Z])([1-6])$/);
-  if (match) {
-    selectedBatchLetter = match[1];
-    selectedBatchNum = match[2];
-    const letterPills = document.querySelectorAll('#wizard-batch-letters .batch-letter-pill');
-    letterPills.forEach(p => p.classList.toggle('active', p.dataset.letter === selectedBatchLetter));
-    updateBatchNumberChips();
+  // Automatically proceed if year is already selected
+  if (selectedYear && selectedBranch) {
+    setTimeout(() => {
+      applyClassSelection(selectedYear, selectedBranch);
+    }, 250);
   }
-
-  // Highlight quick batches if matches
-  const quickPills = document.querySelectorAll('#wizard-quick-batches .quick-batch-pill');
-  quickPills.forEach(p => {
-    p.classList.toggle('selected', p.dataset.batch.toUpperCase() === selectedBatch);
-  });
-
-  const directInput = document.getElementById('wizard-direct-batch');
-  if (directInput && directInput.value.toUpperCase() !== selectedBatch) {
-    directInput.value = selectedBatch;
-  }
-
-  const batchBadge = document.getElementById('wizard-batch-chosen-badge');
-  if (batchBadge) {
-    batchBadge.textContent = `Selected: ${selectedBatch}`;
-    batchBadge.style.display = 'inline-block';
-  }
-
-  const ind3 = document.getElementById('step-ind-3');
-  if (ind3) ind3.classList.add('completed');
-
-  updateWizardSummary();
 }
 
 function updateWizardSummary() {
@@ -1239,13 +1175,12 @@ function updateWizardSummary() {
 
   const yText = selectedYear || 'Select Year';
   const bText = selectedBranch || 'Select Branch';
-  const batchText = selectedBatch || 'Select Batch';
 
   if (summaryEl) {
-    summaryEl.textContent = `${yText} • ${bText} • Batch ${batchText}`;
+    summaryEl.textContent = `${yText} • ${bText}`;
   }
 
-  const isComplete = Boolean(selectedYear && selectedBranch && selectedBatch);
+  const isComplete = Boolean(selectedYear && selectedBranch);
   if (submitBtn) {
     submitBtn.disabled = !isComplete;
     submitBtn.style.opacity = isComplete ? '1' : '0.6';
@@ -1254,9 +1189,6 @@ function updateWizardSummary() {
 }
 
 function initWizardUI() {
-  initBatchLetters();
-  updateBatchNumberChips();
-
   // Year Card Clicks
   const yearCards = document.querySelectorAll('#wizard-year-cards .wizard-select-card');
   yearCards.forEach(c => {
@@ -1273,40 +1205,12 @@ function initWizardUI() {
     };
   });
 
-  // Batch Numbers 1 to 6 Clicks
-  const numChips = document.querySelectorAll('#wizard-batch-numbers .batch-num-chip');
-  numChips.forEach(chip => {
-    chip.onclick = () => {
-      selectedBatchNum = chip.dataset.num;
-      setBatchSelection(`${selectedBatchLetter}${selectedBatchNum}`);
-    };
-  });
-
-  // Quick Batch Pills
-  const quickPills = document.querySelectorAll('#wizard-quick-batches .quick-batch-pill');
-  quickPills.forEach(pill => {
-    pill.onclick = () => {
-      setBatchSelection(pill.dataset.batch);
-    };
-  });
-
-  // Direct Batch Input
-  const directInput = document.getElementById('wizard-direct-batch');
-  if (directInput) {
-    directInput.oninput = (e) => {
-      const val = e.target.value.trim().toUpperCase();
-      if (val) {
-        setBatchSelection(val);
-      }
-    };
-  }
-
   // Wizard Confirmation Button
   const submitBtn = document.getElementById('wizard-btn-submit');
   if (submitBtn) {
     submitBtn.onclick = () => {
-      if (selectedYear && selectedBranch && selectedBatch) {
-        applyClassSelection(selectedYear, selectedBranch, selectedBatch);
+      if (selectedYear && selectedBranch) {
+        applyClassSelection(selectedYear, selectedBranch);
       }
     };
   }
@@ -1315,14 +1219,13 @@ function initWizardUI() {
   if (activeClassFilter) {
     if (activeClassFilter.year) setYearSelection(activeClassFilter.year);
     if (activeClassFilter.branch) setBranchSelection(activeClassFilter.branch);
-    if (activeClassFilter.batch) setBatchSelection(activeClassFilter.batch);
   } else {
     updateWizardSummary();
   }
 }
 
-function applyClassSelection(year, branch, batch) {
-  activeClassFilter = { year, branch, batch };
+function applyClassSelection(year, branch) {
+  activeClassFilter = { year, branch };
   try {
     localStorage.setItem('xerox_student_class', JSON.stringify(activeClassFilter));
   } catch(e) {}
@@ -1335,12 +1238,11 @@ function applyClassSelection(year, branch, batch) {
 
   const yearPill = document.getElementById('asgn-active-year-pill');
   const branchPill = document.getElementById('asgn-active-branch-pill');
-  const batchPill = document.getElementById('asgn-active-batch-pill');
 
   if (yearPill) yearPill.textContent = year;
   if (branchPill) branchPill.textContent = branch;
-  if (batchPill) batchPill.textContent = `Batch ${batch}`;
 
+  setupCategoryFilters(allAssignments);
   setupSubjectFilters(allAssignments);
   renderAssignmentsList();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1360,10 +1262,8 @@ function openClassSelectorWizard() {
 
 async function loadAssignments() {
   const loadingEl = document.getElementById('asgn-loading');
-  const gridEl = document.getElementById('asgn-grid');
   const emptyEl = document.getElementById('asgn-empty');
   if (loadingEl) loadingEl.style.display = 'block';
-  if (gridEl) gridEl.style.display = 'none';
   if (emptyEl) emptyEl.style.display = 'none';
 
   // Read saved student class selection from storage
@@ -1372,11 +1272,10 @@ async function loadAssignments() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.year && parsed.branch && parsed.batch) {
+        if (parsed && parsed.year && parsed.branch) {
           activeClassFilter = parsed;
           selectedYear = parsed.year;
           selectedBranch = parsed.branch;
-          selectedBatch = parsed.batch;
         }
       } catch (e) {}
     }
@@ -1394,10 +1293,8 @@ async function loadAssignments() {
     if (contentView) contentView.style.display = 'block';
     const yearPill = document.getElementById('asgn-active-year-pill');
     const branchPill = document.getElementById('asgn-active-branch-pill');
-    const batchPill = document.getElementById('asgn-active-batch-pill');
     if (yearPill) yearPill.textContent = activeClassFilter.year;
     if (branchPill) branchPill.textContent = activeClassFilter.branch;
-    if (batchPill) batchPill.textContent = `Batch ${activeClassFilter.batch}`;
   }
 
   try {
@@ -1409,6 +1306,7 @@ async function loadAssignments() {
     const data = await res.json();
     allAssignments = data.assignments || [];
 
+    setupCategoryFilters(allAssignments);
     setupSubjectFilters(allAssignments);
     if (activeClassFilter) {
       renderAssignmentsList();
@@ -1461,15 +1359,50 @@ function matchesBranchFilter(asgnBranch, targetClass, chosenBranch) {
   return false;
 }
 
-function matchesBatchFilter(asgnBatch, chosenBatch) {
-  if (!chosenBatch) return true;
-  const b = String(asgnBatch || '').toUpperCase().replace(/[\s-_]/g, '');
-  const cb = String(chosenBatch).toUpperCase().replace(/[\s-_]/g, '');
-  if (b === 'ALL' || b === 'ALLBATCHES' || !b) return true;
-  if (cb === 'ALL' || cb === 'ALLBATCHES') return true;
-  if (b === cb) return true;
-  if (b === 'BATCH' + cb || cb === 'BATCH' + b) return true;
-  return false;
+function setupCategoryFilters(assignments) {
+  const container = document.getElementById('asgn-category-filters');
+  if (!container) return;
+
+  const relevant = assignments.filter(a => {
+    if (!activeClassFilter) return true;
+    return matchesYearFilter(a.year, a.targetClass, activeClassFilter.year) &&
+           matchesBranchFilter(a.branch, a.targetClass, activeClassFilter.branch);
+  });
+
+  const categories = Array.from(new Set(relevant.map(a => (a.category && a.category.trim()) || 'Lab Experiments').filter(Boolean)));
+
+  if (currentCategoryFilter !== 'all' && !categories.includes(currentCategoryFilter)) {
+    currentCategoryFilter = 'all';
+  }
+
+  const isAllActive = currentCategoryFilter === 'all';
+  container.innerHTML = `<button type="button" class="filter-pill ${isAllActive ? 'active' : ''}" data-cat="all">All Categories (${relevant.length})</button>`;
+
+  categories.forEach(cat => {
+    const count = relevant.filter(a => ((a.category && a.category.trim()) || 'Lab Experiments') === cat).length;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `filter-pill ${currentCategoryFilter === cat ? 'active' : ''}`;
+    btn.dataset.cat = cat;
+    btn.textContent = `📂 ${cat} (${count})`;
+    btn.onclick = () => {
+      container.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentCategoryFilter = cat;
+      renderAssignmentsList();
+    };
+    container.appendChild(btn);
+  });
+
+  const allBtn = container.querySelector('[data-cat="all"]');
+  if (allBtn) {
+    allBtn.onclick = () => {
+      container.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+      allBtn.classList.add('active');
+      currentCategoryFilter = 'all';
+      renderAssignmentsList();
+    };
+  }
 }
 
 function setupSubjectFilters(assignments) {
@@ -1480,8 +1413,7 @@ function setupSubjectFilters(assignments) {
   const relevantAssignments = assignments.filter(a => {
     if (!activeClassFilter) return true;
     return matchesYearFilter(a.year, a.targetClass, activeClassFilter.year) &&
-           matchesBranchFilter(a.branch, a.targetClass, activeClassFilter.branch) &&
-           matchesBatchFilter(a.batch, activeClassFilter.batch);
+           matchesBranchFilter(a.branch, a.targetClass, activeClassFilter.branch);
   });
 
   const subjects = Array.from(new Set(relevantAssignments.map(a => a.subject).filter(Boolean)));
@@ -1521,101 +1453,140 @@ function setupSubjectFilters(assignments) {
 }
 
 function renderAssignmentsList() {
-  const gridEl = document.getElementById('asgn-grid');
+  const wrapperEl = document.getElementById('asgn-categories-wrapper');
   const emptyEl = document.getElementById('asgn-empty');
   const search = (document.getElementById('asgn-search-input')?.value || '').toLowerCase().trim();
 
   const chosenYear = activeClassFilter ? activeClassFilter.year : null;
   const chosenBranch = activeClassFilter ? activeClassFilter.branch : null;
-  const chosenBatch = activeClassFilter ? activeClassFilter.batch : null;
 
   const filtered = allAssignments.filter(a => {
+    const cat = (a.category && a.category.trim()) || 'Lab Experiments';
+    const matchesCat = currentCategoryFilter === 'all' || cat === currentCategoryFilter;
     const matchesSubject = currentSubjectFilter === 'all' || a.subject === currentSubjectFilter;
     const matchesSearch = !search ||
       (a.subject && a.subject.toLowerCase().includes(search)) ||
       (a.title && a.title.toLowerCase().includes(search)) ||
+      (a.category && a.category.toLowerCase().includes(search)) ||
       (a.attachmentName && a.attachmentName.toLowerCase().includes(search));
     const yearMatch = matchesYearFilter(a.year, a.targetClass, chosenYear);
     const branchMatch = matchesBranchFilter(a.branch, a.targetClass, chosenBranch);
-    const batchMatch = matchesBatchFilter(a.batch, chosenBatch);
-    return matchesSubject && matchesSearch && yearMatch && branchMatch && batchMatch;
+    return matchesCat && matchesSubject && matchesSearch && yearMatch && branchMatch;
   });
 
   if (filtered.length === 0) {
-    if (gridEl) gridEl.style.display = 'none';
+    if (wrapperEl) {
+      wrapperEl.style.display = 'none';
+      wrapperEl.innerHTML = '';
+    }
     if (emptyEl) {
       emptyEl.style.display = 'block';
       const emptyTitle = document.getElementById('asgn-empty-title') || emptyEl.querySelector('h3');
       const emptyDesc = document.getElementById('asgn-empty-desc') || emptyEl.querySelector('p');
       if (activeClassFilter) {
-        if (emptyTitle) emptyTitle.textContent = `No Assignments for ${activeClassFilter.year} ${activeClassFilter.branch} (Batch ${activeClassFilter.batch})`;
-        if (emptyDesc) emptyDesc.textContent = 'Staff have not uploaded assignments for your batch yet. Check back soon or change your selection.';
+        if (emptyTitle) emptyTitle.textContent = `No Assignments for ${activeClassFilter.year} • ${activeClassFilter.branch}`;
+        if (emptyDesc) emptyDesc.textContent = 'Staff have not uploaded assignments for this category or branch yet. Check back soon or change your selection.';
       } else {
         if (emptyTitle) emptyTitle.textContent = allAssignments.length === 0 ? 'No Assignments Yet' : 'No Matching Assignments';
-        if (emptyDesc) emptyDesc.textContent = allAssignments.length === 0 ? 'Staff have not uploaded any subject assignments yet.' : 'Try changing your subject filter or search keyword.';
+        if (emptyDesc) emptyDesc.textContent = allAssignments.length === 0 ? 'Staff have not uploaded any subject assignments yet.' : 'Try changing your search keyword or category filter.';
       }
     }
     return;
   }
 
   if (emptyEl) emptyEl.style.display = 'none';
-  if (gridEl) {
-    gridEl.style.display = 'grid';
-    gridEl.innerHTML = '';
+  if (wrapperEl) {
+    wrapperEl.style.display = 'block';
+    wrapperEl.innerHTML = '';
   }
 
+  // Group filtered assignments by Category as entered by Admin
+  const groupedCategories = {};
   filtered.forEach(a => {
-    const card = document.createElement('div');
-    card.className = 'asgn-card';
+    const cat = (a.category && a.category.trim()) || 'Lab Experiments';
+    if (!groupedCategories[cat]) groupedCategories[cat] = [];
+    groupedCategories[cat].push(a);
+  });
 
-    const hasAtt = a.hasAttachment;
-    const previewBtnHTML = hasAtt ? `
-      <button type="button" class="action-btn preview-btn" onclick="openAttachmentPreview('${a.id}', '${encodeURIComponent(a.subject)}', '${encodeURIComponent(a.attachmentName || 'Demo Assignment')}')">
-        👁 Preview Demo
-      </button>
-      <a href="/api/assignments/${a.id}/attachment" class="action-btn download-btn" download="${a.attachmentName || 'demo_assignment'}">
-        ⬇ Download
-      </a>
-      <button type="button" class="action-btn print-direct-btn" onclick="orderAssignmentPrint('${a.id}', '${encodeURIComponent(a.attachmentName || a.subject + '.pdf')}')">
-        🖨 Print This Report
-      </button>
-    ` : '';
+  Object.entries(groupedCategories).forEach(([categoryName, items]) => {
+    const section = document.createElement('div');
+    section.className = 'asgn-category-group';
+    section.style.marginBottom = '32px';
 
-    const attChipHTML = hasAtt ? `
-      <div class="asgn-att-chip">
-        <span class="att-icon">📎</span>
-        <div class="att-info">
-          <span class="att-name" title="${a.attachmentName || 'Attachment'}">${a.attachmentName || 'Attachment'}</span>
-          <span class="att-size">${formatAsgnBytes(a.attachmentSize)}</span>
-        </div>
+    const header = document.createElement('div');
+    header.className = 'asgn-category-section-header';
+    header.innerHTML = `
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:22px;">📂</span>
+        <h2 style="margin:0; font-size:18px; font-weight:700; color:var(--ink);">${categoryName}</h2>
       </div>
-    ` : `
-      <div class="asgn-att-chip no-file">
-        <span class="att-icon">📄</span>
-        <div class="att-info">
-          <span class="att-name">No file attached</span>
-        </div>
-      </div>
+      <span class="asgn-pill-badge" style="background:#f3e8ff; color:#6b21a8; border-color:#e9d5ff;">
+        ${items.length} ${items.length === 1 ? 'assignment' : 'assignments'}
+      </span>
     `;
 
-    card.innerHTML = `
-      <div>
-        <div class="asgn-card-top" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:8px;">
-          <span class="asgn-subject-tag">📘 ${a.subject}</span>
-          <span class="asgn-batch-tag" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #bae6fd;">🏫 ${a.targetClass || 'All Classes'}</span>
-          <span class="asgn-batch-tag" style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #fde68a;">🏷️ ${a.batch || 'All Batches'}</span>
-          ${a.deadline ? `<span class="asgn-deadline-pill">📅 Due: ${a.deadline}</span>` : '<span class="asgn-deadline-pill" style="background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;">No Deadline</span>'}
+    const grid = document.createElement('div');
+    grid.className = 'asgn-grid';
+    grid.style.marginTop = '14px';
+
+    items.forEach(a => {
+      const card = document.createElement('div');
+      card.className = 'asgn-card';
+
+      const hasAtt = a.hasAttachment;
+      const previewBtnHTML = hasAtt ? `
+        <button type="button" class="action-btn preview-btn" onclick="openAttachmentPreview('${a.id}', '${encodeURIComponent(a.subject)}', '${encodeURIComponent(a.attachmentName || 'Demo Assignment')}')">
+          👁 Preview Demo
+        </button>
+        <a href="/api/assignments/${a.id}/attachment" class="action-btn download-btn" download="${a.attachmentName || 'demo_assignment'}">
+          ⬇ Download
+        </a>
+        <button type="button" class="action-btn print-direct-btn" onclick="orderAssignmentPrint('${a.id}', '${encodeURIComponent(a.attachmentName || a.subject + '.pdf')}')">
+          🖨 Print This Report
+        </button>
+      ` : '';
+
+      const attChipHTML = hasAtt ? `
+        <div class="asgn-att-chip">
+          <span class="att-icon">📎</span>
+          <div class="att-info">
+            <span class="att-name" title="${a.attachmentName || 'Attachment'}">${a.attachmentName || 'Attachment'}</span>
+            <span class="att-size">${formatAsgnBytes(a.attachmentSize)}</span>
+          </div>
         </div>
-        <h3 class="asgn-title">${a.title || a.subject}</h3>
-        ${attChipHTML}
-      </div>
-      <div class="asgn-card-footer">
-        <div class="asgn-actions">
-          ${previewBtnHTML}
+      ` : `
+        <div class="asgn-att-chip no-file">
+          <span class="att-icon">📄</span>
+          <div class="att-info">
+            <span class="att-name">No file attached</span>
+          </div>
         </div>
-      </div>
-    `;
-    gridEl.appendChild(card);
+      `;
+
+      card.innerHTML = `
+        <div>
+          <div class="asgn-card-top" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:8px;">
+            <span class="asgn-subject-tag">📘 ${a.subject}</span>
+            <span class="asgn-batch-tag" style="background:#f3e8ff; color:#6b21a8; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #e9d5ff;">📂 ${a.category || 'Lab Experiments'}</span>
+            <span class="asgn-batch-tag" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #bae6fd;">🏫 ${a.targetClass || 'All Classes'}</span>
+            ${a.batch && a.batch !== 'All Batches' ? `<span class="asgn-batch-tag" style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #fde68a;">🏷️ ${a.batch}</span>` : ''}
+            ${a.deadline ? `<span class="asgn-deadline-pill">📅 Due: ${a.deadline}</span>` : '<span class="asgn-deadline-pill" style="background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;">No Deadline</span>'}
+          </div>
+          <h3 class="asgn-title">${a.title || a.subject}</h3>
+          ${attChipHTML}
+        </div>
+        <div class="asgn-card-footer">
+          <div class="asgn-actions">
+            ${previewBtnHTML}
+          </div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    section.appendChild(header);
+    section.appendChild(grid);
+    wrapperEl.appendChild(section);
   });
 }
 

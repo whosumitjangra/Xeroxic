@@ -1141,7 +1141,8 @@ async function handler(req, res) {
         year: a.year || (a.targetClass && a.targetClass !== 'All Classes' ? a.targetClass.split(' ')[0] : 'All'),
         branch: a.branch || (a.targetClass && a.targetClass !== 'All Classes' ? a.targetClass.split(' ').slice(1).join(' ') || 'All' : 'All'),
         targetClass: a.targetClass || 'All Classes',
-        batch: a.batch || 'All Batches'
+        batch: a.batch || 'All Batches',
+        category: a.category || 'Lab Experiments'
       }));
 
       return sendJSON(res, 200, { success: true, assignments: sanitized });
@@ -1153,7 +1154,7 @@ async function handler(req, res) {
       if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
 
       const body = await readJSONBody(req);
-      const { subject, deadline, attachment } = body;
+      const { subject, category, deadline, attachment } = body;
 
       if (!subject || !subject.trim()) {
         return sendJSON(res, 400, { error: 'Subject is required.' });
@@ -1171,6 +1172,7 @@ async function handler(req, res) {
 
       const newAssignment = await createAssignment({
         subject: subject.trim(),
+        category: (category && category.trim()) || 'Lab Experiments',
         deadline: deadline || '',
         attachment: cleanAttachment,
         year: body.year || '',

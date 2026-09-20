@@ -957,6 +957,7 @@ function renderAdminAssignments() {
       <div>
         <div class="asgn-card-top" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:8px;">
           <span class="asgn-subject-tag">📘 ${a.subject}</span>
+          <span class="asgn-batch-tag" style="background:#f3e8ff; color:#6b21a8; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #e9d5ff;">📂 ${a.category || 'Lab Experiments'}</span>
           <span class="asgn-batch-tag" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #bae6fd;">🏫 ${a.targetClass || 'All Classes'}</span>
           <span class="asgn-batch-tag" style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #fde68a;">🏷️ ${a.batch || 'All Batches'}</span>
           ${a.deadline ? `<span class="asgn-deadline-pill">📅 Due: ${a.deadline}</span>` : '<span class="asgn-deadline-pill" style="background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;">No Deadline</span>'}
@@ -977,7 +978,7 @@ function renderAdminAssignments() {
   });
 }
 
-// Search listener
+// Search and filter listeners for assignments in Admin
 document.getElementById('admin-asgn-search-input')?.addEventListener('input', (e) => {
   currentAdminSearch = e.target.value.trim();
   renderAdminAssignments();
@@ -1041,6 +1042,7 @@ addAsgnForm?.addEventListener('submit', async (e) => {
   }
 
   const subject = document.getElementById('asgn-subject-input')?.value.trim();
+  const category = document.getElementById('asgn-category-input')?.value.trim() || 'Lab Experiments';
   const year = document.getElementById('asgn-year-input')?.value || 'All Years';
   const branch = document.getElementById('asgn-branch-input')?.value || 'All Branches';
   const batch = document.getElementById('asgn-batch-input')?.value?.trim() || 'All Batches';
@@ -1057,7 +1059,7 @@ addAsgnForm?.addEventListener('submit', async (e) => {
     const res = await fetch('/api/admin/assignments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subject, year, branch, targetClass, batch, deadline, attachment: attachedFileObject })
+      body: JSON.stringify({ subject, category, year, branch, targetClass, batch, deadline, attachment: attachedFileObject })
     });
     const data = await res.json();
 

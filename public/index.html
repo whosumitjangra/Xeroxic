@@ -453,17 +453,14 @@
         <div class="wizard-step-indicator" id="step-ind-2">
           <span>2</span> Engineering Branch
         </div>
-        <div class="wizard-step-indicator" id="step-ind-3">
-          <span>3</span> Practical Batch (A1..Z6)
-        </div>
       </div>
 
       <!-- Step 1: Academic Year -->
       <div id="wizard-panel-year" class="wizard-step-panel">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <div>
             <h3 style="margin:0 0 4px; font-size:18px; color:var(--ink);">Step 1: Choose Your Academic Year</h3>
-            <p style="margin:0; font-size:13px; color:#5c7062;">Select your current undergraduate academic year</p>
+            <p style="margin:0; font-size:13px; color:#5c7062;">Select your undergraduate academic year</p>
           </div>
           <span id="wizard-year-chosen-badge" class="asgn-pill-badge" style="display:none;"></span>
         </div>
@@ -472,29 +469,29 @@
           <div class="wizard-select-card" data-year="FE">
             <span class="wizard-card-badge">FE</span>
             <div class="wizard-card-title">First Year</div>
-            <div class="wizard-card-sub">Common Engineering Foundation Labs</div>
+            <div class="wizard-card-sub">Common Foundation Labs &amp; Manuals</div>
           </div>
           <div class="wizard-select-card" data-year="SE">
             <span class="wizard-card-badge">SE</span>
             <div class="wizard-card-title">Second Year</div>
-            <div class="wizard-card-sub">Core Department Disciplines &amp; Manuals</div>
+            <div class="wizard-card-sub">Core Discipline Experiments &amp; Notes</div>
           </div>
           <div class="wizard-select-card" data-year="TE">
             <span class="wizard-card-badge">TE</span>
             <div class="wizard-card-title">Third Year</div>
-            <div class="wizard-card-sub">Advanced Applied Labs &amp; Mini-Projects</div>
+            <div class="wizard-card-sub">Advanced Specialization &amp; Mini-Projects</div>
           </div>
           <div class="wizard-select-card" data-year="BE">
             <span class="wizard-card-badge">BE</span>
             <div class="wizard-card-title">Final Year</div>
-            <div class="wizard-card-sub">Capstone Projects &amp; Elective Writeups</div>
+            <div class="wizard-card-sub">Capstone Projects &amp; Electives</div>
           </div>
         </div>
       </div>
 
       <!-- Step 2: Engineering Branch (CSE, IT, MECH, ARE, ENTC) -->
-      <div id="wizard-panel-branch" class="wizard-step-panel" style="margin-top:32px; border-top:1.5px dashed #dbe6dd; padding-top:28px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div id="wizard-panel-branch" class="wizard-step-panel" style="margin-top:28px; border-top:1.5px dashed #dbe6dd; padding-top:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <div>
             <h3 style="margin:0 0 4px; font-size:18px; color:var(--ink);">Step 2: Choose Your Engineering Branch</h3>
             <p style="margin:0; font-size:13px; color:#5c7062;">Select your branch (CSE, IT, MECH, ARE, ENTC)</p>
@@ -534,71 +531,14 @@
             <div class="wizard-card-sub">Signals, DSP &amp; Embedded Systems</div>
           </div>
         </div>
-      </div>
-
-      <!-- Step 3: Practical Batch (A1..Z6) -->
-      <div id="wizard-panel-batch" class="wizard-step-panel" style="margin-top:32px; border-top:1.5px dashed #dbe6dd; padding-top:28px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-          <div>
-            <h3 style="margin:0 0 4px; font-size:18px; color:var(--ink);">Step 3: Choose Your Practical Batch</h3>
-            <p style="margin:0; font-size:13px; color:#5c7062;">Select your section letter (A to Z) &amp; number (1 to 6) or pick from quick batches</p>
-          </div>
-          <span id="wizard-batch-chosen-badge" class="asgn-pill-badge" style="display:none;"></span>
-        </div>
-
-        <div class="wizard-batch-box">
-          <!-- Section Letters A to Z -->
-          <div style="font-size:12px; font-weight:700; color:#5c7062; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">
-            1. Pick Section Letter (A – Z):
-          </div>
-          <div class="batch-letters-scroll" id="wizard-batch-letters">
-            <!-- A through Z generated dynamically -->
-          </div>
-
-          <!-- Numbers 1 through 6 -->
-          <div style="font-size:12px; font-weight:700; color:#5c7062; margin:12px 0 6px; text-transform:uppercase; letter-spacing:0.5px;">
-            2. Pick Batch Number (1 – 6):
-          </div>
-          <div class="batch-number-row" id="wizard-batch-numbers">
-            <button type="button" class="batch-num-chip" data-num="1">1</button>
-            <button type="button" class="batch-num-chip" data-num="2">2</button>
-            <button type="button" class="batch-num-chip" data-num="3">3</button>
-            <button type="button" class="batch-num-chip" data-num="4">4</button>
-            <button type="button" class="batch-num-chip" data-num="5">5</button>
-            <button type="button" class="batch-num-chip" data-num="6">6</button>
-          </div>
-
-          <!-- Quick Popular Batches & Direct Input -->
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:16px; padding-top:14px; border-top:1px solid #e0ede2;">
-            <div>
-              <span style="font-size:12px; font-weight:700; color:#5c7062; text-transform:uppercase;">Quick Batches:</span>
-              <div class="quick-batches-wrap" id="wizard-quick-batches">
-                <button type="button" class="quick-batch-pill" data-batch="A1">A1</button>
-                <button type="button" class="quick-batch-pill" data-batch="A2">A2</button>
-                <button type="button" class="quick-batch-pill" data-batch="A3">A3</button>
-                <button type="button" class="quick-batch-pill" data-batch="B1">B1</button>
-                <button type="button" class="quick-batch-pill" data-batch="B2">B2</button>
-                <button type="button" class="quick-batch-pill" data-batch="B3">B3</button>
-                <button type="button" class="quick-batch-pill" data-batch="C1">C1</button>
-                <button type="button" class="quick-batch-pill" data-batch="C2">C2</button>
-                <button type="button" class="quick-batch-pill" data-batch="Z6">Z6</button>
-                <button type="button" class="quick-batch-pill" data-batch="All Batches">All Batches</button>
-              </div>
-            </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-size:12px; font-weight:600; color:#5c7062;">Direct Batch:</span>
-              <input type="text" id="wizard-direct-batch" placeholder="e.g. Z6, A4" style="width:110px; padding:7px 10px; border:1.5px solid #cfe0d3; border-radius:10px; font-family:'Poppins'; font-size:13px; font-weight:600; text-transform:uppercase; text-align:center;">
-            </div>
-          </div>
-        </div>
 
         <!-- Wizard Confirmation Bar -->
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-top:24px; padding-top:20px; border-top:1.5px solid #dce8de;">
           <div style="font-size:14px; color:#2e4334;">
             <strong>Your Selection:</strong>
-            <span id="wizard-active-summary" style="margin-left:6px; color:#1e6b38; font-weight:700;">Please select Year, Branch and Batch</span>
+            <span id="wizard-active-summary" style="margin-left:6px; color:#1e6b38; font-weight:700;">Please select Year &amp; Branch</span>
           </div>
-          <button type="button" id="wizard-btn-submit" class="upload-btn" style="min-width:220px; font-size:14px; font-weight:700;" disabled>
+          <button type="button" id="wizard-btn-submit" class="upload-btn" style="min-width:200px; font-size:14px; font-weight:700;" disabled>
             Show Assignments →
           </button>
         </div>
@@ -606,30 +546,45 @@
     </div>
   </div>
 
-  <!-- FILTERED ASSIGNMENTS CONTENT VIEW -->
+  <!-- FILTERED ASSIGNMENTS CONTENT VIEW (DIVIDED BY ADMIN CATEGORIES) -->
   <div id="asgn-content-view" class="asgn-container" style="display:none;">
     <!-- Active Selection Banner -->
     <div class="asgn-active-banner">
       <div class="asgn-active-pills">
-        <span style="font-size:16px;">🎓</span>
+        <span style="font-size:18px;">🎓</span>
         <span>Showing assignments for:</span>
         <span class="asgn-pill-badge" id="asgn-active-year-pill">Year</span>
         <span class="asgn-pill-badge" id="asgn-active-branch-pill">Branch</span>
-        <span class="asgn-pill-badge" id="asgn-active-batch-pill">Batch</span>
       </div>
       <button type="button" id="btn-change-class" class="upload-btn secondary-btn" style="padding:8px 18px; font-size:13px; font-weight:600;">
-        🔄 Change Class / Batch
+        🔄 Change Class / Branch
       </button>
     </div>
 
     <div class="asgn-controls-card">
       <div class="asgn-search-wrap">
         <span class="search-icon">🔍</span>
-        <input type="text" id="asgn-search-input" class="admin-search-input" placeholder="Search by experiment title, subject or topic...">
+        <input type="text" id="asgn-search-input" class="admin-search-input" placeholder="Search by title, subject or experiment topic...">
+      </div>
+
+      <!-- Categories Filter Pills -->
+      <div style="margin-top:14px;">
+        <div style="font-size:12px; font-weight:700; color:#5c7062; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+          📂 Filter by Category:
+        </div>
+        <div class="asgn-filter-pills" id="asgn-category-filters">
+          <button type="button" class="filter-pill active" data-cat="all">All Categories</button>
+        </div>
       </div>
       
-      <div class="asgn-filter-pills" id="asgn-subject-filters" style="margin-top:12px;">
-        <button type="button" class="filter-pill active" data-subject="all">All Subjects</button>
+      <!-- Subjects Filter Pills -->
+      <div style="margin-top:12px;">
+        <div style="font-size:12px; font-weight:700; color:#5c7062; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+          📘 Filter by Subject:
+        </div>
+        <div class="asgn-filter-pills" id="asgn-subject-filters">
+          <button type="button" class="filter-pill active" data-subject="all">All Subjects</button>
+        </div>
       </div>
     </div>
 
@@ -638,17 +593,18 @@
       <p>Loading subject assignments...</p>
     </div>
 
-    <div id="asgn-grid" class="asgn-grid" style="display:none;">
-      <!-- Populated dynamically by script.js -->
+    <!-- Categorized Container (Divided by Admin Categories) -->
+    <div id="asgn-categories-wrapper">
+      <!-- Generated dynamically by script.js with category headers and cards -->
     </div>
 
     <div id="asgn-empty" class="admin-empty-state" style="display:none;">
       <div class="empty-icon">📖</div>
       <h3 id="asgn-empty-title">No Assignments Found</h3>
-      <p id="asgn-empty-desc">No lab assignments match your selected class and batch filter.</p>
+      <p id="asgn-empty-desc">No lab assignments match your selected class and filters.</p>
       <div style="margin-top:16px;">
         <button type="button" class="upload-btn" id="btn-empty-change" style="padding:8px 20px; font-size:13px;">
-          🔄 Change Class / Batch
+          🔄 Change Class / Branch
         </button>
       </div>
     </div>

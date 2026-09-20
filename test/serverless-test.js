@@ -400,14 +400,15 @@ async function runTests() {
   assert.strictEqual(createdAsgn.subject, 'Artificial Intelligence');
   console.log(`   ✅ Admin successfully created assignment: ${createdAsgn.id}`);
 
-  // Verify GET /api/assignments returns year, branch, batch
+  // Verify GET /api/assignments returns year, branch, batch, category
   const checkAsgnList = await invokeHandler({ method: 'GET', url: '/api/assignments' });
   const fetchedAsgn = checkAsgnList.json().assignments.find(a => a.id === createdAsgn.id);
   assert(fetchedAsgn, 'Created assignment must be in GET list');
   assert(fetchedAsgn.year !== undefined, 'year must be present');
   assert(fetchedAsgn.branch !== undefined, 'branch must be present');
   assert(fetchedAsgn.batch !== undefined, 'batch must be present');
-  console.log('   ✅ Assignment year, branch, and batch attributes verified in GET /api/assignments');
+  assert(fetchedAsgn.category !== undefined, 'category must be present');
+  console.log('   ✅ Assignment year, branch, batch, and category attributes verified in GET /api/assignments');
 
   // Test 21: Downloading/previewing demo attachment
   console.log('21. Testing GET /api/assignments/:id/attachment...');
