@@ -79,6 +79,39 @@ function checkRoleAccess(session, allowedRoles, res) {
   return true;
 }
 
+// Ensure student session exists without blocking unauthenticated guests
+function getOrCreateStudentSession(req, res, isSecure) {
+  let session = getSessionFromReq(req);
+  if (session) {
+    const userRole = normalizeRole(session.role);
+    if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
+      sendJSON(res, 403, {
+        error: 'Forbidden: Staff and Admin accounts cannot perform student print actions. Please use a student session.'
+      });
+      return null;
+    }
+    return session;
+  }
+
+  // Auto-generate guest student session so student printing workflow is frictionless
+  const guestId = 'guest_' + crypto.randomBytes(8).toString('hex');
+  const guestUser = {
+    id: guestId,
+    name: 'Student',
+    email: `student_${guestId.slice(-6)}@aitpune.edu.in`,
+    role: 'STUDENT'
+  };
+  const token = createSessionToken(guestUser);
+  res.setHeader('Set-Cookie', formatSessionCookie(token, isSecure));
+  return {
+    userId: guestUser.id,
+    name: guestUser.name,
+    email: guestUser.email,
+    role: 'STUDENT',
+    isGuest: true
+  };
+}
+
 // Order status helper (supports 5-stage workflow: REQUEST_RECEIVED → ACCEPTED → PRINTING → READY → COMPLETED)
 function computeOrderStatus(orderOrDate) {
   if (typeof orderOrDate === 'object' && orderOrDate) {
@@ -478,10 +511,10 @@ async function handler(req, res) {
       return sendJSON(res, 200, { success: true, message: 'Password updated successfully.' });
     }
 
-    // ---------------- FILES: UPLOAD (STUDENTS ONLY) ----------------
+    // ---------------- FILES: UPLOAD (STUDENTS) ----------------
     if (pathname === '/api/upload' && req.method === 'POST') {
-      const session = getSessionFromReq(req);
-      if (!checkRoleAccess(session, ['STUDENT'], res)) return;
+      const session = getOrCreateStudentSession(req, res, isSecure);
+      if (!session) return;
 
       try {
         const { files } = await parseMultipart(req);
@@ -506,10 +539,10 @@ async function handler(req, res) {
       }
     }
 
-    // ---------------- FILES: LIST (STUDENTS ONLY) ----------------
+    // ---------------- FILES: LIST (STUDENTS) ----------------
     if (pathname === '/api/files' && req.method === 'GET') {
-      const session = getSessionFromReq(req);
-      if (!checkRoleAccess(session, ['STUDENT'], res)) return;
+      const session = getOrCreateStudentSession(req, res, isSecure);
+      if (!session) return;
       const filesDb = await getFiles();
       const mine = filesDb
         .filter(f => f.ownerId === session.userId)
@@ -517,10 +550,10 @@ async function handler(req, res) {
       return sendJSON(res, 200, { files: mine });
     }
 
-    // ---------------- FILES: DELETE (STUDENTS ONLY) ----------------
+    // ---------------- FILES: DELETE (STUDENTS) ----------------
     if (pathname.startsWith('/api/files/') && req.method === 'DELETE') {
-      const session = getSessionFromReq(req);
-      if (!checkRoleAccess(session, ['STUDENT'], res)) return;
+      const session = getOrCreateStudentSession(req, res, isSecure);
+      if (!session) return;
       const id = pathname.split('/').pop();
       const filesDb = await getFiles();
       const idx = filesDb.findIndex(f => f.id === id && f.ownerId === session.userId);
@@ -533,10 +566,10 @@ async function handler(req, res) {
       return sendJSON(res, 200, { success: true });
     }
 
-    // ---------------- ORDERS: INITIATE (STUDENTS ONLY) ----------------
+    // ---------------- ORDERS: INITIATE (STUDENTS) ----------------
     if ((pathname === '/api/orders/initiate' || pathname === '/api/orders') && req.method === 'POST') {
-      const session = getSessionFromReq(req);
-      if (!checkRoleAccess(session, ['STUDENT'], res)) return;
+      const session = getOrCreateStudentSession(req, res, isSecure);
+      if (!session) return;
 
       const { items, copies = 1, pageRange = 'all', paymentMethod = 'UPI', utr = '' } = await readJSONBody(req);
       if (!Array.isArray(items) || items.length === 0) {
@@ -641,8 +674,8 @@ async function handler(req, res) {
 
     // ---------------- PAYMENTS: VERIFY & CONFIRM (STUDENTS ONLY) ----------------
     if (pathname === '/api/payments/verify' && req.method === 'POST') {
-      const session = getSessionFromReq(req);
-      if (!checkRoleAccess(session, ['STUDENT'], res)) return;
+      const session = getOrCreateStudentSession(req, res, isSecure);
+      if (!session) return;
 
       const { orderId, paymentStatus, simulationStatus, utr } = await readJSONBody(req);
       if (!orderId) {
@@ -756,8 +789,8 @@ async function handler(req, res) {
 
     // ---------------- ORDERS: LIST MY ORDERS (STUDENTS ONLY) ----------------
     if (pathname === '/api/orders' && req.method === 'GET') {
-      const session = getSessionFromReq(req);
-      if (!checkRoleAccess(session, ['STUDENT'], res)) return;
+      const session = getOrCreateStudentSession(req, res, isSecure);
+      if (!session) return;
       const orders = await getOrders();
       const mine = orders
         .filter(o => o.ownerId === session.userId)
@@ -785,16 +818,17 @@ async function handler(req, res) {
     // ---------------- ORDERS: TRACK / GET ONE (STUDENT OWNERSHIP CHECK) ----------------
     if (pathname.startsWith('/api/orders/') && !pathname.endsWith('/status') && req.method === 'GET') {
       const session = getSessionFromReq(req);
-      if (!session) return sendJSON(res, 401, { error: 'Not logged in.' });
       const orderId = decodeURIComponent(pathname.split('/').pop());
       const orders = await getOrders();
       const order = orders.find(o => o.orderId.toLowerCase() === orderId.toLowerCase());
       if (!order) return sendJSON(res, 404, { error: 'No order found with that ID.' });
 
-      const userRole = normalizeRole(session.role);
-      // Student security check: Student can only view their own order!
-      if (userRole === 'STUDENT' && order.ownerId !== session.userId) {
-        return sendJSON(res, 403, { error: 'Forbidden: You do not have access to view this order.' });
+      if (session) {
+        const userRole = normalizeRole(session.role);
+        // Student security check: Registered/authenticated Student can only view their own order!
+        if (userRole === 'STUDENT' && order.ownerId && order.ownerId !== session.userId) {
+          return sendJSON(res, 403, { error: 'Forbidden: You do not have access to view this order.' });
+        }
       }
 
       const users = await getUsers();
