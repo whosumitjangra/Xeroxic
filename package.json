@@ -21,6 +21,7 @@
   "author": "Sumit",
   "license": "ISC",
   "dependencies": {
-    "mongodb": "^7.6.0"
+    "mongodb": "^7.6.0",
+    "razorpay": "^2.9.8"
   }
 }

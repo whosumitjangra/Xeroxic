@@ -283,16 +283,57 @@
 
     <!-- Payment Method Selector Tabs -->
     <div class="pay-method-tabs">
-      <button type="button" class="pay-tab active" id="tab-upi">
-        <span class="tab-icon">⚡</span> UPI / QR Code <span class="recom-badge">Instant</span>
+      <button type="button" class="pay-tab active" id="tab-razorpay">
+        <span class="tab-icon">💳</span> Razorpay <span class="recom-badge" style="background:#2563eb;">Standard</span>
+      </button>
+      <button type="button" class="pay-tab" id="tab-upi">
+        <span class="tab-icon">⚡</span> Direct UPI / QR <span class="recom-badge">Manual UTR</span>
       </button>
       <button type="button" class="pay-tab" id="tab-card">
-        <span class="tab-icon">💳</span> Debit / Credit Card
+        <span class="tab-icon">🧪</span> Sandbox Simulation
       </button>
     </div>
 
+    <!-- RAZORPAY STANDARD CHECKOUT VIEW -->
+    <div id="razorpay-section" class="pay-method-content active">
+      <div class="upi-box" style="flex-direction:column; gap:16px; border-left:4px solid #2563eb;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h4 style="margin:0 0 4px 0; color:#1e293b; font-size:16px; font-weight:700;">Razorpay Standard Web Checkout</h4>
+            <p style="margin:0; font-size:13px; color:#475569;">
+              Pay securely via UPI (GPay, PhonePe, Paytm), Credit/Debit Cards, Net Banking, or Wallets.
+            </p>
+          </div>
+          <span class="sticker-chip" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:12px; margin:0;">
+            🔒 Official Test Gateway
+          </span>
+        </div>
+
+        <div style="background:#fff; border:1.5px solid #e2e8f0; border-radius:12px; padding:16px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13.5px; color:#334155;">
+            <span>Order Token:</span>
+            <strong id="rzp-order-token" style="font-family:monospace; color:#0f172a;">ORD-XXXXXX</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13.5px; color:#334155;">
+            <span>Amount Payable:</span>
+            <strong style="color:#059669; font-size:16px;"><span class="pay-btn-amount">₹0</span></strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:12.5px; color:#64748b;">
+            <span>Gateway Mode:</span>
+            <span>Razorpay Standard Checkout (Test Mode)</span>
+          </div>
+        </div>
+
+        <div id="razorpay-error-box" class="payment-alert-box alert-error" style="display:none; padding:12px; border-radius:10px; font-size:13px;"></div>
+
+        <button type="button" class="upload-btn pay-submit-btn" id="razorpay-checkout-btn" style="background:linear-gradient(135deg, #1e40af, #2563eb); box-shadow:0 4px 14px rgba(37,99,235,0.35);">
+          <span>💳 Pay <span class="pay-btn-amount">₹0</span> with Razorpay</span> →
+        </button>
+      </div>
+    </div>
+
     <!-- UPI PAYMENT VIEW -->
-    <div id="upi-section" class="pay-method-content active">
+    <div id="upi-section" class="pay-method-content" style="display:none;">
       <div class="upi-box">
         <div class="upi-qr-wrapper">
           <div id="upi-qr-container" class="upi-qr-canvas">
@@ -847,6 +888,7 @@
   </div>
 </div>
 
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="script.js"></script>
 
 </body>

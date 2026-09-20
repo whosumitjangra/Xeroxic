@@ -479,15 +479,34 @@ function initPaymentPage() {
   }
 
   // Setup tab listeners
+  const tabRazorpay = document.getElementById('tab-razorpay');
   const tabUpi = document.getElementById('tab-upi');
   const tabCard = document.getElementById('tab-card');
+  const razorpaySec = document.getElementById('razorpay-section');
   const upiSec = document.getElementById('upi-section');
   const cardSec = document.getElementById('card-section');
+
+  const rzpTokenEl = document.getElementById('rzp-order-token');
+  if (rzpTokenEl && currentPendingOrder) {
+    rzpTokenEl.textContent = currentPendingOrder.orderId;
+  }
+
+  tabRazorpay?.addEventListener('click', () => {
+    currentPaymentMethod = 'Razorpay';
+    tabRazorpay.classList.add('active');
+    tabUpi?.classList.remove('active');
+    tabCard?.classList.remove('active');
+    if (razorpaySec) razorpaySec.style.display = 'block';
+    if (upiSec) upiSec.style.display = 'none';
+    if (cardSec) cardSec.style.display = 'none';
+  });
 
   tabUpi?.addEventListener('click', () => {
     currentPaymentMethod = 'UPI';
     tabUpi.classList.add('active');
+    tabRazorpay?.classList.remove('active');
     tabCard?.classList.remove('active');
+    if (razorpaySec) razorpaySec.style.display = 'none';
     if (upiSec) upiSec.style.display = 'block';
     if (cardSec) cardSec.style.display = 'none';
   });
@@ -495,7 +514,9 @@ function initPaymentPage() {
   tabCard?.addEventListener('click', () => {
     currentPaymentMethod = 'Card';
     tabCard.classList.add('active');
+    tabRazorpay?.classList.remove('active');
     tabUpi?.classList.remove('active');
+    if (razorpaySec) razorpaySec.style.display = 'none';
     if (upiSec) upiSec.style.display = 'none';
     if (cardSec) cardSec.style.display = 'block';
   });
@@ -690,7 +711,170 @@ function retryPayment() {
   }
 }
 
+// ===================================================================
+// RAZORPAY STANDARD WEB CHECKOUT FLOW
+// ===================================================================
+
+async function launchRazorpayCheckout() {
+  const errBox = document.getElementById('razorpay-error-box');
+  if (errBox) {
+    errBox.style.display = 'none';
+    errBox.textContent = '';
+  }
+
+  if (!currentPendingOrder || !currentPendingOrder.orderId) {
+    alert('No active pending order found. Please return to Print Options.');
+    showPage('printoptions');
+    return;
+  }
+
+  const rzpBtn = document.getElementById('razorpay-checkout-btn');
+  const originalText = rzpBtn ? rzpBtn.innerHTML : '';
+  if (rzpBtn) {
+    rzpBtn.disabled = true;
+    rzpBtn.innerHTML = '<span>⏳ Opening Razorpay Gateway...</span>';
+  }
+
+  try {
+    // 1. Calculate amount in paise (minimum 100 paise)
+    const amountInRupees = Number(currentPendingOrder.amount || currentPendingOrder.total || 1);
+    const amountInPaise = Math.max(100, Math.round(amountInRupees * 100));
+
+    // 2. Call backend to create Razorpay Order
+    const createRes = await fetch('/api/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: amountInPaise,
+        currency: 'INR',
+        receipt: currentPendingOrder.orderId,
+        orderId: currentPendingOrder.orderId
+      })
+    });
+
+    const createData = await createRes.json();
+    if (!createRes.ok || !createData.order_id) {
+      throw new Error(createData.error || 'Failed to initialize Razorpay order on server.');
+    }
+
+    // 3. Verify Razorpay checkout script is loaded
+    if (typeof window.Razorpay !== 'function') {
+      throw new Error('Razorpay SDK failed to load. Please check your internet connection.');
+    }
+
+    const keyId = createData.keyId || 'rzp_test_TeOn3Cq5Vfubfu';
+
+    // 4. Configure Razorpay Standard Checkout Options
+    const options = {
+      key: keyId,
+      amount: createData.amount,
+      currency: createData.currency || 'INR',
+      name: 'Xerox Centre — AIT Pune',
+      description: `Printing Order #${currentPendingOrder.orderId}`,
+      image: 'icons/icon-192.png',
+      order_id: createData.order_id,
+      handler: async function(response) {
+        // Step 2 & 3: Received payment response, verify signature with backend
+        try {
+          if (rzpBtn) {
+            rzpBtn.disabled = true;
+            rzpBtn.innerHTML = '<span>🔒 Verifying Payment Signature...</span>';
+          }
+
+          const verifyRes = await fetch('/api/verify-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              orderId: currentPendingOrder.orderId
+            })
+          });
+
+          const verifyData = await verifyRes.json();
+          if (!verifyRes.ok || !verifyData.success) {
+            throw new Error(verifyData.error || 'Payment signature verification failed.');
+          }
+
+          // Payment verified successfully!
+          currentPaymentMethod = 'Razorpay';
+          renderConfirmation(currentPendingOrder.orderId, currentPendingOrder.amount, orderDraft, 'Razorpay');
+          showPage('confirmation');
+        } catch (verifyErr) {
+          console.error('Razorpay verification error:', verifyErr);
+          if (errBox) {
+            errBox.style.display = 'block';
+            errBox.textContent = `Payment verification failed: ${verifyErr.message}`;
+          }
+          alert(`Payment verification failed: ${verifyErr.message}`);
+        } finally {
+          if (rzpBtn) {
+            rzpBtn.disabled = false;
+            rzpBtn.innerHTML = originalText;
+          }
+        }
+      },
+      prefill: {
+        name: (document.getElementById('welcome-name')?.textContent || 'Student').trim(),
+        email: 'student@aitpune.edu.in',
+        contact: ''
+      },
+      notes: {
+        xeroxOrderId: currentPendingOrder.orderId
+      },
+      theme: {
+        color: '#2563eb'
+      },
+      modal: {
+        ondismiss: function() {
+          console.log('[Razorpay] Payment modal dismissed by user.');
+          if (errBox) {
+            errBox.style.display = 'block';
+            errBox.textContent = 'Payment cancelled. You can retry anytime by clicking the button below.';
+          }
+          if (rzpBtn) {
+            rzpBtn.disabled = false;
+            rzpBtn.innerHTML = originalText;
+          }
+        }
+      }
+    };
+
+    const rzpInstance = new window.Razorpay(options);
+
+    rzpInstance.on('payment.failed', function(failureResponse) {
+      console.error('[Razorpay] Payment failed event:', failureResponse.error);
+      const desc = failureResponse.error ? failureResponse.error.description : 'Payment transaction failed';
+      if (errBox) {
+        errBox.style.display = 'block';
+        errBox.textContent = `❌ Payment Failed: ${desc} (Code: ${failureResponse.error?.code || 'ERR'})`;
+      }
+      if (rzpBtn) {
+        rzpBtn.disabled = false;
+        rzpBtn.innerHTML = originalText;
+      }
+    });
+
+    rzpInstance.open();
+  } catch (err) {
+    console.error('Razorpay checkout initiation error:', err);
+    if (errBox) {
+      errBox.style.display = 'block';
+      errBox.textContent = err.message || 'Could not open Razorpay checkout modal.';
+    }
+  } finally {
+    if (rzpBtn) {
+      rzpBtn.disabled = false;
+      rzpBtn.innerHTML = originalText;
+    }
+  }
+}
+
 // Payment Event Listeners
+document.getElementById('razorpay-checkout-btn')?.addEventListener('click', () => {
+  launchRazorpayCheckout();
+});
 document.getElementById('upi-pay-btn')?.addEventListener('click', () => {
   const utr = document.getElementById('pay-utr')?.value.trim() || '';
   verifyPayment('SUCCESS', utr);

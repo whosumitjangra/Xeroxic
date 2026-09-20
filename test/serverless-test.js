@@ -12,6 +12,7 @@ try {
 } catch (e) {}
 
 const assert = require('assert');
+const crypto = require('crypto');
 const EventEmitter = require('events');
 const handler = require('../api/index');
 const { createSessionToken, verifySessionToken } = require('../lib/auth');
@@ -1343,7 +1344,92 @@ async function runTests() {
   assert.strictEqual(reLoginRes.json().success, true);
   console.log('   ✅ Password change workflow passed: Securely changed password and verified new credentials');
 
-  console.log('\n🎉 ALL 56 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP Top 10 security tests verified.\n');
+  // ===================================================================
+  // RAZORPAY STANDARD WEB CHECKOUT TESTS
+  // ===================================================================
+  console.log('\n--- RAZORPAY STANDARD WEB CHECKOUT TESTS ---');
+
+  // Test 57: Razorpay Public Config Endpoint
+  console.log('57. Testing GET /api/razorpay/config (returns keyId only, never secret)...');
+  const rzpConfigRes = await invokeHandler({ method: 'GET', url: '/api/razorpay/config' });
+  assert.strictEqual(rzpConfigRes.statusCode, 200);
+  const rzpConfig = rzpConfigRes.json();
+  assert.strictEqual(rzpConfig.keyId, 'rzp_test_TeOn3Cq5Vfubfu');
+  assert.strictEqual(rzpConfig.keySecret, undefined, 'KEY_SECRET must NEVER be exposed in config response');
+  console.log('   ✅ Razorpay config returns keyId securely');
+
+  // Test 58: POST /api/create-order validation (< 100 paise rejected)
+  console.log('58. Testing POST /api/create-order minimum amount validation (< 100 paise rejected)...');
+  const rzpBelowMinRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/create-order',
+    headers: { cookie: sessionCookie },
+    body: { amount: 50, currency: 'INR' }
+  });
+  assert.strictEqual(rzpBelowMinRes.statusCode, 400);
+  assert(rzpBelowMinRes.json().error.includes('100 paise'), 'Must reject amount < 100 paise');
+  console.log('   ✅ Minimum amount validation enforced (400 for < 100 paise)');
+
+  // Test 59: POST /api/create-order (Razorpay order creation)
+  console.log('59. Testing POST /api/create-order (Razorpay order created)...');
+  const rzpCreateRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/create-order',
+    headers: { cookie: sessionCookie },
+    body: { amount: 500, currency: 'INR', orderId: orderIdScenario1 }
+  });
+  assert.strictEqual(rzpCreateRes.statusCode, 200);
+  const rzpCreateData = rzpCreateRes.json();
+  assert(rzpCreateData.order_id, 'Must return order_id from Razorpay');
+  assert.strictEqual(rzpCreateData.amount, 500);
+  assert.strictEqual(rzpCreateData.currency, 'INR');
+  console.log('   ✅ Razorpay order created successfully:', rzpCreateData.order_id);
+
+  // Test 60: POST /api/verify-payment with invalid signature (rejected with 400)
+  console.log('60. Testing POST /api/verify-payment with invalid signature (400 Bad Request)...');
+  const rzpBadVerifyRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/verify-payment',
+    headers: { cookie: sessionCookie },
+    body: {
+      razorpay_order_id: rzpCreateData.order_id,
+      razorpay_payment_id: 'pay_FakePayment123',
+      razorpay_signature: 'invalid_tampered_signature_hex_code_1234567890abcdef',
+      orderId: orderIdScenario1
+    }
+  });
+  assert.strictEqual(rzpBadVerifyRes.statusCode, 400);
+  assert.strictEqual(rzpBadVerifyRes.json().success, false);
+  assert(rzpBadVerifyRes.json().error.includes('signature'), 'Must reject invalid signature');
+  console.log('   ✅ Invalid signature rejected with 400 Bad Request');
+
+  // Test 61: POST /api/verify-payment with genuine HMAC-SHA256 signature
+  console.log('61. Testing POST /api/verify-payment with valid HMAC-SHA256 signature...');
+  const fakePayId = 'pay_TestRealPayment_' + Date.now();
+  const validSignature = crypto
+    .createHmac('sha256', '3W4eNJDXVqgUCLMoyKBKDG8k')
+    .update(`${rzpCreateData.order_id}|${fakePayId}`)
+    .digest('hex');
+
+  const rzpGoodVerifyRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/verify-payment',
+    headers: { cookie: sessionCookie },
+    body: {
+      razorpay_order_id: rzpCreateData.order_id,
+      razorpay_payment_id: fakePayId,
+      razorpay_signature: validSignature,
+      orderId: orderIdScenario1
+    }
+  });
+  assert.strictEqual(rzpGoodVerifyRes.statusCode, 200);
+  const rzpGoodData = rzpGoodVerifyRes.json();
+  assert.strictEqual(rzpGoodData.success, true);
+  assert.strictEqual(rzpGoodData.verified, true);
+  assert.strictEqual(rzpGoodData.paymentStatus, 'PAID');
+  console.log('   ✅ Valid HMAC-SHA256 signature successfully verified and order marked PAID');
+
+  console.log('\n🎉 ALL 61 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP tests + 5 Razorpay tests verified.\n');
 }
 
 runTests().catch(err => {
