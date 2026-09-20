@@ -563,6 +563,7 @@ document.getElementById('submit-order-btn')?.addEventListener('click', async () 
   try {
     const res = await fetch('/api/orders/initiate', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         items: orderDraft,
@@ -743,6 +744,7 @@ async function launchRazorpayCheckout() {
     // 2. Call backend to create Razorpay Order
     const createRes = await fetch('/api/create-order', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         amount: amountInPaise,
@@ -783,6 +785,7 @@ async function launchRazorpayCheckout() {
 
           const verifyRes = await fetch('/api/verify-payment', {
             method: 'POST',
+            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               razorpay_order_id: response.razorpay_order_id,

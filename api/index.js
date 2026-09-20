@@ -894,6 +894,9 @@ async function handler(req, res) {
           const orders = await getOrders();
           const ord = orders.find(o => o.orderId.toUpperCase() === String(orderId).trim().toUpperCase());
           if (ord) {
+            if (ord.ownerId && ord.ownerId !== session.userId) {
+              return sendJSON(res, 403, { error: "Forbidden: You cannot initiate payment for another student's order." });
+            }
             ord.razorpayOrderId = rzpOrder.id;
             ord.updatedAt = new Date().toISOString();
             await saveOrders(orders);
@@ -916,6 +919,9 @@ async function handler(req, res) {
             const orders = await getOrders();
             const ord = orders.find(o => o.orderId.toUpperCase() === String(orderId).trim().toUpperCase());
             if (ord) {
+              if (ord.ownerId && ord.ownerId !== session.userId) {
+                return sendJSON(res, 403, { error: "Forbidden: You cannot initiate payment for another student's order." });
+              }
               ord.razorpayOrderId = simulatedOrderId;
               ord.updatedAt = new Date().toISOString();
               await saveOrders(orders);
@@ -979,7 +985,7 @@ async function handler(req, res) {
       if (matchedOrder) {
         // Enforce student ownership if order exists
         if (matchedOrder.ownerId && matchedOrder.ownerId !== session.userId) {
-          return sendJSON(res, 403, { error: 'Forbidden: You cannot verify payment for another student’s order.' });
+          return sendJSON(res, 403, { error: "Forbidden: You cannot verify payment for another student's order." });
         }
 
         matchedOrder.paymentStatus = 'PAID';

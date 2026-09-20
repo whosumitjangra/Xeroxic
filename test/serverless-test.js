@@ -1429,10 +1429,58 @@ async function runTests() {
   assert.strictEqual(rzpGoodData.paymentStatus, 'PAID');
   console.log('   ✅ Valid HMAC-SHA256 signature successfully verified and order marked PAID');
 
-  console.log('\n🎉 ALL 61 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP tests + 5 Razorpay tests verified.\n');
+  // Test 62: Student B attempts to verify Student A's order (rejected with 403)
+  console.log("62. Testing Student B attempting to verify Student A order (403 Forbidden)...");
+  const studentBVerifyRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/verify-payment',
+    headers: { cookie: studentBCookie },
+    body: {
+      razorpay_order_id: rzpCreateData.order_id,
+      razorpay_payment_id: fakePayId,
+      razorpay_signature: validSignature,
+      orderId: orderIdScenario1
+    }
+  });
+  assert.strictEqual(studentBVerifyRes.statusCode, 403);
+  assert(studentBVerifyRes.json().error.includes("Forbidden"), 'Must forbid Student B from verifying Student A order');
+  console.log("   ✅ Cross-student verification strictly rejected with 403 Forbidden");
+
+  // Test 63: Student B attempts to initiate Razorpay order for Student A's order (rejected with 403)
+  console.log('63. Testing Student B attempting to initiate Razorpay order for Student A (403 Forbidden)...');
+  const studentBCreateRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/create-order',
+    headers: { cookie: studentBCookie },
+    body: {
+      amount: 500,
+      currency: 'INR',
+      orderId: orderIdScenario1
+    }
+  });
+  assert.strictEqual(studentBCreateRes.statusCode, 403);
+  assert(studentBCreateRes.json().error.includes("Forbidden"), 'Must forbid Student B from creating Razorpay order for Student A');
+  console.log("   ✅ Cross-student order creation strictly rejected with 403 Forbidden");
+
+  // Test 64: Admin Dashboard reflects verified PAID status
+  console.log('64. Testing Admin Dashboard reflects verified PAID status...');
+  const adminOrdersAfterPayRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/orders',
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(adminOrdersAfterPayRes.statusCode, 200);
+  const allOrdersAfterPay = adminOrdersAfterPayRes.json().orders;
+  const verifiedOrderInAdmin = allOrdersAfterPay.find(o => o.orderId === orderIdScenario1);
+  assert(verifiedOrderInAdmin, 'Order must exist in admin orders list');
+  assert.strictEqual(verifiedOrderInAdmin.paymentStatus, 'PAID', 'Admin order list must show paymentStatus PAID');
+  console.log('   ✅ Admin dashboard correctly reflects order paymentStatus = PAID');
+
+  console.log('\n🎉 ALL 64 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP tests + 8 Razorpay tests verified.\n');
 }
 
 runTests().catch(err => {
   console.error('\n❌ Test failed with error:', err);
   process.exit(1);
 });
+
