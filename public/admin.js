@@ -1122,6 +1122,45 @@ function removeStagedAttachment(index) {
   updateStagedPreviewUI();
 }
 
+function compressImageFile(file, maxWidth = 1600, maxHeight = 1600, quality = 0.82) {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith('image/')) return resolve(null);
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        const base64 = dataUrl.split(',')[1];
+        resolve({
+          base64,
+          mimeType: 'image/jpeg',
+          size: Math.round((base64.length * 3) / 4)
+        });
+      };
+      img.onerror = () => resolve(null);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
 function readFileAsBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -1134,22 +1173,38 @@ function readFileAsBase64(file) {
 async function handleFilesSelected(files) {
   if (!files || files.length === 0) return;
   const asgnFileStatus = document.getElementById('asgn-file-status');
-  if (asgnFileStatus) asgnFileStatus.textContent = `Reading ${files.length} file(s)...`;
+  if (asgnFileStatus) asgnFileStatus.textContent = `Optimizing ${files.length} file(s)...`;
 
   const filesArray = Array.from(files);
   for (const file of filesArray) {
-    if (file.size > 8 * 1024 * 1024) {
-      alert(`File "${file.name}" exceeds 8 MB limit.`);
-      continue;
-    }
     const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(file.name) || (file.type && file.type.startsWith('image/'));
     try {
-      const base64Data = await readFileAsBase64(file);
+      let base64Data;
+      let mimeType = file.type || (isImg ? 'image/jpeg' : 'application/octet-stream');
+      let size = file.size;
+
+      if (isImg) {
+        const compressed = await compressImageFile(file);
+        if (compressed) {
+          base64Data = compressed.base64;
+          mimeType = compressed.mimeType;
+          size = compressed.size;
+        } else {
+          base64Data = await readFileAsBase64(file);
+        }
+      } else {
+        if (file.size > 8 * 1024 * 1024) {
+          alert(`File "${file.name}" exceeds 8 MB limit.`);
+          continue;
+        }
+        base64Data = await readFileAsBase64(file);
+      }
+
       stagedAttachments.push({
         id: 'stg-' + Math.random().toString(36).substr(2, 9),
         originalName: file.name,
-        mimeType: file.type || (isImg ? 'image/jpeg' : 'application/octet-stream'),
-        size: file.size,
+        mimeType,
+        size,
         dataBase64: base64Data,
         isImg
       });
@@ -1191,7 +1246,7 @@ asgnDropzone?.addEventListener('drop', (e) => {
 });
 
 asgnFileInput?.addEventListener('change', (e) => {
-  if (e.target.files && e.target.files.length > 0) {
+  if (e.target.files) {
     handleFilesSelected(e.target.files);
     e.target.value = '';
   }
@@ -1255,6 +1310,7 @@ addAsgnForm?.addEventListener('submit', async (e) => {
   try {
     const res = await fetch('/api/admin/assignments', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         subject,
@@ -1268,7 +1324,13 @@ addAsgnForm?.addEventListener('submit', async (e) => {
         attachment: payloadAttachments[0] || null
       })
     });
-    const data = await res.json();
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      data = { error: 'Server response error (status ' + res.status + ')' };
+    }
 
     if (res.status === 401) {
       alert('Session expired. Please log in again.');
@@ -1278,10 +1340,12 @@ addAsgnForm?.addEventListener('submit', async (e) => {
 
     if (!res.ok) {
       alert(data.error || 'Failed to publish assignment.');
+      showToast(data.error || 'Failed to publish assignment.', 'error');
       return;
     }
 
     showToast('Assignment published successfully with preview!', 'success');
+    alert('Assignment published successfully!');
     addAsgnForm.reset();
     stagedAttachments = [];
     activeStagedIndex = 0;
@@ -1289,6 +1353,7 @@ addAsgnForm?.addEventListener('submit', async (e) => {
     if (addModal) addModal.style.display = 'none';
     loadAdminAssignments();
   } catch (err) {
+    alert('Error publishing assignment: ' + err.message);
     showToast('Error publishing assignment: ' + err.message, 'error');
   } finally {
     if (submitBtn) {

@@ -609,20 +609,39 @@ async function handler(req, res) {
       return sendJSON(res, 200, { files: mine });
     }
 
-    // ---------------- FILES: DELETE (STUDENTS) ----------------
+    // ---------------- FILES: CLEAR ALL (STUDENTS) ----------------
+    if ((pathname === '/api/files/clear' || pathname === '/api/files') && req.method === 'DELETE') {
+      const session = getOrCreateStudentSession(req, res, isSecure);
+      if (!session) return;
+      const filesDb = await getFiles();
+      const remaining = [];
+      for (const file of filesDb) {
+        if (file.ownerId === session.userId) {
+          await deleteUploadedFile(file).catch(() => {});
+        } else {
+          remaining.push(file);
+        }
+      }
+      await saveFiles(remaining);
+      return sendJSON(res, 200, { success: true, message: 'All session files cleared.' });
+    }
+
+    // ---------------- FILES: DELETE ONE (STUDENTS) ----------------
     if (pathname.startsWith('/api/files/') && req.method === 'DELETE') {
       const session = getOrCreateStudentSession(req, res, isSecure);
       if (!session) return;
-      const id = pathname.split('/').pop();
+      const id = pathname.split('/').pop().trim();
       const filesDb = await getFiles();
-      const idx = filesDb.findIndex(f => f.id === id && f.ownerId === session.userId);
-      if (idx === -1) return sendJSON(res, 404, { error: 'File not found.' });
+      const idx = filesDb.findIndex(f => f.id === id && (f.ownerId === session.userId || !f.ownerId));
+      if (idx === -1) {
+        return sendJSON(res, 200, { success: true, removed: false });
+      }
 
       const record = filesDb[idx];
-      await deleteUploadedFile(record);
+      await deleteUploadedFile(record).catch(() => {});
       filesDb.splice(idx, 1);
       await saveFiles(filesDb);
-      return sendJSON(res, 200, { success: true });
+      return sendJSON(res, 200, { success: true, removed: true });
     }
 
     // ---------------- ORDERS: INITIATE (STUDENTS) ----------------

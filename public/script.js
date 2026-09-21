@@ -235,10 +235,10 @@ async function uploadFiles(fileListToUpload) {
 
 async function loadFiles() {
   try {
-    const res = await fetch('/api/files');
+    const res = await fetch('/api/files', { credentials: 'same-origin' });
     if (!res.ok) return;
     const data = await res.json();
-    renderFiles(data.files);
+    renderFiles(data.files || []);
   } catch (err) {
     // silent fail
   }
@@ -261,6 +261,26 @@ function renderFiles(files) {
   dzText.textContent = files.length + ' file(s) uploaded';
   if (proceedWrap) proceedWrap.style.display = 'block';
 
+  // Header row with count & Clear All Documents button
+  const headerRow = document.createElement('div');
+  headerRow.className = 'file-list-header';
+  headerRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding:4px 6px;';
+  headerRow.innerHTML = `
+    <span style="font-size:12.5px; font-weight:600; color:#1e3d2a;">Uploaded Documents (${files.length})</span>
+    <button type="button" id="btn-clear-all-docs" style="background:#fff1f2; border:1.5px solid #fecdd3; color:#e11d48; font-size:11.5px; font-weight:600; border-radius:8px; padding:4px 10px; cursor:pointer; display:flex; align-items:center; gap:4px; transition:all 0.15s;">
+      🗑️ Clear All
+    </button>
+  `;
+  fileList.appendChild(headerRow);
+
+  headerRow.querySelector('#btn-clear-all-docs').onclick = async (e) => {
+    e.stopPropagation();
+    if (!confirm('Remove all uploaded documents and start fresh?')) return;
+    fileList.innerHTML = '<div style="color:#6c8072; font-size:13px; text-align:center; padding:12px;">Clearing files...</div>';
+    await fetch('/api/files/clear', { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
+    loadFiles();
+  };
+
   files.forEach(f => {
     const item = document.createElement('div');
     item.className = 'file-item';
@@ -273,17 +293,29 @@ function renderFiles(files) {
     actions.className = 'file-actions';
 
     const downloadBtn = document.createElement('button');
+    downloadBtn.type = 'button';
+    downloadBtn.className = 'file-action-btn download';
     downloadBtn.textContent = '⬇';
     downloadBtn.title = 'Download';
-    downloadBtn.onclick = () => {
+    downloadBtn.onclick = (e) => {
+      e.stopPropagation();
       window.location.href = '/api/download/' + f.id;
     };
 
     const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'file-action-btn delete';
     deleteBtn.textContent = '✕';
-    deleteBtn.title = 'Delete';
-    deleteBtn.onclick = async () => {
-      await fetch('/api/files/' + f.id, { method: 'DELETE' });
+    deleteBtn.title = 'Remove this file';
+    deleteBtn.onclick = async (e) => {
+      e.stopPropagation();
+      // Optimistic removal: visually remove immediately
+      item.style.opacity = '0.3';
+      item.style.pointerEvents = 'none';
+      try {
+        await fetch('/api/files/' + f.id, { method: 'DELETE', credentials: 'same-origin' });
+      } catch (err) {}
+      item.remove();
       loadFiles();
     };
 
@@ -439,11 +471,11 @@ function updateOrderTotal() {
 // PAYMENT & UPI GATEWAY FLOW
 // ===================================================================
 
-let currentPaymentMethod = 'UPI';
+let currentPaymentMethod = 'Razorpay';
 let currentPendingOrder = null;
 
 function initPaymentPage() {
-  const total = currentPendingOrder ? currentPendingOrder.amount : orderDraft.reduce((sum, i) => sum + i.price, 0);
+  const total = currentPendingOrder ? (currentPendingOrder.amount || currentPendingOrder.total) : orderDraft.reduce((sum, i) => sum + i.price, 0);
   const totalEl = document.getElementById('payment-total');
   if (totalEl) totalEl.textContent = '₹' + total;
   document.querySelectorAll('.pay-btn-amount').forEach(el => el.textContent = '₹' + total);
@@ -453,97 +485,21 @@ function initPaymentPage() {
     if (orderIdEl) orderIdEl.textContent = currentPendingOrder.orderId;
   }
 
-  // Generate UPI URI
-  const upiUri = `upi://pay?pa=aitxerox@upi&pn=AIT%20Xerox%20Centre&am=${total}&cu=INR&tn=Xerox%20Order`;
-
-  // Set Direct UPI App Link for mobile
-  const intentLink = document.getElementById('upi-intent-link');
-  if (intentLink) {
-    intentLink.href = upiUri;
-  }
-
-  // Render Google Pay QR Code
-  const qrContainer = document.getElementById('upi-qr-container');
-  if (qrContainer) {
-    qrContainer.innerHTML = `
-      <div style="display:flex; flex-direction:column; align-items:center;">
-        <img src="gpay-qr.jpg"
-             alt="Google Pay UPI QR Code"
-             class="upi-qr-img"
-             style="max-width:200px; width:100%; border-radius:12px; border:1.5px solid #dce5dc; box-shadow:0 4px 14px rgba(0,0,0,0.06);">
-        <div style="margin-top:8px; font-size:12px; color:#2b7a2b; font-weight:600; text-align:center;">
-          ⚡ Scan to Pay ₹${total} via Google Pay or Any UPI App
-        </div>
-      </div>
-    `;
-  }
-
-  // Setup tab listeners
-  const tabRazorpay = document.getElementById('tab-razorpay');
-  const tabUpi = document.getElementById('tab-upi');
-  const tabCard = document.getElementById('tab-card');
-  const razorpaySec = document.getElementById('razorpay-section');
-  const upiSec = document.getElementById('upi-section');
-  const cardSec = document.getElementById('card-section');
-
+  currentPaymentMethod = 'Razorpay';
   const rzpTokenEl = document.getElementById('rzp-order-token');
   if (rzpTokenEl && currentPendingOrder) {
     rzpTokenEl.textContent = currentPendingOrder.orderId;
   }
 
-  tabRazorpay?.addEventListener('click', () => {
-    currentPaymentMethod = 'Razorpay';
-    tabRazorpay.classList.add('active');
-    tabUpi?.classList.remove('active');
-    tabCard?.classList.remove('active');
-    if (razorpaySec) razorpaySec.style.display = 'block';
-    if (upiSec) upiSec.style.display = 'none';
-    if (cardSec) cardSec.style.display = 'none';
-  });
+  const razorpaySec = document.getElementById('razorpay-section');
+  if (razorpaySec) razorpaySec.style.display = 'block';
 
-  tabUpi?.addEventListener('click', () => {
-    currentPaymentMethod = 'UPI';
-    tabUpi.classList.add('active');
-    tabRazorpay?.classList.remove('active');
-    tabCard?.classList.remove('active');
-    if (razorpaySec) razorpaySec.style.display = 'none';
-    if (upiSec) upiSec.style.display = 'block';
-    if (cardSec) cardSec.style.display = 'none';
-  });
-
-  tabCard?.addEventListener('click', () => {
-    currentPaymentMethod = 'Card';
-    tabCard.classList.add('active');
-    tabRazorpay?.classList.remove('active');
-    tabUpi?.classList.remove('active');
-    if (razorpaySec) razorpaySec.style.display = 'none';
-    if (upiSec) upiSec.style.display = 'none';
-    if (cardSec) cardSec.style.display = 'block';
-  });
-
-  // Copy UPI ID button
-  const copyBtn = document.getElementById('copy-upi-btn');
-  if (copyBtn) {
-    copyBtn.onclick = () => {
-      const upiId = document.getElementById('upi-id-text')?.textContent || 'aitxerox@upi';
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(upiId).then(() => {
-          copyBtn.textContent = '✅ Copied!';
-          setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 2000);
-        }).catch(() => {
-          copyBtn.textContent = '✅ Copied!';
-          setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 2000);
-        });
-      } else {
-        copyBtn.textContent = '✅ Copied!';
-        setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 2000);
-      }
-    };
+  // Reset error box on view
+  const errBox = document.getElementById('razorpay-error-box');
+  if (errBox) {
+    errBox.style.display = 'none';
+    errBox.textContent = '';
   }
-
-  // Reset status alert box on view
-  const msgBox = document.getElementById('payment-status-message');
-  if (msgBox) msgBox.style.display = 'none';
 }
 
 // Step 1: Click "Proceed to Payment" -> Initiates Order on Backend (PENDING_PAYMENT)
@@ -887,15 +843,19 @@ document.getElementById('btn-sim-success')?.addEventListener('click', () => veri
 document.getElementById('btn-sim-fail')?.addEventListener('click', () => verifyPayment('FAILED'));
 document.getElementById('btn-sim-cancel')?.addEventListener('click', () => verifyPayment('CANCELLED'));
 
-function renderConfirmation(orderId, total, items, method = 'UPI') {
+function renderConfirmation(orderId, total, items, method = 'Razorpay') {
   document.getElementById('confirm-token').textContent = orderId;
   document.getElementById('confirm-total').textContent = '₹' + total;
 
+  // Clear uploaded files tray so previous documents never linger for the next order
+  fetch('/api/files/clear', { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
+
   const itemsEl = document.getElementById('confirm-items');
+  const badgeText = method === 'Razorpay' ? '💳 Paid via Razorpay (Verified)' : (method === 'UPI' ? '⚡ Paid via UPI Instant' : '💳 Paid via Card');
   itemsEl.innerHTML = `
     <div class="confirm-method-row">
-      <span class="pay-method-badge ${method === 'UPI' ? 'upi-badge' : 'card-badge'}">
-        ${method === 'UPI' ? '⚡ Paid via UPI Instant' : '💳 Paid via Card'}
+      <span class="pay-method-badge ${method === 'Razorpay' ? 'card-badge' : (method === 'UPI' ? 'upi-badge' : 'card-badge')}" style="${method === 'Razorpay' ? 'background:#2563eb; color:#fff;' : ''}">
+        ${badgeText}
       </span>
     </div>
   `;

@@ -1476,11 +1476,75 @@ async function runTests() {
   assert.strictEqual(verifiedOrderInAdmin.paymentStatus, 'PAID', 'Admin order list must show paymentStatus PAID');
   console.log('   ✅ Admin dashboard correctly reflects order paymentStatus = PAID');
 
-  console.log('\n🎉 ALL 64 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP tests + 8 Razorpay tests verified.\n');
+  // Test 65: Assignment auto-deletion 1 day after deadline
+  console.log('65. Testing Assignment auto-deletion 1 day after deadline...');
+  const twoDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const futureDay = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  // Create expired assignment
+  const createExpiredRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/admin/assignments',
+    headers: { cookie: adminCookie },
+    body: {
+      subject: 'Past Due Assignment',
+      category: 'Lab Experiments',
+      deadline: twoDaysAgo
+    }
+  });
+  assert.strictEqual(createExpiredRes.statusCode, 201);
+  const expiredId = createExpiredRes.json().assignment.id;
+
+  // Create active assignment
+  const createActiveRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/admin/assignments',
+    headers: { cookie: adminCookie },
+    body: {
+      subject: 'Active Future Assignment',
+      category: 'Lab Experiments',
+      deadline: futureDay
+    }
+  });
+  assert.strictEqual(createActiveRes.statusCode, 201);
+  const activeId = createActiveRes.json().assignment.id;
+
+  // Fetch assignments (triggers auto-cleanup 1 day after deadline)
+  const getAsgnRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/assignments'
+  });
+  assert.strictEqual(getAsgnRes.statusCode, 200);
+  const activeAsgns = getAsgnRes.json().assignments;
+  assert(!activeAsgns.find(a => a.id === expiredId), 'Past due assignment (> 1 day) must be automatically deleted');
+  assert(activeAsgns.find(a => a.id === activeId), 'Active future assignment must be preserved');
+  console.log('   ✅ Assignment past 1 day after deadline successfully auto-deleted');
+
+  // Test 66: Testing student file clearing (DELETE /api/files/clear)
+  console.log('66. Testing Student Files Clear (DELETE /api/files/clear)...');
+  const clearFilesRes = await invokeHandler({
+    method: 'DELETE',
+    url: '/api/files/clear',
+    headers: { cookie: sessionCookie }
+  });
+  assert.strictEqual(clearFilesRes.statusCode, 200);
+  assert.strictEqual(clearFilesRes.json().success, true);
+
+  const getFilesAfterClear = await invokeHandler({
+    method: 'GET',
+    url: '/api/files',
+    headers: { cookie: sessionCookie }
+  });
+  assert.strictEqual(getFilesAfterClear.statusCode, 200);
+  assert.strictEqual(getFilesAfterClear.json().files.length, 0, 'Files queue must be empty after clear');
+  console.log('   ✅ Student file clearing verified successfully');
+
+  console.log('\n🎉 ALL 66 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP tests + 8 Razorpay tests + 2 maintenance tests verified.\n');
 }
 
 runTests().catch(err => {
   console.error('\n❌ Test failed with error:', err);
   process.exit(1);
 });
+
 

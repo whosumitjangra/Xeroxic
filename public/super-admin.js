@@ -440,11 +440,66 @@ function wireEventListeners() {
   const asgnFileStatus = document.getElementById('asgn-file-status');
   const asgnDropzone = document.getElementById('asgn-dropzone');
   asgnDropzone?.addEventListener('click', () => asgnFileInput?.click());
+  function compressImageFile(file, maxWidth = 1600, maxHeight = 1600, quality = 0.82) {
+    return new Promise((resolve) => {
+      if (!file.type.startsWith('image/')) return resolve(null);
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth || height > maxHeight) {
+            if (width > height) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          const base64 = dataUrl.split(',')[1];
+          resolve({
+            base64,
+            mimeType: 'image/jpeg',
+            size: Math.round((base64.length * 3) / 4)
+          });
+        };
+        img.onerror = () => resolve(null);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  }
+
   asgnFileInput?.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 4.5 * 1024 * 1024) { alert('File must be under 4.5 MB.'); return; }
-    if (asgnFileStatus) asgnFileStatus.textContent = `Reading ${file.name}…`;
+    if (asgnFileStatus) asgnFileStatus.textContent = `Processing ${file.name}…`;
+
+    const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(file.name) || (file.type && file.type.startsWith('image/'));
+    if (isImg) {
+      const compressed = await compressImageFile(file);
+      if (compressed) {
+        attachedFileObject = {
+          originalName: file.name,
+          mimeType: compressed.mimeType,
+          size: compressed.size,
+          dataBase64: compressed.base64
+        };
+        if (asgnFileStatus) asgnFileStatus.textContent = `✅ Ready: ${file.name} (${(compressed.size / 1024).toFixed(1)} KB)`;
+        return;
+      }
+    }
+
+    if (file.size > 8 * 1024 * 1024) { alert('File must be under 8 MB.'); return; }
     const reader = new FileReader();
     reader.onload = () => {
       attachedFileObject = { originalName: file.name, mimeType: file.type || 'application/octet-stream', size: file.size, dataBase64: reader.result.split(',')[1] };
@@ -463,6 +518,7 @@ function wireEventListeners() {
     try {
       const res = await fetch('/api/admin/assignments', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subject, deadline, attachment: attachedFileObject })
       });
@@ -472,14 +528,18 @@ function wireEventListeners() {
         window.location.href = '/admin';
         return;
       }
-      if (!res.ok) throw new Error(data.error || 'Failed');
+      if (!res.ok) throw new Error(data.error || 'Failed to publish assignment');
       showToast('Assignment published!', 'success');
+      alert('Assignment published successfully!');
       document.getElementById('add-asgn-form').reset();
       attachedFileObject = null;
       if (asgnFileStatus) asgnFileStatus.textContent = 'Supports PDF, JPG, PNG, DOC (max 4 MB)';
       document.getElementById('admin-asgn-modal').style.display = 'none';
       loadAssignments();
-    } catch (err) { showToast('Error: ' + err.message, 'error'); }
+    } catch (err) {
+      alert('Error: ' + err.message);
+      showToast('Error: ' + err.message, 'error');
+    }
     finally { if (submitBtn) { submitBtn.disabled=false; submitBtn.textContent='Publish Assignment'; } }
   });
 
