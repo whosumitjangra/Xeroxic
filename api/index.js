@@ -1745,6 +1745,60 @@ async function handler(req, res) {
       return sendJSON(res, 200, { success: true, assignments: sanitized });
     }
 
+    // ---------------- ASSIGNMENTS: PREPARE SUPABASE UPLOAD (ADMIN & SUPER ADMIN) ----------------
+    if (pathname === '/api/admin/assignments/prepare-upload' && req.method === 'POST') {
+      const session = getSessionFromReq(req);
+      if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
+
+      const body = await readJSONBody(req);
+      const { filename, size, mimeType } = body;
+
+      if (!filename || typeof filename !== 'string') {
+        return sendJSON(res, 400, { error: 'Filename is required.' });
+      }
+
+      const fileSize = Number(size) || 0;
+      if (fileSize > 50 * 1024 * 1024) {
+        return sendJSON(res, 400, { error: 'File exceeds 50 MB maximum upload limit.' });
+      }
+
+      const rawBaseName = path.basename(filename);
+      const safeOriginalName = rawBaseName.replace(/[^\w\s.-]/gi, '_').replace(/\s+/g, ' ').trim() || 'assignment_doc';
+      const ext = path.extname(safeOriginalName).toLowerCase();
+
+      const ALLOWED = new Set([
+        '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.txt', '.rtf',
+        '.png', '.jpg', '.jpeg', '.gif', '.webp'
+      ]);
+      if (!ALLOWED.has(ext)) {
+        return sendJSON(res, 400, {
+          error: `File type "${ext}" is not permitted. Permitted formats: PDF, DOC, DOCX, PPT, PPTX, TXT, RTF, PNG, JPG, JPEG, GIF, WEBP.`
+        });
+      }
+
+      const fileId = crypto.randomBytes(12).toString('hex');
+      const filePath = `assignments/${Date.now()}-${fileId}-${safeOriginalName}`;
+
+      try {
+        const uploadAuth = await createSignedUploadUrl(filePath);
+        return sendJSON(res, 200, {
+          success: true,
+          fileId,
+          filePath,
+          originalName: safeOriginalName,
+          bucket: getBucketName(),
+          supabaseUrl: SUPABASE_URL,
+          supabaseKey: SUPABASE_KEY,
+          signedUrl: uploadAuth.signedUrl,
+          token: uploadAuth.token,
+          useDirectUpload: !!uploadAuth.useDirectUpload
+        });
+      } catch (prepErr) {
+        console.error('[Supabase assignment prepare-upload error]', prepErr);
+        return sendJSON(res, 500, { error: 'Could not generate upload authorization: ' + prepErr.message });
+      }
+    }
+
     // ---------------- ASSIGNMENTS: CREATE (ADMIN & SUPER ADMIN) ----------------
     if (pathname === '/api/admin/assignments' && req.method === 'POST') {
       const session = getSessionFromReq(req);
@@ -1759,18 +1813,22 @@ async function handler(req, res) {
 
       let cleanAttachments = [];
       if (Array.isArray(attachments) && attachments.length > 0) {
-        cleanAttachments = attachments.filter(att => att && att.dataBase64).map((att, idx) => ({
-          originalName: att.originalName || `image_${idx + 1}`,
+        cleanAttachments = attachments.filter(att => att && (att.filePath || att.dataBase64)).map((att, idx) => ({
+          originalName: att.originalName || `attachment_${idx + 1}`,
           mimeType: att.mimeType || 'application/octet-stream',
-          size: att.size || Buffer.byteLength(att.dataBase64, 'base64'),
-          dataBase64: att.dataBase64
+          size: att.size || (att.dataBase64 ? Buffer.byteLength(att.dataBase64, 'base64') : 0),
+          filePath: att.filePath || null,
+          storageProvider: att.filePath ? 'supabase' : (att.storageProvider || null),
+          dataBase64: att.filePath ? null : (att.dataBase64 || null)
         }));
-      } else if (attachment && attachment.dataBase64) {
+      } else if (attachment && (attachment.filePath || attachment.dataBase64)) {
         cleanAttachments = [{
           originalName: attachment.originalName || 'assignment_file',
           mimeType: attachment.mimeType || 'application/octet-stream',
-          size: attachment.size || Buffer.byteLength(attachment.dataBase64, 'base64'),
-          dataBase64: attachment.dataBase64
+          size: attachment.size || (attachment.dataBase64 ? Buffer.byteLength(attachment.dataBase64, 'base64') : 0),
+          filePath: attachment.filePath || null,
+          storageProvider: attachment.filePath ? 'supabase' : (attachment.storageProvider || null),
+          dataBase64: attachment.filePath ? null : (attachment.dataBase64 || null)
         }];
       }
 
@@ -1828,12 +1886,29 @@ async function handler(req, res) {
       let att = null;
       if (Array.isArray(assignment.attachments) && assignment.attachments.length > 0) {
         att = assignment.attachments[reqIndex] || assignment.attachments[0];
-      } else if (assignment.attachment && assignment.attachment.dataBase64) {
+      } else if (assignment.attachment && (assignment.attachment.dataBase64 || assignment.attachment.filePath)) {
         att = assignment.attachment;
       }
 
-      if (!att || !att.dataBase64) {
+      if (!att || (!att.dataBase64 && !att.filePath)) {
         return sendJSON(res, 404, { error: 'No demo attachment found for this assignment.' });
+      }
+
+      // If stored in Supabase Storage, generate a secure time-limited signed URL and redirect
+      if (att.filePath || att.storageProvider === 'supabase') {
+        try {
+          const wantsInline = parsed.searchParams.get('inline') === '1' || parsed.searchParams.get('inline') === 'true';
+          const downloadName = wantsInline ? null : (att.originalName || 'assignment_file');
+          const signedUrl = await createSignedDownloadUrl(att.filePath, 3600, downloadName);
+          res.writeHead(302, {
+            'Location': signedUrl,
+            'Cache-Control': 'no-cache, no-store, must-revalidate'
+          });
+          return res.end();
+        } catch (err) {
+          console.error('[Supabase assignment signed URL error]', err);
+          return sendJSON(res, 500, { error: 'Failed to generate secure download URL.' });
+        }
       }
 
       const fileBuffer = Buffer.from(att.dataBase64, 'base64');

@@ -1708,7 +1708,78 @@ async function runTests() {
   assert(supaOrderRes.json().orderId, 'Order must return orderId');
   console.log('   ✅ Order workflow with Supabase file reference verified successfully');
 
-  console.log('\n🎉 ALL 72 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP tests + 8 Razorpay tests + 8 storage & maintenance tests verified.\n');
+  // Test 73: Testing Admin Assignment Prepare Upload (Role Protection & 50MB ceiling)
+  console.log('73. Testing Admin Assignment Prepare Upload (Role Protection & 50MB ceiling)...');
+  // Student rejected
+  const studentPrepRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/admin/assignments/prepare-upload',
+    headers: { cookie: sessionCookie },
+    body: { filename: 'large_assignment.pdf', size: 10 * 1024 * 1024 }
+  });
+  assert.strictEqual(studentPrepRes.statusCode, 403);
+
+  // File > 50MB rejected
+  const over50MbRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/admin/assignments/prepare-upload',
+    headers: { cookie: adminCookie },
+    body: { filename: 'huge_assignment.pdf', size: 55 * 1024 * 1024 }
+  });
+  assert.strictEqual(over50MbRes.statusCode, 400);
+
+  // Admin valid 15MB assignment document accepted
+  const asgnPrepRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/admin/assignments/prepare-upload',
+    headers: { cookie: adminCookie },
+    body: { filename: 'Database_Systems_Lab_15MB.pdf', size: 15 * 1024 * 1024, mimeType: 'application/pdf' }
+  });
+  assert.strictEqual(asgnPrepRes.statusCode, 200);
+  const asgnPrepData = asgnPrepRes.json();
+  assert(asgnPrepData.filePath.startsWith('assignments/'), 'File path must be inside assignments/');
+  assert.strictEqual(asgnPrepData.originalName, 'Database_Systems_Lab_15MB.pdf');
+  console.log('   ✅ Assignment prepare-upload role protection and 50MB ceiling verified');
+
+  // Test 74: Testing Publishing Assignment with Direct Supabase File (Zero base64 payload)
+  console.log('74. Testing Publishing Assignment with Direct Supabase File (No Base64 bloat)...');
+  const supaAsgnCreateRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/admin/assignments',
+    headers: { cookie: adminCookie },
+    body: {
+      subject: 'Database Management Systems',
+      category: 'Lab Manuals',
+      deadline: '2026-12-31',
+      attachments: [
+        {
+          originalName: asgnPrepData.originalName,
+          mimeType: 'application/pdf',
+          size: 15 * 1024 * 1024,
+          filePath: asgnPrepData.filePath,
+          storageProvider: 'supabase'
+        }
+      ]
+    }
+  });
+  assert.strictEqual(supaAsgnCreateRes.statusCode, 201);
+  const createdSupaAsgn = supaAsgnCreateRes.json().assignment;
+  assert.strictEqual(createdSupaAsgn.attachments[0].filePath, asgnPrepData.filePath);
+  assert.strictEqual(createdSupaAsgn.attachments[0].storageProvider, 'supabase');
+  console.log('   ✅ Supabase-stored assignment successfully published with path-only metadata');
+
+  // Test 75: Testing Download/Preview of Supabase-Stored Assignment (HTTP 302 Redirect to Signed URL)
+  console.log('75. Testing Download/Preview of Supabase Assignment (HTTP 302 Redirect to Signed URL)...');
+  const asgnDownloadRes = await invokeHandler({
+    method: 'GET',
+    url: `/api/assignments/${createdSupaAsgn.id}/attachment`
+  });
+  assert.strictEqual(asgnDownloadRes.statusCode, 302);
+  assert(asgnDownloadRes.headers.location, 'Must provide Location header for signed redirect');
+  assert(asgnDownloadRes.headers.location.includes('/object/sign/'), 'Redirect URL must be a signed Supabase URL');
+  console.log('   ✅ HTTP 302 signed URL redirection verified for Supabase assignment downloads');
+
+  console.log('\n🎉 ALL 75 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP tests + 8 Razorpay tests + 11 storage & maintenance tests verified.\n');
 }
 
 runTests().catch(err => {

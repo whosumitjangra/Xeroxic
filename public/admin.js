@@ -1030,7 +1030,7 @@ function updateStagedPreviewUI() {
 
   if (stagedAttachments.length === 0) {
     container.style.display = 'none';
-    if (fileStatus) fileStatus.textContent = 'Supports JPG, PNG, WEBP, PDF, DOC (Upload multiple images, max 3.5 MB total)';
+    if (fileStatus) fileStatus.textContent = 'Supports PDF, DOC, DOCX, PPT, JPG, PNG (Up to 50 MB each, direct cloud upload)';
     return;
   }
 
@@ -1038,10 +1038,10 @@ function updateStagedPreviewUI() {
   const totalSize = stagedAttachments.reduce((sum, a) => sum + (a.size || 0), 0);
   const imgCount = stagedAttachments.filter(a => a.isImg).length;
   if (countEl) {
-    countEl.textContent = `📷 ${stagedAttachments.length} ${stagedAttachments.length === 1 ? 'Attachment' : 'Attachments'} (${imgCount} ${imgCount === 1 ? 'Image' : 'Images'}) • ${formatBytes(totalSize)} / 3.5 MB max`;
+    countEl.textContent = `📷 ${stagedAttachments.length} ${stagedAttachments.length === 1 ? 'Attachment' : 'Attachments'} (${imgCount} ${imgCount === 1 ? 'Image' : 'Images'}) • ${formatBytes(totalSize)} staged`;
   }
   if (fileStatus) {
-    fileStatus.textContent = `✅ Ready: ${stagedAttachments.length} file(s) staged (${formatBytes(totalSize)} / 3.5 MB max)`;
+    fileStatus.textContent = `✅ Ready: ${stagedAttachments.length} file(s) staged (${formatBytes(totalSize)} total)`;
   }
 
   if (activeStagedIndex >= stagedAttachments.length) {
@@ -1051,7 +1051,8 @@ function updateStagedPreviewUI() {
   const activeItem = stagedAttachments[activeStagedIndex];
   if (activeItem && viewerMedia) {
     if (activeItem.isImg) {
-      viewerMedia.innerHTML = `<img src="data:${activeItem.mimeType};base64,${activeItem.dataBase64}" alt="${escapeHtml(activeItem.originalName)}" style="max-height:220px; max-width:100%; object-fit:contain; border-radius:6px;">`;
+      const imgSrc = activeItem.previewUrl || (activeItem.dataBase64 ? `data:${activeItem.mimeType};base64,${activeItem.dataBase64}` : '');
+      viewerMedia.innerHTML = `<img src="${imgSrc}" alt="${escapeHtml(activeItem.originalName)}" style="max-height:220px; max-width:100%; object-fit:contain; border-radius:6px;">`;
     } else {
       viewerMedia.innerHTML = `
         <div class="doc-preview-icon" style="text-align:center;">
@@ -1093,7 +1094,7 @@ function updateStagedPreviewUI() {
 
       if (att.isImg) {
         const img = document.createElement('img');
-        img.src = `data:${att.mimeType};base64,${att.dataBase64}`;
+        img.src = att.previewUrl || (att.dataBase64 ? `data:${att.mimeType};base64,${att.dataBase64}` : '');
         img.alt = att.originalName;
         thumb.appendChild(img);
       } else {
@@ -1192,43 +1193,34 @@ function readFileAsBase64(file) {
 async function handleFilesSelected(files) {
   if (!files || files.length === 0) return;
   const asgnFileStatus = document.getElementById('asgn-file-status');
-  if (asgnFileStatus) asgnFileStatus.textContent = `Optimizing ${files.length} file(s)...`;
+  if (asgnFileStatus) asgnFileStatus.textContent = `Processing ${files.length} file(s)...`;
 
   const filesArray = Array.from(files);
-  const MAX_TOTAL_BYTES = 3.5 * 1024 * 1024; // 3.5 MB cloud upload limit
-  const MAX_SINGLE_DOC_BYTES = 2.5 * 1024 * 1024; // 2.5 MB single document limit
+  const MAX_SINGLE_FILE_BYTES = 50 * 1024 * 1024; // 50 MB cloud storage limit
 
   for (const file of filesArray) {
+    if (file.size > MAX_SINGLE_FILE_BYTES) {
+      alert(`File "${file.name}" is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Maximum allowed size is 50 MB.`);
+      continue;
+    }
+
     const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(file.name) || (file.type && file.type.startsWith('image/'));
     try {
-      let base64Data;
+      let previewUrl = null;
+      let base64Data = null;
       let mimeType = file.type || (isImg ? 'image/jpeg' : 'application/octet-stream');
       let size = file.size;
 
       if (isImg) {
-        const compressed = await compressImageFile(file);
-        if (compressed) {
-          base64Data = compressed.base64;
-          mimeType = compressed.mimeType;
-          size = compressed.size;
-        } else {
-          base64Data = await readFileAsBase64(file);
-          size = Math.round((base64Data.length * 3) / 4);
-        }
-      } else {
-        if (file.size > MAX_SINGLE_DOC_BYTES) {
-          alert(`File "${file.name}" is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Non-image documents must be under 2.5 MB to prevent server timeouts.`);
-          continue;
-        }
-        base64Data = await readFileAsBase64(file);
-        size = Math.round((base64Data.length * 3) / 4);
-      }
-
-      // Check cumulative staged size
-      const currentTotal = stagedAttachments.reduce((sum, a) => sum + (a.size || 0), 0);
-      if (currentTotal + size > MAX_TOTAL_BYTES) {
-        alert(`Cannot add "${file.name}". Total attachments would exceed the 3.5 MB cloud limit (currently ${(currentTotal / 1024).toFixed(0)} KB). Please remove some files or compress your document.`);
-        continue;
+        previewUrl = URL.createObjectURL(file);
+        // Small image thumbnail / preview
+        try {
+          const compressed = await compressImageFile(file);
+          if (compressed) {
+            base64Data = compressed.base64;
+            mimeType = compressed.mimeType;
+          }
+        } catch (_) {}
       }
 
       stagedAttachments.push({
@@ -1236,11 +1228,13 @@ async function handleFilesSelected(files) {
         originalName: file.name,
         mimeType,
         size,
+        file,
+        previewUrl,
         dataBase64: base64Data,
         isImg
       });
     } catch (err) {
-      console.error('Error reading file:', err);
+      console.error('Error staging file:', err);
     }
   }
   activeStagedIndex = stagedAttachments.length - 1;
@@ -1309,6 +1303,78 @@ document.getElementById('asgn-next-img-btn')?.addEventListener('click', (e) => {
   updateStagedPreviewUI();
 });
 
+// Direct upload of assignment file to Supabase Storage
+async function uploadAssignmentAttachment(att) {
+  if (att.filePath && att.storageProvider === 'supabase') return att;
+  if (!att.file) return att;
+
+  const prepRes = await fetch('/api/admin/assignments/prepare-upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({
+      filename: att.originalName,
+      size: att.size,
+      mimeType: att.mimeType || 'application/octet-stream'
+    })
+  });
+
+  if (!prepRes.ok) {
+    let errMsg = 'Failed to initialize cloud upload.';
+    try {
+      const errData = await prepRes.json();
+      if (errData.error) errMsg = errData.error;
+    } catch (_) {}
+    throw new Error(errMsg);
+  }
+
+  const prepData = await prepRes.json();
+  let uploaded = false;
+
+  if (window.supabase && prepData.supabaseUrl && prepData.supabaseKey) {
+    try {
+      const supaClient = window.supabase.createClient(prepData.supabaseUrl, prepData.supabaseKey, {
+        auth: { persistSession: false }
+      });
+      const { error: uploadErr } = await supaClient.storage
+        .from(prepData.bucket)
+        .upload(prepData.filePath, att.file, {
+          upsert: true,
+          contentType: att.mimeType || 'application/octet-stream'
+        });
+      if (!uploadErr) uploaded = true;
+      else console.warn('Supabase JS upload warning:', uploadErr);
+    } catch (sdkErr) {
+      console.warn('Supabase SDK error:', sdkErr);
+    }
+  }
+
+  if (!uploaded && prepData.signedUrl) {
+    const putRes = await fetch(prepData.signedUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': att.mimeType || 'application/octet-stream',
+        'apikey': prepData.supabaseKey,
+        'Authorization': `Bearer ${prepData.supabaseKey}`
+      },
+      body: att.file
+    });
+    if (!putRes.ok) {
+      throw new Error(`Failed to upload "${att.originalName}" to cloud storage (HTTP ${putRes.status}).`);
+    }
+    uploaded = true;
+  }
+
+  if (!uploaded) {
+    throw new Error(`Cloud upload could not be completed for "${att.originalName}".`);
+  }
+
+  att.filePath = prepData.filePath;
+  att.storageProvider = 'supabase';
+  delete att.dataBase64;
+  return att;
+}
+
 addAsgnForm?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const submitBtn = document.getElementById('submit-asgn-btn');
@@ -1331,39 +1397,45 @@ addAsgnForm?.addEventListener('submit', async (e) => {
     return;
   }
 
-  const payloadAttachments = stagedAttachments.map(a => ({
-    originalName: a.originalName,
-    mimeType: a.mimeType,
-    size: a.size,
-    dataBase64: a.dataBase64
-  }));
-
-  const payloadData = {
-    subject,
-    category,
-    year,
-    branch,
-    targetClass,
-    batch,
-    deadline,
-    attachments: payloadAttachments,
-    attachment: payloadAttachments[0] || null
-  };
-
-  // Pre-flight check: Vercel serverless request body hard cap is 4.5 MB
-  const serialized = JSON.stringify(payloadData);
-  if (serialized.length > 3.8 * 1024 * 1024) {
-    alert('Total assignment data exceeds the 3.5 MB cloud upload limit. Please remove some attachments or use smaller files.');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Publish Assignment'; }
-    return;
-  }
-
   try {
+    // 1. Upload files directly to Supabase Storage (Bypassing Vercel completely)
+    for (let i = 0; i < stagedAttachments.length; i++) {
+      const att = stagedAttachments[i];
+      if (att.file && !att.filePath) {
+        if (submitBtn) submitBtn.textContent = `Uploading ${i + 1}/${stagedAttachments.length} to cloud...`;
+        await uploadAssignmentAttachment(att);
+      }
+    }
+
+    // 2. Build lightweight payload (only file paths and metadata)
+    const payloadAttachments = stagedAttachments.map(a => ({
+      originalName: a.originalName,
+      mimeType: a.mimeType,
+      size: a.size,
+      filePath: a.filePath || null,
+      storageProvider: a.storageProvider || (a.filePath ? 'supabase' : null),
+      dataBase64: a.filePath ? null : (a.dataBase64 || null)
+    }));
+
+    const payloadData = {
+      subject,
+      category,
+      year,
+      branch,
+      targetClass,
+      batch,
+      deadline,
+      attachments: payloadAttachments,
+      attachment: payloadAttachments[0] || null
+    };
+
+    if (submitBtn) submitBtn.textContent = 'Saving assignment...';
+
     const res = await fetch('/api/admin/assignments', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: serialized
+      body: JSON.stringify(payloadData)
     });
 
     let data;

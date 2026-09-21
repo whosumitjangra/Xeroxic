@@ -726,9 +726,9 @@
         <div class="mfield">
           <label>Assignment Images & Attachments (Upload 1 or More)</label>
           <div class="file-drop" id="asgn-dropzone">
-            <p>📷 Click or Drop Images / Files (Multiple Supported)</p>
-            <span id="asgn-file-status">Supports JPG, PNG, WEBP, PDF, DOC (Upload 1 or multiple images)</span>
-            <input type="file" id="asgn-file-input" style="display:none;" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.txt" multiple>
+            <p>📷 Click or Drop Documents / Images (Multiple Supported)</p>
+            <span id="asgn-file-status">Supports PDF, DOC, DOCX, PPT, JPG, PNG (Up to 50 MB each, direct cloud upload)</span>
+            <input type="file" id="asgn-file-input" style="display:none;" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.ppt,.pptx,.txt,.rtf" multiple>
           </div>
           <!-- Staged Multi-Image Preview Window -->
           <div id="asgn-staged-container" class="staged-preview-box" style="display:none;">
@@ -789,6 +789,7 @@
 <!-- Toast -->
 <div id="admin-toast" class="admin-toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/admin.js"></script>
 </body>
 </html>
