@@ -195,42 +195,153 @@ if (uploadTrigger) {
 async function uploadFiles(fileListToUpload) {
   if (!fileListToUpload || fileListToUpload.length === 0) return;
 
-  uploadStatus.textContent = 'Processing files...';
   uploadTrigger.disabled = true;
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+  const totalCount = fileListToUpload.length;
+  let successfulUploads = 0;
 
-  const formData = new FormData();
-  for (const f of fileListToUpload) {
-    if (f.size > 4.5 * 1024 * 1024 && !f.type.startsWith('image/')) {
-      uploadStatus.textContent = `File "${f.name}" exceeds 4.5MB serverless cap. Please choose a smaller document.`;
-      uploadTrigger.disabled = false;
-      return;
+  for (let i = 0; i < totalCount; i++) {
+    const f = fileListToUpload[i];
+
+    if (f.size > MAX_FILE_SIZE) {
+      alert(`File "${f.name}" (${(f.size / (1024 * 1024)).toFixed(1)} MB) exceeds the 50 MB upload limit. Please select a smaller document.`);
+      uploadStatus.textContent = `File "${f.name}" exceeds 50 MB limit.`;
+      continue;
     }
-    uploadStatus.textContent = `Optimizing ${f.name}...`;
-    const processed = await compressImageIfLarge(f);
-    formData.append('files', processed);
+
+    uploadStatus.textContent = `Preparing "${f.name}" (${i + 1}/${totalCount})...`;
+
+    try {
+      // 1. Image optimization for photos (skip for PDFs and docs)
+      const processed = await compressImageIfLarge(f);
+
+      // 2. Request upload authorization from Xerox backend
+      const prepRes = await fetch('/api/files/prepare-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          filename: processed.name || f.name,
+          size: processed.size,
+          mimeType: processed.type || 'application/octet-stream'
+        })
+      });
+
+      const prepData = await prepRes.json();
+      if (!prepRes.ok) {
+        throw new Error(prepData.error || 'Server rejected upload request.');
+      }
+
+      uploadStatus.textContent = `Uploading "${f.name}" directly to cloud storage (${i + 1}/${totalCount})...`;
+
+      // 3. Direct upload to Supabase Storage (Bypassing Vercel completely)
+      let uploadSucceeded = false;
+
+      // Check if Supabase JS SDK is available in window
+      if (window.supabase && prepData.supabaseUrl && prepData.supabaseKey) {
+        try {
+          const supaClient = window.supabase.createClient(prepData.supabaseUrl, prepData.supabaseKey, {
+            auth: { persistSession: false }
+          });
+
+          if (prepData.token) {
+            // Upload to pre-signed upload URL token
+            const { error: supaErr } = await supaClient.storage
+              .from(prepData.bucket)
+              .uploadToSignedUrl(prepData.filePath, prepData.token, processed);
+            if (!supaErr) uploadSucceeded = true;
+          } else {
+            // Standard direct upload to private bucket under RLS
+            const { error: supaErr } = await supaClient.storage
+              .from(prepData.bucket)
+              .upload(prepData.filePath, processed, {
+                contentType: processed.type || 'application/octet-stream',
+                upsert: true
+              });
+            if (!supaErr) uploadSucceeded = true;
+          }
+        } catch (supaSdkErr) {
+          console.warn('Supabase SDK upload fallback to HTTP PUT:', supaSdkErr);
+        }
+      }
+
+      // HTTP fetch fallback if SDK didn't succeed
+      if (!uploadSucceeded) {
+        const uploadHeaders = {
+          'apikey': prepData.supabaseKey,
+          'Authorization': `Bearer ${prepData.supabaseKey}`
+        };
+        if (processed.type) uploadHeaders['Content-Type'] = processed.type;
+
+        const targetUrl = prepData.signedUrl;
+        const uploadRes = await fetch(targetUrl, {
+          method: prepData.useDirectUpload ? 'POST' : 'PUT',
+          headers: uploadHeaders,
+          body: processed
+        });
+
+        if (!uploadRes.ok) {
+          const errText = await uploadRes.text();
+          throw new Error(`Direct cloud upload failed (${uploadRes.status}): ${errText}`);
+        }
+      }
+
+      uploadStatus.textContent = `Saving record for "${f.name}"...`;
+
+      // 4. Record confirmed file path in MongoDB
+      const confirmRes = await fetch('/api/files/confirm-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          fileId: prepData.fileId,
+          filePath: prepData.filePath,
+          originalName: prepData.originalName,
+          size: processed.size,
+          mimeType: processed.type
+        })
+      });
+
+      const confirmData = await confirmRes.json();
+      if (!confirmRes.ok) {
+        throw new Error(confirmData.error || 'Failed to record file in database.');
+      }
+
+      successfulUploads++;
+    } catch (err) {
+      console.error(`Error uploading "${f.name}":`, err);
+      // If direct Supabase upload failed, try fallback through /api/upload
+      try {
+        uploadStatus.textContent = `Retrying "${f.name}" via backup channel...`;
+        const fbFormData = new FormData();
+        fbFormData.append('files', f);
+        const fbRes = await fetch('/api/upload', {
+          method: 'POST',
+          credentials: 'same-origin',
+          body: fbFormData
+        });
+        if (fbRes.ok) {
+          successfulUploads++;
+        } else {
+          const fbData = await fbRes.json();
+          alert(`Could not upload "${f.name}": ${fbData.error || err.message}`);
+        }
+      } catch (fbErr) {
+        alert(`Could not upload "${f.name}": ${err.message}`);
+      }
+    }
   }
 
-  uploadStatus.textContent = 'Uploading to server...';
-
-  try {
-    const res = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      uploadStatus.textContent = data.error || 'Upload failed.';
-    } else {
-      uploadStatus.textContent = `${data.files.length} file(s) uploaded successfully.`;
-      loadFiles();
-      const proceedWrap = document.getElementById('proceed-wrap');
-      if (proceedWrap) proceedWrap.style.display = 'block';
-    }
-  } catch (err) {
-    uploadStatus.textContent = 'Could not reach server or file exceeds cloud limit.';
-  } finally {
-    uploadTrigger.disabled = false;
+  if (successfulUploads > 0) {
+    uploadStatus.textContent = `✅ ${successfulUploads} file(s) uploaded successfully to cloud storage.`;
+    await loadFiles();
+    const proceedWrap = document.getElementById('proceed-wrap');
+    if (proceedWrap) proceedWrap.style.display = 'block';
+  } else {
+    uploadStatus.textContent = 'Upload could not be completed. Please verify file format and size.';
   }
+
+  uploadTrigger.disabled = false;
 }
 
 async function loadFiles() {

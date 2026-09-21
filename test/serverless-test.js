@@ -1574,7 +1574,141 @@ async function runTests() {
   assert(oversizedAsgnRes.json().error.includes('exceeds server capacity'), 'Must return JSON 413 error message');
   console.log('   ✅ Multi-attachment publishing and 413 payload size guard verified successfully');
 
-  console.log('\n🎉 ALL 67 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP tests + 8 Razorpay tests + 3 maintenance tests verified.\n');
+  // --- SUPABASE STORAGE DIRECT UPLOAD & SIGNED URL TESTS ---
+  console.log('68. Testing GET /api/storage/config (public Supabase config)...');
+  const storageConfigRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/storage/config'
+  });
+  assert.strictEqual(storageConfigRes.statusCode, 200);
+  assert.strictEqual(storageConfigRes.json().success, true);
+  assert.strictEqual(storageConfigRes.json().bucket, 'pdfs and images');
+  assert(storageConfigRes.json().supabaseUrl.includes('supabase.co'));
+  console.log('   ✅ Public Supabase Storage configuration verified');
+
+  console.log('69. Testing POST /api/files/prepare-upload (size limits & extension guards)...');
+  // Over 50MB rejected
+  const oversizedPrepRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/files/prepare-upload',
+    headers: { cookie: sessionCookie },
+    body: {
+      filename: 'massive-doc.pdf',
+      size: 55 * 1024 * 1024
+    }
+  });
+  assert.strictEqual(oversizedPrepRes.statusCode, 400);
+  assert(oversizedPrepRes.json().error.includes('exceeds 50 MB'));
+
+  // Disallowed extension rejected
+  const badExtPrepRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/files/prepare-upload',
+    headers: { cookie: sessionCookie },
+    body: {
+      filename: 'malware.exe',
+      size: 1024
+    }
+  });
+  assert.strictEqual(badExtPrepRes.statusCode, 400);
+  assert(badExtPrepRes.json().error.includes('not permitted'));
+
+  // Valid 45MB PDF preparation succeeds
+  const validPrepRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/files/prepare-upload',
+    headers: { cookie: sessionCookie },
+    body: {
+      filename: 'Thesis_Final_45MB.pdf',
+      size: 45 * 1024 * 1024,
+      mimeType: 'application/pdf'
+    }
+  });
+  assert.strictEqual(validPrepRes.statusCode, 200);
+  const prepData = validPrepRes.json();
+  assert(prepData.fileId, 'Must return generated fileId');
+  assert(prepData.filePath.includes('students/'), 'Storage path must be partitioned in students directory');
+  assert.strictEqual(prepData.bucket, 'pdfs and images');
+  assert(prepData.signedUrl, 'Must return signed upload URL or direct upload endpoint');
+  console.log('   ✅ Direct upload preparation, size validation (up to 50MB), and path generation verified');
+
+  console.log('70. Testing POST /api/files/confirm-upload (path ownership & path-only DB storage)...');
+  // Attempting to confirm another user's path is blocked
+  const spoofConfirmRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/files/confirm-upload',
+    headers: { cookie: sessionCookie },
+    body: {
+      fileId: 'spoofed-id',
+      filePath: 'students/other-user-999/test.pdf',
+      originalName: 'test.pdf'
+    }
+  });
+  assert.strictEqual(spoofConfirmRes.statusCode, 403);
+
+  // Legitimate confirmation saves record
+  const confirmRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/files/confirm-upload',
+    headers: { cookie: sessionCookie },
+    body: {
+      fileId: prepData.fileId,
+      filePath: prepData.filePath,
+      originalName: prepData.originalName,
+      size: 45 * 1024 * 1024,
+      mimeType: 'application/pdf'
+    }
+  });
+  assert.strictEqual(confirmRes.statusCode, 200);
+  const confirmedFile = confirmRes.json().file;
+  assert.strictEqual(confirmedFile.id, prepData.fileId);
+  assert.strictEqual(confirmedFile.storageProvider, 'supabase');
+  assert.strictEqual(confirmedFile.dataBase64, undefined, 'Must NOT store base64 in MongoDB');
+  console.log('   ✅ Supabase path ownership enforcement and path-only DB storage verified');
+
+  console.log('71. Testing GET /api/download/:id & /api/files/:id/signed-url (Auth & Signed URL generation)...');
+  // Student B blocked from accessing Student A's Supabase file
+  const studentBDownloadRes = await invokeHandler({
+    method: 'GET',
+    url: `/api/download/${prepData.fileId}`,
+    headers: { cookie: studentBCookie }
+  });
+  assert.strictEqual(studentBDownloadRes.statusCode, 403, 'Student B must not access Student A file');
+
+  // Admin signed-url query succeeds
+  const adminSignedUrlRes = await invokeHandler({
+    method: 'GET',
+    url: `/api/files/${prepData.fileId}/signed-url`,
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(adminSignedUrlRes.statusCode, 200);
+  assert(adminSignedUrlRes.json().signedUrl || adminSignedUrlRes.json().downloadUrl);
+  console.log('   ✅ Access control and signed download URL generation verified');
+
+  console.log('72. Testing Order Workflow with Supabase Stored File...');
+  const supaOrderRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/orders/initiate',
+    headers: { cookie: sessionCookie },
+    body: {
+      items: [
+        {
+          fileId: prepData.fileId,
+          originalName: prepData.originalName,
+          copies: 1,
+          color: 'bw',
+          sides: 'double',
+          paperSize: 'A4',
+          pages: 20
+        }
+      ]
+    }
+  });
+  assert.strictEqual(supaOrderRes.statusCode, 200);
+  assert(supaOrderRes.json().orderId, 'Order must return orderId');
+  console.log('   ✅ Order workflow with Supabase file reference verified successfully');
+
+  console.log('\n🎉 ALL 72 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP tests + 8 Razorpay tests + 8 storage & maintenance tests verified.\n');
 }
 
 runTests().catch(err => {

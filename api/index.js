@@ -70,10 +70,21 @@ const {
   toggleUserDisabled,
   resetUserPassword,
   saveUploadedFile,
+  saveUploadedFileRecord,
   getUploadedFileBuffer,
   deleteUploadedFile,
   REPO_ROOT
 } = require('../lib/storage');
+
+const {
+  SUPABASE_URL,
+  SUPABASE_KEY,
+  SUPABASE_BUCKET,
+  createSignedUploadUrl,
+  createSignedDownloadUrl,
+  getBucketName,
+  uploadBufferToStorage
+} = require('../lib/supabase');
 
 const PUBLIC_DIR = path.join(REPO_ROOT, 'public');
 
@@ -570,7 +581,137 @@ async function handler(req, res) {
       return sendJSON(res, 200, { success: true, message: 'Password updated successfully.' });
     }
 
-    // ---------------- FILES: UPLOAD (STUDENTS) ----------------
+    // ---------------- STORAGE: CONFIG (PUBLIC) ----------------
+    if (pathname === '/api/storage/config' && req.method === 'GET') {
+      return sendJSON(res, 200, {
+        success: true,
+        supabaseUrl: SUPABASE_URL,
+        supabaseKey: SUPABASE_KEY,
+        bucket: getBucketName()
+      });
+    }
+
+    // ---------------- FILES: PREPARE SUPABASE UPLOAD (STUDENTS) ----------------
+    if (pathname === '/api/files/prepare-upload' && req.method === 'POST') {
+      const session = getOrCreateStudentSession(req, res, isSecure);
+      if (!session) return;
+
+      const body = await readJSONBody(req);
+      const { filename, size, mimeType } = body;
+
+      if (!filename || typeof filename !== 'string') {
+        return sendJSON(res, 400, { error: 'Filename is required.' });
+      }
+
+      const fileSize = Number(size) || 0;
+      if (fileSize > 50 * 1024 * 1024) {
+        return sendJSON(res, 400, { error: 'File exceeds 50 MB maximum upload limit.' });
+      }
+
+      const rawBaseName = path.basename(filename);
+      const safeOriginalName = rawBaseName.replace(/[^\w\s.-]/gi, '_').replace(/\s+/g, ' ').trim() || 'document';
+      const ext = path.extname(safeOriginalName).toLowerCase();
+
+      const ALLOWED = new Set([
+        '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.txt', '.rtf',
+        '.png', '.jpg', '.jpeg', '.gif', '.webp'
+      ]);
+      if (!ALLOWED.has(ext)) {
+        return sendJSON(res, 400, {
+          error: `File type "${ext}" is not permitted. Permitted formats: PDF, DOC, DOCX, PPT, PPTX, TXT, RTF, PNG, JPG, JPEG, GIF, WEBP.`
+        });
+      }
+
+      const fileId = crypto.randomBytes(16).toString('hex');
+      const safeUserId = String(session.userId).replace(/[^a-zA-Z0-9_-]/g, '');
+      const filePath = `students/${safeUserId}/${fileId}-${safeOriginalName}`;
+
+      try {
+        const uploadAuth = await createSignedUploadUrl(filePath);
+        return sendJSON(res, 200, {
+          success: true,
+          fileId,
+          filePath,
+          originalName: safeOriginalName,
+          bucket: getBucketName(),
+          supabaseUrl: SUPABASE_URL,
+          supabaseKey: SUPABASE_KEY,
+          signedUrl: uploadAuth.signedUrl,
+          token: uploadAuth.token,
+          useDirectUpload: !!uploadAuth.useDirectUpload
+        });
+      } catch (prepErr) {
+        console.error('[Supabase prepare-upload error]', prepErr);
+        return sendJSON(res, 500, { error: 'Could not generate upload authorization: ' + prepErr.message });
+      }
+    }
+
+    // ---------------- FILES: CONFIRM SUPABASE UPLOAD (STUDENTS) ----------------
+    if (pathname === '/api/files/confirm-upload' && req.method === 'POST') {
+      const session = getOrCreateStudentSession(req, res, isSecure);
+      if (!session) return;
+
+      const body = await readJSONBody(req);
+      const { fileId, filePath, originalName, size, mimeType } = body;
+
+      if (!fileId || !filePath) {
+        return sendJSON(res, 400, { error: 'Missing required fileId or filePath.' });
+      }
+
+      // Verify file path belongs strictly to the authenticated student
+      const safeUserId = String(session.userId).replace(/[^a-zA-Z0-9_-]/g, '');
+      if (!filePath.startsWith(`students/${safeUserId}/`)) {
+        return sendJSON(res, 403, { error: 'Forbidden: Invalid storage path for your student account.' });
+      }
+
+      const rawBaseName = path.basename(originalName || 'document');
+      const safeOriginalName = rawBaseName.replace(/[^\w\s.-]/gi, '_').replace(/\s+/g, ' ').trim() || 'document';
+
+      const record = await saveUploadedFileRecord({
+        id: fileId,
+        ownerId: session.userId,
+        originalName: safeOriginalName,
+        filePath,
+        bucket: getBucketName(),
+        size: Number(size) || 0,
+        mimeType: mimeType || 'application/octet-stream',
+        storageProvider: 'supabase'
+      });
+
+      return sendJSON(res, 200, { success: true, file: record });
+    }
+
+    // ---------------- FILES: SIGNED URL (STUDENTS & ADMIN) ----------------
+    if (pathname.startsWith('/api/files/') && pathname.endsWith('/signed-url') && req.method === 'GET') {
+      const session = getSessionFromReq(req);
+      if (!session) return sendJSON(res, 401, { error: 'Not logged in.' });
+
+      const parts = pathname.split('/');
+      const id = parts[3];
+      const filesDb = await getFiles();
+      const record = filesDb.find(f => f.id === id);
+      if (!record) return sendJSON(res, 404, { error: 'File not found.' });
+
+      const isOwner = record.ownerId === session.userId;
+      const userRole = normalizeRole(session.role);
+      const isStaff = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+      if (!isOwner && !isStaff) {
+        return sendJSON(res, 403, { error: 'Forbidden: You do not have permission to access this file.' });
+      }
+
+      if (record.filePath) {
+        try {
+          const signedUrl = await createSignedDownloadUrl(record.filePath, 3600, record.originalName);
+          return sendJSON(res, 200, { success: true, signedUrl, file: record });
+        } catch (err) {
+          return sendJSON(res, 500, { error: err.message });
+        }
+      }
+
+      return sendJSON(res, 200, { success: true, downloadUrl: `/api/download/${record.id}` });
+    }
+
+    // ---------------- FILES: UPLOAD (STUDENTS - FALLBACK & ASSIGNMENT PRINT) ----------------
     if (pathname === '/api/upload' && req.method === 'POST') {
       const session = getOrCreateStudentSession(req, res, isSecure);
       if (!session) return;
@@ -583,14 +724,34 @@ async function handler(req, res) {
         const saved = [];
 
         for (const f of files) {
-          const record = await saveUploadedFile(session.userId, f.filename, f.data);
-          filesDb.push(record);
-          // Exclude large dataBase64 from immediate client response
+          const fileId = crypto.randomBytes(16).toString('hex');
+          const ext = path.extname(f.filename || 'document').toLowerCase();
+          const safeOriginalName = path.basename(f.filename || 'document').replace(/[^\w\s.-]/gi, '_').replace(/\s+/g, ' ').trim() || 'document';
+          const filePath = `students/${session.userId}/${fileId}-${safeOriginalName}`;
+
+          let record;
+          try {
+            await uploadBufferToStorage(filePath, f.data, f.type);
+            record = await saveUploadedFileRecord({
+              id: fileId,
+              ownerId: session.userId,
+              originalName: safeOriginalName,
+              filePath,
+              bucket: getBucketName(),
+              size: f.data.length,
+              mimeType: f.type || 'application/octet-stream',
+              storageProvider: 'supabase'
+            });
+          } catch (supaErr) {
+            console.warn('[Supabase Upload Fallback]', supaErr.message);
+            record = await saveUploadedFile(session.userId, f.filename, f.data);
+            filesDb.push(record);
+            await saveFiles(filesDb);
+          }
           const { dataBase64, ...cleanRecord } = record;
           saved.push(cleanRecord);
         }
 
-        await saveFiles(filesDb);
         return sendJSON(res, 200, { success: true, files: saved });
       } catch (uploadErr) {
         console.error('Upload processing error:', uploadErr);
@@ -1708,6 +1869,22 @@ async function handler(req, res) {
       const isStaff = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
       if (!isOwner && !isStaff) {
         return sendJSON(res, 403, { error: 'Forbidden: You do not have permission to access this file.' });
+      }
+
+      // If stored in Supabase Storage, generate a secure time-limited signed URL and redirect
+      if (record.filePath || record.storageProvider === 'supabase') {
+        try {
+          const wantsInline = parsed.searchParams.get('inline') === '1' || parsed.searchParams.get('inline') === 'true';
+          const downloadName = wantsInline ? null : record.originalName;
+          const signedUrl = await createSignedDownloadUrl(record.filePath, 3600, downloadName);
+          res.writeHead(302, {
+            'Location': signedUrl,
+            'Cache-Control': 'private, no-cache, no-store'
+          });
+          return res.end();
+        } catch (signErr) {
+          console.warn('[Supabase Storage] Signed URL redirect failed, falling back to buffer:', signErr.message);
+        }
       }
 
       const fileBuffer = await getUploadedFileBuffer(record);
