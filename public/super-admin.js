@@ -436,11 +436,112 @@ function wireEventListeners() {
     if (m) m.style.display = 'none';
   });
 
-  const asgnFileInput = document.getElementById('asgn-file-input');
-  const asgnFileStatus = document.getElementById('asgn-file-status');
-  const asgnDropzone = document.getElementById('asgn-dropzone');
-  asgnDropzone?.addEventListener('click', () => asgnFileInput?.click());
-  function compressImageFile(file, maxWidth = 1600, maxHeight = 1600, quality = 0.82) {
+  let superStagedAttachments = [];
+  let superActiveStagedIndex = 0;
+
+  function updateSuperStagedPreviewUI() {
+    const container = document.getElementById('asgn-staged-container');
+    const countEl = document.getElementById('asgn-staged-count');
+    const viewerMedia = document.getElementById('asgn-viewer-media');
+    const viewerCaption = document.getElementById('asgn-viewer-caption');
+    const tray = document.getElementById('asgn-thumbnails-tray');
+    const prevBtn = document.getElementById('asgn-prev-img-btn');
+    const nextBtn = document.getElementById('asgn-next-img-btn');
+    const fileStatus = document.getElementById('asgn-file-status');
+
+    if (!container) return;
+
+    if (superStagedAttachments.length === 0) {
+      container.style.display = 'none';
+      if (fileStatus) fileStatus.textContent = 'Supports JPG, PNG, WEBP, PDF, DOC (Upload multiple images, max 3.5 MB total)';
+      return;
+    }
+
+    container.style.display = 'block';
+    const totalSize = superStagedAttachments.reduce((sum, a) => sum + (a.size || 0), 0);
+    const imgCount = superStagedAttachments.filter(a => a.isImg).length;
+    if (countEl) {
+      countEl.textContent = `📷 ${superStagedAttachments.length} ${superStagedAttachments.length === 1 ? 'Attachment' : 'Attachments'} (${imgCount} ${imgCount === 1 ? 'Image' : 'Images'}) • ${formatBytes(totalSize)} / 3.5 MB max`;
+    }
+    if (fileStatus) {
+      fileStatus.textContent = `✅ Ready: ${superStagedAttachments.length} file(s) staged (${formatBytes(totalSize)} / 3.5 MB max)`;
+    }
+
+    if (superActiveStagedIndex >= superStagedAttachments.length) {
+      superActiveStagedIndex = Math.max(0, superStagedAttachments.length - 1);
+    }
+
+    const activeItem = superStagedAttachments[superActiveStagedIndex];
+    if (activeItem && viewerMedia) {
+      if (activeItem.isImg) {
+        viewerMedia.innerHTML = `<img src="data:${activeItem.mimeType};base64,${activeItem.dataBase64}" alt="${escapeHtml(activeItem.originalName)}" style="max-height:220px; max-width:100%; object-fit:contain; border-radius:6px;">`;
+      } else {
+        viewerMedia.innerHTML = `
+          <div class="doc-preview-icon" style="text-align:center;">
+            <span style="font-size:42px; display:block; margin-bottom:4px;">📄</span>
+            <span style="font-weight:600; font-size:13px; color:#fff; display:block;">${escapeHtml(activeItem.originalName)}</span>
+            <span style="font-size:11px; opacity:0.8; color:#d1e7dd; display:block;">${formatBytes(activeItem.size)} • Document</span>
+          </div>
+        `;
+      }
+    }
+
+    if (viewerCaption && activeItem) {
+      viewerCaption.textContent = `${activeItem.isImg ? '🖼️ Image' : '📄 File'} ${superActiveStagedIndex + 1} of ${superStagedAttachments.length}: ${activeItem.originalName} (${formatBytes(activeItem.size)})`;
+    }
+
+    if (prevBtn) prevBtn.style.display = superStagedAttachments.length > 1 ? 'flex' : 'none';
+    if (nextBtn) nextBtn.style.display = superStagedAttachments.length > 1 ? 'flex' : 'none';
+
+    if (tray) {
+      tray.innerHTML = '';
+      superStagedAttachments.forEach((att, idx) => {
+        const thumb = document.createElement('div');
+        thumb.className = `staged-thumb-item ${idx === superActiveStagedIndex ? 'active' : ''}`;
+        thumb.title = `${att.originalName} (${formatBytes(att.size)})`;
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'staged-thumb-remove';
+        delBtn.innerHTML = '✕';
+        delBtn.title = 'Remove this file';
+        delBtn.onclick = (e) => {
+          e.stopPropagation();
+          superStagedAttachments.splice(idx, 1);
+          if (superActiveStagedIndex >= superStagedAttachments.length) {
+            superActiveStagedIndex = Math.max(0, superStagedAttachments.length - 1);
+          }
+          updateSuperStagedPreviewUI();
+        };
+
+        const idxBadge = document.createElement('span');
+        idxBadge.className = 'staged-thumb-index';
+        idxBadge.textContent = idx + 1;
+
+        if (att.isImg) {
+          const img = document.createElement('img');
+          img.src = `data:${att.mimeType};base64,${att.dataBase64}`;
+          img.alt = att.originalName;
+          thumb.appendChild(img);
+        } else {
+          const fallback = document.createElement('div');
+          fallback.className = 'staged-thumb-fallback';
+          fallback.innerHTML = `📄<span style="overflow:hidden; text-overflow:ellipsis; max-width:60px; white-space:nowrap;">${escapeHtml(att.originalName)}</span>`;
+          thumb.appendChild(fallback);
+        }
+
+        thumb.appendChild(delBtn);
+        thumb.appendChild(idxBadge);
+        thumb.onclick = () => {
+          superActiveStagedIndex = idx;
+          updateSuperStagedPreviewUI();
+        };
+        tray.appendChild(thumb);
+      });
+    }
+  }
+
+  function compressImageFile(file, maxWidth = 1200, maxHeight = 1200, quality = 0.72) {
     return new Promise((resolve) => {
       if (!file.type.startsWith('image/')) return resolve(null);
       const img = new Image();
@@ -463,8 +564,25 @@ function wireEventListeners() {
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL('image/jpeg', quality);
-          const base64 = dataUrl.split(',')[1];
+          let dataUrl = canvas.toDataURL('image/jpeg', quality);
+          let base64 = dataUrl.split(',')[1];
+
+          if (base64.length > 320000) {
+            dataUrl = canvas.toDataURL('image/jpeg', 0.58);
+            base64 = dataUrl.split(',')[1];
+          }
+
+          if (base64.length > 320000) {
+            const canvas2 = document.createElement('canvas');
+            const scale = 900 / Math.max(width, height);
+            canvas2.width = Math.max(100, Math.round(width * scale));
+            canvas2.height = Math.max(100, Math.round(height * scale));
+            const ctx2 = canvas2.getContext('2d');
+            ctx2.drawImage(canvas, 0, 0, canvas2.width, canvas2.height);
+            dataUrl = canvas2.toDataURL('image/jpeg', 0.60);
+            base64 = dataUrl.split(',')[1];
+          }
+
           resolve({
             base64,
             mimeType: 'image/jpeg',
@@ -479,50 +597,204 @@ function wireEventListeners() {
     });
   }
 
-  asgnFileInput?.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (asgnFileStatus) asgnFileStatus.textContent = `Processing ${file.name}…`;
+  function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
 
-    const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(file.name) || (file.type && file.type.startsWith('image/'));
-    if (isImg) {
-      const compressed = await compressImageFile(file);
-      if (compressed) {
-        attachedFileObject = {
+  async function handleSuperFilesSelected(files) {
+    if (!files || files.length === 0) return;
+    const asgnFileStatus = document.getElementById('asgn-file-status');
+    if (asgnFileStatus) asgnFileStatus.textContent = `Optimizing ${files.length} file(s)...`;
+
+    const filesArray = Array.from(files);
+    const MAX_TOTAL_BYTES = 3.5 * 1024 * 1024;
+    const MAX_SINGLE_DOC_BYTES = 2.5 * 1024 * 1024;
+
+    for (const file of filesArray) {
+      const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(file.name) || (file.type && file.type.startsWith('image/'));
+      try {
+        let base64Data;
+        let mimeType = file.type || (isImg ? 'image/jpeg' : 'application/octet-stream');
+        let size = file.size;
+
+        if (isImg) {
+          const compressed = await compressImageFile(file);
+          if (compressed) {
+            base64Data = compressed.base64;
+            mimeType = compressed.mimeType;
+            size = compressed.size;
+          } else {
+            base64Data = await readFileAsBase64(file);
+            size = Math.round((base64Data.length * 3) / 4);
+          }
+        } else {
+          if (file.size > MAX_SINGLE_DOC_BYTES) {
+            alert(`File "${file.name}" is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Non-image documents must be under 2.5 MB to prevent server timeouts.`);
+            continue;
+          }
+          base64Data = await readFileAsBase64(file);
+          size = Math.round((base64Data.length * 3) / 4);
+        }
+
+        const currentTotal = superStagedAttachments.reduce((sum, a) => sum + (a.size || 0), 0);
+        if (currentTotal + size > MAX_TOTAL_BYTES) {
+          alert(`Cannot add "${file.name}". Total attachments would exceed the 3.5 MB cloud limit (currently ${(currentTotal / 1024).toFixed(0)} KB). Please remove some files or compress your document.`);
+          continue;
+        }
+
+        superStagedAttachments.push({
+          id: 'stg-' + Math.random().toString(36).substr(2, 9),
           originalName: file.name,
-          mimeType: compressed.mimeType,
-          size: compressed.size,
-          dataBase64: compressed.base64
-        };
-        if (asgnFileStatus) asgnFileStatus.textContent = `✅ Ready: ${file.name} (${(compressed.size / 1024).toFixed(1)} KB)`;
-        return;
+          mimeType,
+          size,
+          dataBase64: base64Data,
+          isImg
+        });
+      } catch (err) {
+        console.error('Error reading file:', err);
       }
     }
+    superActiveStagedIndex = superStagedAttachments.length - 1;
+    updateSuperStagedPreviewUI();
+  }
 
-    if (file.size > 8 * 1024 * 1024) { alert('File must be under 8 MB.'); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      attachedFileObject = { originalName: file.name, mimeType: file.type || 'application/octet-stream', size: file.size, dataBase64: reader.result.split(',')[1] };
-      if (asgnFileStatus) asgnFileStatus.textContent = `✅ Ready: ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
-    };
-    reader.readAsDataURL(file);
+  const asgnDropzone = document.getElementById('asgn-dropzone');
+  const asgnFileInput = document.getElementById('asgn-file-input');
+
+  asgnDropzone?.addEventListener('click', (e) => {
+    if (e.target.closest('#asgn-staged-container')) return;
+    asgnFileInput?.click();
+  });
+
+  asgnDropzone?.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    asgnDropzone.style.borderColor = '#2d8f4e';
+    asgnDropzone.style.background = '#f0f9f3';
+  });
+
+  asgnDropzone?.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    asgnDropzone.style.borderColor = '#c8dbd0';
+    asgnDropzone.style.background = '#f8fbf9';
+  });
+
+  asgnDropzone?.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    asgnDropzone.style.borderColor = '#c8dbd0';
+    asgnDropzone.style.background = '#f8fbf9';
+    if (e.dataTransfer && e.dataTransfer.files) {
+      handleSuperFilesSelected(e.dataTransfer.files);
+    }
+  });
+
+  asgnFileInput?.addEventListener('change', (e) => {
+    if (e.target.files) {
+      handleSuperFilesSelected(e.target.files);
+      e.target.value = '';
+    }
+  });
+
+  document.getElementById('asgn-add-more-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    asgnFileInput?.click();
+  });
+
+  document.getElementById('asgn-clear-all-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    superStagedAttachments = [];
+    superActiveStagedIndex = 0;
+    updateSuperStagedPreviewUI();
+  });
+
+  document.getElementById('asgn-prev-img-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (superStagedAttachments.length <= 1) return;
+    superActiveStagedIndex = (superActiveStagedIndex - 1 + superStagedAttachments.length) % superStagedAttachments.length;
+    updateSuperStagedPreviewUI();
+  });
+
+  document.getElementById('asgn-next-img-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (superStagedAttachments.length <= 1) return;
+    superActiveStagedIndex = (superActiveStagedIndex + 1) % superStagedAttachments.length;
+    updateSuperStagedPreviewUI();
   });
 
   document.getElementById('add-asgn-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const submitBtn = document.getElementById('submit-asgn-btn');
     if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Publishing…'; }
+
     const subject  = document.getElementById('asgn-subject-input')?.value.trim();
+    const category = document.getElementById('asgn-category-input')?.value.trim() || 'Lab Experiments';
+    const year = document.getElementById('asgn-year-input')?.value || 'All Years';
+    const branch = document.getElementById('asgn-branch-input')?.value || 'All Branches';
+    const batch = document.getElementById('asgn-batch-input')?.value?.trim() || 'All Batches';
+    const targetClass = (year !== 'All Years' || branch !== 'All Branches') ? `${year} ${branch}`.trim() : 'All Classes';
     const deadline = document.getElementById('asgn-deadline-input')?.value || '';
-    if (!subject) { alert('Subject is required.'); if (submitBtn) { submitBtn.disabled=false; submitBtn.textContent='Publish Assignment'; } return; }
+
+    if (!subject) {
+      alert('Subject is required.');
+      if (submitBtn) { submitBtn.disabled=false; submitBtn.textContent='Publish Assignment'; }
+      return;
+    }
+
+    const payloadAttachments = superStagedAttachments.map(a => ({
+      originalName: a.originalName,
+      mimeType: a.mimeType,
+      size: a.size,
+      dataBase64: a.dataBase64
+    }));
+
+    const payloadData = {
+      subject,
+      category,
+      year,
+      branch,
+      targetClass,
+      batch,
+      deadline,
+      attachments: payloadAttachments,
+      attachment: payloadAttachments[0] || null
+    };
+
+    const serialized = JSON.stringify(payloadData);
+    if (serialized.length > 3.8 * 1024 * 1024) {
+      alert('Total assignment data exceeds the 3.5 MB cloud upload limit. Please remove some attachments or use smaller files.');
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Publish Assignment'; }
+      return;
+    }
+
     try {
       const res = await fetch('/api/admin/assignments', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, deadline, attachment: attachedFileObject })
+        body: serialized
       });
-      const data = await res.json();
+
+      let data;
+      try {
+        const rawText = await res.text();
+        data = JSON.parse(rawText);
+      } catch (parseErr) {
+        if (res.status === 413) {
+          data = { error: 'Files exceed the cloud upload limit (HTTP 413). Please reduce the number of images or file sizes.' };
+        } else if (res.status >= 500) {
+          data = { error: `Server error (${res.status}). Please try again shortly.` };
+        } else {
+          data = { error: `Server response error (status ${res.status})` };
+        }
+      }
+
       if (res.status === 401) {
         alert('Session expired. Please log in again.');
         window.location.href = '/admin';
@@ -532,8 +804,9 @@ function wireEventListeners() {
       showToast('Assignment published!', 'success');
       alert('Assignment published successfully!');
       document.getElementById('add-asgn-form').reset();
-      attachedFileObject = null;
-      if (asgnFileStatus) asgnFileStatus.textContent = 'Supports PDF, JPG, PNG, DOC (max 4 MB)';
+      superStagedAttachments = [];
+      superActiveStagedIndex = 0;
+      updateSuperStagedPreviewUI();
       document.getElementById('admin-asgn-modal').style.display = 'none';
       loadAssignments();
     } catch (err) {

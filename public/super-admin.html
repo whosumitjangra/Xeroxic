@@ -436,20 +436,113 @@
     </div>
     <form id="add-asgn-form">
       <div class="modal-body-pad">
-        <div class="mfield">
-          <label>Subject *</label>
-          <input type="text" id="asgn-subject-input" placeholder="e.g. Computer Networks, DBMS, OS…" required>
+        <div class="asgn-row-2">
+          <div class="mfield">
+            <label>Subject *</label>
+            <input type="text" id="asgn-subject-input" placeholder="e.g. Computer Networks, DBMS, OS…" required>
+          </div>
+          <div class="mfield">
+            <label>Assignment Category *</label>
+            <input list="asgn-category-list" id="asgn-category-input" placeholder="e.g. Lab Experiments, Mini Projects..." value="Lab Experiments" required style="width:100%; padding:10px 12px; border:1.5px solid #d0ddd4; border-radius:10px; font-family:'Poppins'; font-size:13.5px; background:#fff;">
+            <datalist id="asgn-category-list">
+              <option value="Lab Experiments">
+              <option value="Lab Manuals">
+              <option value="Tutorials / Assignments">
+              <option value="Mini Projects">
+              <option value="Question Papers / PYQs">
+              <option value="Viva / Quiz Questions">
+            </datalist>
+          </div>
+        </div>
+        <div class="asgn-row-3">
+          <div class="mfield">
+            <label>Target Year</label>
+            <select id="asgn-year-input" style="width:100%; padding:10px 12px; border:1.5px solid #d0ddd4; border-radius:10px; font-family:'Poppins'; font-size:13.5px; background:#fff;">
+              <option value="All Years">All Years</option>
+              <option value="FE">FE (First Year)</option>
+              <option value="SE">SE (Second Year)</option>
+              <option value="TE">TE (Third Year)</option>
+              <option value="BE">BE (Final Year)</option>
+            </select>
+          </div>
+          <div class="mfield">
+            <label>Target Branch</label>
+            <select id="asgn-branch-input" style="width:100%; padding:10px 12px; border:1.5px solid #d0ddd4; border-radius:10px; font-family:'Poppins'; font-size:13.5px; background:#fff;">
+              <option value="All Branches">All Branches</option>
+              <option value="CSE">CSE</option>
+              <option value="IT">IT</option>
+              <option value="MECH">MECH</option>
+              <option value="ARE">ARE</option>
+              <option value="ENTC">ENTC</option>
+            </select>
+          </div>
+          <div class="mfield">
+            <label>Target Batch (A1..Z6)</label>
+            <input list="asgn-batch-list" id="asgn-batch-input" placeholder="e.g. All Batches, A1, B2, Z6..." value="All Batches" style="width:100%; padding:10px 12px; border:1.5px solid #d0ddd4; border-radius:10px; font-family:'Poppins'; font-size:13.5px; background:#fff;">
+            <datalist id="asgn-batch-list">
+              <option value="All Batches">
+              <option value="A1">
+              <option value="A2">
+              <option value="A3">
+              <option value="A4">
+              <option value="A5">
+              <option value="A6">
+              <option value="B1">
+              <option value="B2">
+              <option value="B3">
+              <option value="B4">
+              <option value="B5">
+              <option value="B6">
+              <option value="C1">
+              <option value="C2">
+              <option value="C3">
+              <option value="C4">
+              <option value="C5">
+              <option value="C6">
+              <option value="D1">
+              <option value="D2">
+              <option value="D3">
+              <option value="D4">
+              <option value="D5">
+              <option value="D6">
+              <option value="Z1">
+              <option value="Z2">
+              <option value="Z3">
+              <option value="Z4">
+              <option value="Z5">
+              <option value="Z6">
+            </datalist>
+          </div>
         </div>
         <div class="mfield">
           <label>Submission Due Date</label>
           <input type="date" id="asgn-deadline-input">
         </div>
         <div class="mfield">
-          <label>Assignment Attachment (PDF, Image, Doc)</label>
-          <div id="asgn-dropzone" style="border:2px dashed #c8dbd0;border-radius:14px;padding:20px;text-align:center;cursor:pointer;background:#f8fbf9;transition:all 0.2s;">
-            <p style="margin:0 0 4px;font-weight:600;color:#2d8f4e;font-size:14px;">📎 Select or Drop File</p>
-            <span style="font-size:12px;color:#7d9183;" id="asgn-file-status">Supports PDF, JPG, PNG, DOC (max 4 MB)</span>
-            <input type="file" id="asgn-file-input" style="display:none;" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.txt">
+          <label>Assignment Images & Attachments (Upload 1 or More)</label>
+          <div class="file-drop" id="asgn-dropzone" style="border:2px dashed #c8dbd0;border-radius:14px;padding:20px;text-align:center;cursor:pointer;background:#f8fbf9;transition:all 0.2s;">
+            <p style="margin:0 0 4px;font-weight:600;color:#2d8f4e;font-size:14px;">📷 Click or Drop Images / Files (Multiple Supported)</p>
+            <span style="font-size:12px;color:#7d9183;" id="asgn-file-status">Supports JPG, PNG, WEBP, PDF, DOC (Upload multiple images, max 3.5 MB total)</span>
+            <input type="file" id="asgn-file-input" style="display:none;" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.txt" multiple>
+          </div>
+          <!-- Staged Multi-Image Preview Window -->
+          <div id="asgn-staged-container" class="staged-preview-box" style="display:none; margin-top:14px;">
+            <div class="staged-preview-header">
+              <span id="asgn-staged-count">📷 0 Images Selected</span>
+              <div class="staged-header-actions">
+                <button type="button" class="staged-mini-btn" id="asgn-add-more-btn">➕ Add More</button>
+                <button type="button" class="staged-mini-btn danger" id="asgn-clear-all-btn">Clear All</button>
+              </div>
+            </div>
+            <!-- Live Preview Window Pane -->
+            <div class="staged-viewer-pane" id="asgn-viewer-pane">
+              <button type="button" class="staged-viewer-nav prev" id="asgn-prev-img-btn" title="Previous Image">◀</button>
+              <div id="asgn-viewer-media" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;"></div>
+              <button type="button" class="staged-viewer-nav next" id="asgn-next-img-btn" title="Next Image">▶</button>
+              <div class="staged-viewer-caption" id="asgn-viewer-caption">Image 1 of 1</div>
+            </div>
+            <!-- Thumbnails Strip Tray -->
+            <div class="staged-thumbnails-tray" id="asgn-thumbnails-tray"></div>
           </div>
         </div>
       </div>

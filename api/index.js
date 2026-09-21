@@ -1613,6 +1613,11 @@ async function handler(req, res) {
         }];
       }
 
+      const totalBase64Bytes = cleanAttachments.reduce((sum, att) => sum + (att.dataBase64 ? att.dataBase64.length : 0), 0);
+      if (totalBase64Bytes > 5 * 1024 * 1024) {
+        return sendJSON(res, 413, { error: 'Attachments payload exceeds server capacity. Please upload smaller files or compress images.' });
+      }
+
       const newAssignment = await createAssignment({
         subject: subject.trim(),
         category: (category && category.trim()) || 'Lab Experiments',

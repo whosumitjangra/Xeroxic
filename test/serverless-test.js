@@ -1539,7 +1539,42 @@ async function runTests() {
   assert.strictEqual(getFilesAfterClear.json().files.length, 0, 'Files queue must be empty after clear');
   console.log('   ✅ Student file clearing verified successfully');
 
-  console.log('\n🎉 ALL 66 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP tests + 8 Razorpay tests + 2 maintenance tests verified.\n');
+  // Test 67: Testing Assignment Multi-Attachment Publishing & Payload Size Guard
+  console.log('67. Testing Assignment Multi-Attachment Publishing & Payload Size Guard (413 JSON)...');
+  const multiAttAsgnRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/admin/assignments',
+    headers: { cookie: adminCookie },
+    body: {
+      subject: 'Network Security Lab',
+      category: 'Lab Experiments',
+      attachments: [
+        { originalName: 'page1.jpg', mimeType: 'image/jpeg', dataBase64: Buffer.from('page 1 photo demo').toString('base64'), size: 100 },
+        { originalName: 'page2.jpg', mimeType: 'image/jpeg', dataBase64: Buffer.from('page 2 photo demo').toString('base64'), size: 100 }
+      ]
+    }
+  });
+  assert.strictEqual(multiAttAsgnRes.statusCode, 201);
+  assert.strictEqual(multiAttAsgnRes.json().assignment.attachments.length, 2);
+
+  // Test 413 rejection when total attachments exceed 5MB
+  const hugePayload = 'A'.repeat(5.2 * 1024 * 1024);
+  const oversizedAsgnRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/admin/assignments',
+    headers: { cookie: adminCookie },
+    body: {
+      subject: 'Oversized Lab',
+      attachments: [
+        { originalName: 'huge.bin', mimeType: 'application/octet-stream', dataBase64: hugePayload, size: 5200000 }
+      ]
+    }
+  });
+  assert.strictEqual(oversizedAsgnRes.statusCode, 413);
+  assert(oversizedAsgnRes.json().error.includes('exceeds server capacity'), 'Must return JSON 413 error message');
+  console.log('   ✅ Multi-attachment publishing and 413 payload size guard verified successfully');
+
+  console.log('\n🎉 ALL 67 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP tests + 8 Razorpay tests + 3 maintenance tests verified.\n');
 }
 
 runTests().catch(err => {

@@ -1030,7 +1030,7 @@ function updateStagedPreviewUI() {
 
   if (stagedAttachments.length === 0) {
     container.style.display = 'none';
-    if (fileStatus) fileStatus.textContent = 'Supports JPG, PNG, WEBP, PDF, DOC (Upload 1 or multiple images)';
+    if (fileStatus) fileStatus.textContent = 'Supports JPG, PNG, WEBP, PDF, DOC (Upload multiple images, max 3.5 MB total)';
     return;
   }
 
@@ -1038,10 +1038,10 @@ function updateStagedPreviewUI() {
   const totalSize = stagedAttachments.reduce((sum, a) => sum + (a.size || 0), 0);
   const imgCount = stagedAttachments.filter(a => a.isImg).length;
   if (countEl) {
-    countEl.textContent = `📷 ${stagedAttachments.length} ${stagedAttachments.length === 1 ? 'Attachment' : 'Attachments'} (${imgCount} ${imgCount === 1 ? 'Image' : 'Images'}) • ${formatBytes(totalSize)}`;
+    countEl.textContent = `📷 ${stagedAttachments.length} ${stagedAttachments.length === 1 ? 'Attachment' : 'Attachments'} (${imgCount} ${imgCount === 1 ? 'Image' : 'Images'}) • ${formatBytes(totalSize)} / 3.5 MB max`;
   }
   if (fileStatus) {
-    fileStatus.textContent = `✅ Ready: ${stagedAttachments.length} file(s) staged (${formatBytes(totalSize)})`;
+    fileStatus.textContent = `✅ Ready: ${stagedAttachments.length} file(s) staged (${formatBytes(totalSize)} / 3.5 MB max)`;
   }
 
   if (activeStagedIndex >= stagedAttachments.length) {
@@ -1122,7 +1122,7 @@ function removeStagedAttachment(index) {
   updateStagedPreviewUI();
 }
 
-function compressImageFile(file, maxWidth = 1600, maxHeight = 1600, quality = 0.82) {
+function compressImageFile(file, maxWidth = 1200, maxHeight = 1200, quality = 0.72) {
   return new Promise((resolve) => {
     if (!file.type.startsWith('image/')) return resolve(null);
     const img = new Image();
@@ -1145,8 +1145,27 @@ function compressImageFile(file, maxWidth = 1600, maxHeight = 1600, quality = 0.
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        const base64 = dataUrl.split(',')[1];
+        let dataUrl = canvas.toDataURL('image/jpeg', quality);
+        let base64 = dataUrl.split(',')[1];
+
+        // Multi-pass: If base64 is still larger than 320KB, recompress with lower quality
+        if (base64.length > 320000) {
+          dataUrl = canvas.toDataURL('image/jpeg', 0.58);
+          base64 = dataUrl.split(',')[1];
+        }
+
+        // Second pass: If still larger than 320KB, downscale canvas dimensions
+        if (base64.length > 320000) {
+          const canvas2 = document.createElement('canvas');
+          const scale = 900 / Math.max(width, height);
+          canvas2.width = Math.max(100, Math.round(width * scale));
+          canvas2.height = Math.max(100, Math.round(height * scale));
+          const ctx2 = canvas2.getContext('2d');
+          ctx2.drawImage(canvas, 0, 0, canvas2.width, canvas2.height);
+          dataUrl = canvas2.toDataURL('image/jpeg', 0.60);
+          base64 = dataUrl.split(',')[1];
+        }
+
         resolve({
           base64,
           mimeType: 'image/jpeg',
@@ -1176,6 +1195,9 @@ async function handleFilesSelected(files) {
   if (asgnFileStatus) asgnFileStatus.textContent = `Optimizing ${files.length} file(s)...`;
 
   const filesArray = Array.from(files);
+  const MAX_TOTAL_BYTES = 3.5 * 1024 * 1024; // 3.5 MB cloud upload limit
+  const MAX_SINGLE_DOC_BYTES = 2.5 * 1024 * 1024; // 2.5 MB single document limit
+
   for (const file of filesArray) {
     const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(file.name) || (file.type && file.type.startsWith('image/'));
     try {
@@ -1191,13 +1213,22 @@ async function handleFilesSelected(files) {
           size = compressed.size;
         } else {
           base64Data = await readFileAsBase64(file);
+          size = Math.round((base64Data.length * 3) / 4);
         }
       } else {
-        if (file.size > 8 * 1024 * 1024) {
-          alert(`File "${file.name}" exceeds 8 MB limit.`);
+        if (file.size > MAX_SINGLE_DOC_BYTES) {
+          alert(`File "${file.name}" is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Non-image documents must be under 2.5 MB to prevent server timeouts.`);
           continue;
         }
         base64Data = await readFileAsBase64(file);
+        size = Math.round((base64Data.length * 3) / 4);
+      }
+
+      // Check cumulative staged size
+      const currentTotal = stagedAttachments.reduce((sum, a) => sum + (a.size || 0), 0);
+      if (currentTotal + size > MAX_TOTAL_BYTES) {
+        alert(`Cannot add "${file.name}". Total attachments would exceed the 3.5 MB cloud limit (currently ${(currentTotal / 1024).toFixed(0)} KB). Please remove some files or compress your document.`);
+        continue;
       }
 
       stagedAttachments.push({
@@ -1307,29 +1338,46 @@ addAsgnForm?.addEventListener('submit', async (e) => {
     dataBase64: a.dataBase64
   }));
 
+  const payloadData = {
+    subject,
+    category,
+    year,
+    branch,
+    targetClass,
+    batch,
+    deadline,
+    attachments: payloadAttachments,
+    attachment: payloadAttachments[0] || null
+  };
+
+  // Pre-flight check: Vercel serverless request body hard cap is 4.5 MB
+  const serialized = JSON.stringify(payloadData);
+  if (serialized.length > 3.8 * 1024 * 1024) {
+    alert('Total assignment data exceeds the 3.5 MB cloud upload limit. Please remove some attachments or use smaller files.');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Publish Assignment'; }
+    return;
+  }
+
   try {
     const res = await fetch('/api/admin/assignments', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        subject,
-        category,
-        year,
-        branch,
-        targetClass,
-        batch,
-        deadline,
-        attachments: payloadAttachments,
-        attachment: payloadAttachments[0] || null
-      })
+      body: serialized
     });
 
     let data;
     try {
-      data = await res.json();
+      const rawText = await res.text();
+      data = JSON.parse(rawText);
     } catch (parseErr) {
-      data = { error: 'Server response error (status ' + res.status + ')' };
+      if (res.status === 413) {
+        data = { error: 'Files exceed the cloud upload limit (HTTP 413). Please reduce the number of images or file sizes.' };
+      } else if (res.status >= 500) {
+        data = { error: `Server error (${res.status}). Please try again shortly.` };
+      } else {
+        data = { error: `Server response error (status ${res.status})` };
+      }
     }
 
     if (res.status === 401) {
