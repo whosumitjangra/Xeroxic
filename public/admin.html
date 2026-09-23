@@ -463,6 +463,11 @@
   <div class="portal-divider"></div>
   <div class="portal-page-title">ADMIN DESK</div>
   <div class="portal-header-right">
+    <!-- Express QR Scanner / Counter Collect -->
+    <button class="scan-collect-btn" id="btn-open-scanner" title="Express QR Scanner / Quick Collect" style="background: rgba(255,255,255,0.18); border: 1.5px solid rgba(255,255,255,0.35); color: #fff; border-radius: 10px; padding: 7px 14px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: all 0.2s;">
+      <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" style="width:16px;height:16px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Scan to Collect
+    </button>
     <!-- Bell -->
     <button class="notif-bell-btn" id="btn-notif-bell" title="Notifications">
       <svg viewBox="0 0 24 24" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -788,6 +793,32 @@
     <div class="modal-foot" style="justify-content:space-between; align-items:center;">
       <span id="admin-preview-meta" style="font-size:12px; color:#667e70;"></span>
       <a href="#" id="admin-preview-dl-link" class="btn-submit" download>⬇ Download Current File</a>
+    </div>
+  </div>
+</div>
+
+<!-- ===== EXPRESS QR COLLECT MODAL ===== -->
+<div class="modal-overlay" id="modal-qr-collect" style="display:none; position:fixed; inset:0; background:rgba(15,28,20,0.65); backdrop-filter:blur(4px); z-index:3000; align-items:center; justify-content:center;">
+  <div class="modal-box" style="background:#fff; border-radius:18px; width:92%; max-width:440px; box-shadow:0 12px 40px rgba(0,0,0,0.25); overflow:hidden;">
+    <div class="modal-head" style="background: linear-gradient(135deg,#059669,#047857); padding:16px 20px; display:flex; justify-content:space-between; align-items:center; color:#fff;">
+      <h3 style="margin:0; font-size:16px; display:flex; align-items:center; gap:8px;">
+        <span>⚡ Express Counter Pickup</span>
+      </h3>
+      <button type="button" class="modal-x" id="btn-close-qr-modal" style="background:rgba(255,255,255,0.2); border:none; color:#fff; border-radius:8px; width:30px; height:30px; cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:22px; text-align:center;">
+      <p style="font-size:13px; color:#4a5e50; margin:0 0 16px;">Scan student's QR code with a barcode scanner gun, or enter the memorable Order ID.</p>
+      
+      <div style="position:relative; margin-bottom:16px;">
+        <input type="text" id="input-scan-order-id" placeholder="e.g. sumit24001 or ali##24001" style="width:100%; padding:14px 16px; font-size:17px; font-weight:700; font-family:monospace; text-align:center; border:2px solid #059669; border-radius:12px; outline:none; text-transform:lowercase; letter-spacing:1px; box-sizing:border-box;" />
+      </div>
+
+      <div style="display:flex; gap:10px; justify-content:center;">
+        <button type="button" id="btn-submit-quick-collect" style="background:linear-gradient(135deg,#059669,#047857); color:#fff; border:none; border-radius:10px; padding:12px 24px; font-family:'Poppins',sans-serif; font-size:14px; font-weight:700; cursor:pointer; width:100%; box-shadow:0 4px 14px rgba(5,150,105,0.3);">
+          ✓ Mark as Collected
+        </button>
+      </div>
+      <div id="quick-collect-status" style="margin-top:12px; font-size:13px; font-weight:600; min-height:20px;"></div>
     </div>
   </div>
 </div>

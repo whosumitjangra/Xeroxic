@@ -310,7 +310,12 @@ async function uploadFiles(fileListToUpload) {
       successfulUploads++;
     } catch (err) {
       console.error(`Error uploading "${f.name}":`, err);
-      // If direct Supabase upload failed, try fallback through /api/upload
+      // For large files (>4MB), never route through /api/upload as serverless payloads are capped at 4.5MB
+      if (f.size > 4 * 1024 * 1024) {
+        alert(`Could not upload "${f.name}" (${(f.size / (1024 * 1024)).toFixed(1)}MB): Cloud storage direct upload failed and file exceeds serverless upload limit (4MB). Please retry with an optimized document.`);
+        continue;
+      }
+      // If direct cloud upload failed for small file, try fallback through /api/upload
       try {
         uploadStatus.textContent = `Retrying "${f.name}" via backup channel...`;
         const fbFormData = new FormData();
@@ -628,7 +633,7 @@ document.getElementById('submit-order-btn')?.addEventListener('click', async () 
   submitBtn.textContent = 'Initiating Secure Order...';
 
   try {
-    const res = await fetch('/api/orders/initiate', {
+    const res = await fetch('/api/orders', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
@@ -850,7 +855,7 @@ async function launchRazorpayCheckout() {
             rzpBtn.innerHTML = '<span>🔒 Verifying Payment Signature...</span>';
           }
 
-          const verifyRes = await fetch('/api/verify-payment', {
+          const verifyRes = await fetch('/api/payments/verify', {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
@@ -1111,6 +1116,22 @@ async function trackOrder(orderId) {
       const liveTag = beacon.terminal ? '' :
         `<span style="font-size:11px; color:#059669; background:#dcfce7; border-radius:20px; padding:2px 8px; font-weight:600; margin-left:8px; vertical-align:middle;">LIVE ↻</span>`;
 
+      const isReadyForPickup = stUp === 'READY' || stUp === 'READY FOR COLLECTION' || stUp === 'READY FOR PICKUP';
+      const pickupQRHTML = isReadyForPickup ? `
+        <div style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 2px dashed #059669; border-radius: 16px; padding: 18px; text-align: center; margin: 16px 0 12px; box-shadow: 0 4px 14px rgba(5,150,105,0.08);">
+          <div style="font-size: 12px; font-weight: 700; color: #047857; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+            ⚡ Express Counter Pickup Pass
+          </div>
+          <div style="background: #ffffff; display: inline-block; padding: 10px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 10px;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(data.orderId)}" alt="Pickup QR Code" style="width: 140px; height: 140px; display: block;" onerror="this.style.display='none'; document.getElementById('qr-alt-${data.orderId}').style.display='block';" />
+            <div id="qr-alt-${data.orderId}" style="display:none; font-size:22px; font-weight:800; color:#065f46; padding: 16px 8px; font-family: monospace;">${data.orderId}</div>
+          </div>
+          <div style="font-size: 19px; font-weight: 800; color: #065f46; letter-spacing: 1px; font-family: monospace;">${data.orderId}</div>
+          <p style="font-size: 11.5px; color: #047857; margin: 6px 0 0 0; font-weight: 500;">Show this pass at the Xerox counter for 1-second express collection.</p>
+        </div>` : '';
+
+      const isTerminal = beacon.terminal || stUp === 'COMPLETED' || stUp === 'CANCELLED';
+
       if (resultEl) resultEl.innerHTML = `
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
           <span class="status-beacon ${beacon.cls}"></span>
@@ -1119,15 +1140,19 @@ async function trackOrder(orderId) {
         </div>
         <p style="font-size:13px; color:#4a5e50; margin:0 0 10px 0;">${studentStatus.sub}</p>
         ${progressHTML}
+        ${pickupQRHTML}
         <p class="track-order-id" style="font-size:17px; font-weight:700; margin:0 0 3px 0;">${data.orderId}</p>
         <p style="color:#7b9183; font-size:12px; margin:0 0 14px 0;">Placed on ${new Date(data.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p>
         <div style="margin-top:10px;">${itemsHTML}</div>
         <div class="price-summary" style="margin-top:14px;"><span>Total Paid</span><span>₹${data.total}</span></div>
-        ${!beacon.terminal ? `<p style="font-size:11px; color:#9aab9f; margin-top:10px; text-align:center;">Auto-refreshing every 8 seconds…</p>` : ''}
+        ${!isTerminal ? `<p style="font-size:11px; color:#9aab9f; margin-top:10px; text-align:center;">Auto-refreshing live status…</p>` : ''}
       `;
 
       // Stop polling when terminal state is reached
-      if (beacon.terminal) stopTrackingPoller();
+      if (isTerminal) {
+        isTerminalOrder = true;
+        stopTrackingPoller();
+      }
 
     } catch (err) {
       if (!silent) {
@@ -1138,14 +1163,17 @@ async function trackOrder(orderId) {
     }
   }
 
+  let isTerminalOrder = false;
   // Initial fetch (shows loading message)
   await fetchAndRender(false);
 
-  // Start live auto-polling every 8 seconds (only for non-terminal statuses, paused when tab in background)
-  _trackingPoller = setInterval(() => {
-    if (document.hidden) return;
-    fetchAndRender(true);
-  }, 8000);
+  // Start live auto-polling ONLY if order is still active (paused when tab in background)
+  if (!isTerminalOrder) {
+    _trackingPoller = setInterval(() => {
+      if (document.hidden) return;
+      fetchAndRender(true);
+    }, 4000);
+  }
 }
 
 // ---------- Dual-Tab Order History & In-Process Cards Tracker ----------

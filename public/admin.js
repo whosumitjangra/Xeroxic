@@ -687,16 +687,26 @@ function renderOrders(force = false) {
   });
 }
 
-// Update order status on backend
+// Update order status on backend with 0ms optimistic UI update
 async function updateOrderStatusOnServer(orderId, newStatus) {
   const order = allOrders.find(o => o.orderId === orderId);
   const previousStatus = order ? order.status : 'UNKNOWN';
 
-  console.log('[Admin Review Action] Updating order:', {
+  console.log('[Admin Review Action] Optimistic update for order:', {
     orderId,
     previousStatus,
     nextStatus: newStatus
   });
+
+  // 1. OPTIMISTIC UI: Update in-memory state, badge DOM, and re-render immediately (0ms!)
+  if (order) order.status = newStatus;
+  const badgeEl = document.getElementById(`badge-${orderId}`);
+  if (badgeEl) {
+    badgeEl.textContent = newStatus;
+    badgeEl.className = `admin-status-badge ${getStatusClass(newStatus)}`;
+  }
+  computeStatsFromOrders(allOrders);
+  renderOrders(true);
 
   try {
     const res = await fetch(`/api/admin/orders/${encodeURIComponent(orderId)}/status`, {
@@ -707,24 +717,17 @@ async function updateOrderStatusOnServer(orderId, newStatus) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Status update failed');
 
-    // Update local order
-    if (order) order.status = newStatus;
-
-    // Update badge in DOM if present
-    const badgeEl = document.getElementById(`badge-${orderId}`);
-    if (badgeEl) {
-      badgeEl.textContent = newStatus;
-      badgeEl.className = `admin-status-badge ${getStatusClass(newStatus)}`;
-    }
-
-    computeStatsFromOrders(allOrders);
-
-    // Immediately re-render orders list so that reviewed/completed items cleanly leave the filtered view
-    renderOrders(true);
-
     showToast(`Order ${orderId} updated to "${newStatus}"!`, 'success');
   } catch (err) {
     console.error('Failed to update status:', err);
+    // Rollback optimistic update on error
+    if (order) order.status = previousStatus;
+    if (badgeEl) {
+      badgeEl.textContent = previousStatus;
+      badgeEl.className = `admin-status-badge ${getStatusClass(previousStatus)}`;
+    }
+    computeStatsFromOrders(allOrders);
+    renderOrders(true);
     showToast('Failed to update status: ' + err.message, 'error');
   }
 }
@@ -1654,6 +1657,73 @@ document.getElementById('admin-asgn-modal')?.addEventListener('click', (e) => {
 document.getElementById('admin-month-select')?.addEventListener('change', () => {
   loadDashboardData(false);
 });
+
+// Express Counter Quick Collect Modal
+const btnOpenScanner = document.getElementById('btn-open-scanner');
+const modalQrCollect = document.getElementById('modal-qr-collect');
+const btnCloseQrModal = document.getElementById('btn-close-qr-modal');
+const inputScanOrderId = document.getElementById('input-scan-order-id');
+const btnSubmitQuickCollect = document.getElementById('btn-submit-quick-collect');
+const quickCollectStatus = document.getElementById('quick-collect-status');
+
+if (btnOpenScanner && modalQrCollect) {
+  btnOpenScanner.addEventListener('click', () => {
+    modalQrCollect.style.display = 'flex';
+    if (quickCollectStatus) quickCollectStatus.textContent = '';
+    if (inputScanOrderId) {
+      inputScanOrderId.value = '';
+      setTimeout(() => inputScanOrderId.focus(), 100);
+    }
+  });
+
+  const closeQrModal = () => {
+    modalQrCollect.style.display = 'none';
+  };
+
+  btnCloseQrModal?.addEventListener('click', closeQrModal);
+  modalQrCollect.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-qr-collect') closeQrModal();
+  });
+
+  const handleQuickCollect = async () => {
+    const rawVal = (inputScanOrderId?.value || '').trim();
+    if (!rawVal) {
+      if (quickCollectStatus) {
+        quickCollectStatus.textContent = '⚠️ Please scan or enter an Order ID.';
+        quickCollectStatus.style.color = '#d97706';
+      }
+      return;
+    }
+    const cleanOrderId = rawVal.toLowerCase();
+    if (quickCollectStatus) {
+      quickCollectStatus.textContent = `Processing #${cleanOrderId}...`;
+      quickCollectStatus.style.color = '#047857';
+    }
+
+    try {
+      await updateOrderStatusOnServer(cleanOrderId, 'COMPLETED');
+      if (quickCollectStatus) {
+        quickCollectStatus.textContent = `✅ Order #${cleanOrderId} collected successfully!`;
+        quickCollectStatus.style.color = '#059669';
+      }
+      if (inputScanOrderId) inputScanOrderId.value = '';
+      setTimeout(() => closeQrModal(), 1200);
+    } catch (e) {
+      if (quickCollectStatus) {
+        quickCollectStatus.textContent = `❌ ${e.message}`;
+        quickCollectStatus.style.color = '#dc2626';
+      }
+    }
+  };
+
+  btnSubmitQuickCollect?.addEventListener('click', handleQuickCollect);
+  inputScanOrderId?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleQuickCollect();
+    }
+  });
+}
 
 // Run auth check on initialization
 checkAdminAuth();

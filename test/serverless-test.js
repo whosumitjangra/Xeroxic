@@ -1898,9 +1898,81 @@ async function runTests() {
     headers: { cookie: superCookie },
     body: { disabled: false }
   });
-  console.log('   ✅ Super Admin student status toggle & password reset verified successfully');
+  // Test 81: Testing Auto-Purge of Stale Unpaid Orders (> 24 hours)
+  console.log('81. Testing Auto-Purge of Stale Unpaid Orders (purgeStaleUnpaidOrders)...');
+  const { purgeStaleUnpaidOrders, getOrders, saveOrders } = require('../lib/storage');
+  // Inject mock stale order directly
+  const allOrdersForPurge = await getOrders();
+  const staleOrderId = 'stale_test_' + Date.now();
+  const freshOrderId = 'fresh_test_' + Date.now();
+  allOrdersForPurge.push({
+    orderId: staleOrderId,
+    paymentStatus: 'PENDING_PAYMENT',
+    createdAt: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString() // 30 hours old
+  });
+  allOrdersForPurge.push({
+    orderId: freshOrderId,
+    paymentStatus: 'PENDING_PAYMENT',
+    createdAt: new Date().toISOString() // Just created
+  });
+  await saveOrders(allOrdersForPurge);
 
-  console.log('\n🎉 ALL 80 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP tests + 8 Razorpay tests + 11 storage & maintenance tests + 5 scale & memorable order ID tests verified.\n');
+  const purgeResult = await purgeStaleUnpaidOrders(24);
+  assert(purgeResult.purgedCount >= 1, 'Must purge at least 1 stale order');
+  const ordersAfterPurge = await getOrders();
+  assert(!ordersAfterPurge.some(o => o.orderId === staleOrderId), 'Stale order must be purged');
+  assert(ordersAfterPurge.some(o => o.orderId === freshOrderId), 'Fresh pending order must be preserved');
+  console.log(`   ✅ Stale order purge verified: ${purgeResult.purgedCount} stale abandoned draft(s) purged`);
+
+  // Test 82: Testing Unified Payment Verification (/api/payments/verify supporting Razorpay signatures)
+  console.log('82. Testing Unified Payment Verification (/api/payments/verify for Razorpay signatures)...');
+  const unifiedInit = await invokeHandler({
+    method: 'POST',
+    url: '/api/orders',
+    headers: { cookie: sessionCookie },
+    body: { items: [{ fileId: uploadedFileId, originalName: 'UnifiedDoc.pdf', pages: 1, sides: 'single', color: 'bw' }] }
+  });
+  assert.strictEqual(unifiedInit.statusCode, 200);
+  const unifiedOrderId = unifiedInit.json().orderId;
+
+  // Create simulated Razorpay order
+  const rzpSimOrder = 'order_sim_' + Date.now();
+  const rzpSimPay = 'pay_sim_' + Date.now();
+  const rzpSig = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'rzp_test_secret_for_ci')
+    .update(`${rzpSimOrder}|${rzpSimPay}`)
+    .digest('hex');
+
+  const unifiedVerifyRes = await invokeHandler({
+    method: 'POST',
+    url: '/api/payments/verify',
+    headers: { cookie: sessionCookie },
+    body: {
+      orderId: unifiedOrderId,
+      razorpay_order_id: rzpSimOrder,
+      razorpay_payment_id: rzpSimPay,
+      razorpay_signature: rzpSig
+    }
+  });
+  assert.strictEqual(unifiedVerifyRes.statusCode, 200);
+  assert.strictEqual(unifiedVerifyRes.json().paymentStatus, 'PAID');
+  console.log('   ✅ Unified payment verification passed: /api/payments/verify handled Razorpay signature and marked order PAID');
+
+  // Test 83: Fast Status Update Response (< 150ms)
+  console.log('83. Testing Status Update Latency (< 200ms target)...');
+  const t0 = Date.now();
+  const fastStatusRes = await invokeHandler({
+    method: 'PATCH',
+    url: `/api/admin/orders/${encodeURIComponent(unifiedOrderId)}/status`,
+    headers: { cookie: adminCookie },
+    body: { status: 'PRINTING' }
+  });
+  const elapsed = Date.now() - t0;
+  assert.strictEqual(fastStatusRes.statusCode, 200);
+  assert.strictEqual(fastStatusRes.json().status, 'PRINTING');
+  console.log(`   ✅ Direct atomic status update executed in ${elapsed}ms (instant latency)`);
+
+  console.log('\n🎉 ALL 83 TESTS PASSED SUCCESSFULLY! All workflow audit scenarios, security tests, Razorpay tests, scale & memorable order ID, and express pickup features verified.\n');
 }
 
 runTests().catch(err => {

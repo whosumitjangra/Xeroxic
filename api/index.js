@@ -78,6 +78,7 @@ const {
   saveUploadedFileRecord,
   getUploadedFileBuffer,
   deleteUploadedFile,
+  purgeStaleUnpaidOrders,
   REPO_ROOT
 } = require('../lib/storage');
 
@@ -904,12 +905,104 @@ async function handler(req, res) {
       });
     }
 
-    // ---------------- PAYMENTS: VERIFY & CONFIRM (STUDENTS ONLY) ----------------
-    if (pathname === '/api/payments/verify' && req.method === 'POST') {
+    // ---------------- PAYMENTS: UNIFIED VERIFICATION (UPI & RAZORPAY) ----------------
+    if ((pathname === '/api/payments/verify' || pathname === '/api/verify-payment' || pathname === '/api/razorpay/verify') && req.method === 'POST') {
       const session = getOrCreateStudentSession(req, res, isSecure);
       if (!session) return;
 
-      const { orderId, paymentStatus, simulationStatus, utr } = await readJSONBody(req);
+      const body = await readJSONBody(req);
+      const razorpay_order_id = body.razorpay_order_id || body.order_id || '';
+      const razorpay_payment_id = body.razorpay_payment_id || body.payment_id || '';
+      const razorpay_signature = body.razorpay_signature || body.signature || '';
+
+      // --- BRANCH A: RAZORPAY HMAC-SHA256 SIGNATURE VERIFICATION ---
+      if (razorpay_signature || razorpay_order_id || razorpay_payment_id) {
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+          return sendJSON(res, 400, {
+            success: false,
+            error: 'Missing required Razorpay verification fields (razorpay_order_id, razorpay_payment_id, razorpay_signature).'
+          });
+        }
+
+        const isValid = verifyRazorpaySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
+        if (!isValid) {
+          console.warn(`[Razorpay] Invalid payment signature for order ${razorpay_order_id}, payment ${razorpay_payment_id}`);
+          return sendJSON(res, 400, {
+            success: false,
+            error: 'Invalid payment signature. Payment verification failed.'
+          });
+        }
+
+        const internalOrderId = body.orderId || body.internalOrderId || '';
+        let matchedOrder = null;
+        const orders = await getOrders();
+        if (internalOrderId) {
+          matchedOrder = orders.find(o => o.orderId.toUpperCase() === String(internalOrderId).trim().toUpperCase());
+        }
+        if (!matchedOrder && razorpay_order_id) {
+          matchedOrder = orders.find(o => o.razorpayOrderId === razorpay_order_id);
+        }
+
+        if (matchedOrder) {
+          if (matchedOrder.ownerId && matchedOrder.ownerId !== session.userId) {
+            return sendJSON(res, 403, { error: "Forbidden: You cannot verify payment for another student's order." });
+          }
+
+          matchedOrder.paymentStatus = 'PAID';
+          matchedOrder.status = 'REQUEST_RECEIVED';
+          matchedOrder.paymentMethod = 'Razorpay';
+          matchedOrder.paymentId = razorpay_payment_id;
+          matchedOrder.razorpayPaymentId = razorpay_payment_id;
+          matchedOrder.razorpayOrderId = razorpay_order_id;
+          matchedOrder.razorpaySignature = razorpay_signature;
+          matchedOrder.updatedAt = new Date().toISOString();
+          await saveOrders(orders);
+
+          const printRequest = await createPrintRequest({
+            orderId: matchedOrder.orderId,
+            studentId: session.userId,
+            studentName: matchedOrder.ownerName,
+            studentEmail: matchedOrder.ownerEmail,
+            items: matchedOrder.items,
+            copies: matchedOrder.copies || 1,
+            pageRange: matchedOrder.pageRange || 'all',
+            amount: matchedOrder.total,
+            paymentStatus: 'PAID',
+            requestStatus: 'REQUEST_RECEIVED'
+          });
+
+          try {
+            await updateNotificationByOrderId(matchedOrder.orderId, {
+              type: 'NEW_PRINT_REQUEST',
+              paymentStatus: 'PAID',
+              status: 'UNREAD',
+              message: `New Print Request #${matchedOrder.orderId} from ${matchedOrder.ownerName} (Paid via Razorpay)`
+            });
+          } catch (e) {}
+
+          return sendJSON(res, 200, {
+            success: true,
+            verified: true,
+            orderId: matchedOrder.orderId,
+            razorpay_order_id,
+            razorpay_payment_id,
+            paymentStatus: 'PAID',
+            requestStatus: 'REQUEST_RECEIVED',
+            printRequestId: printRequest ? printRequest.id : null
+          });
+        }
+
+        return sendJSON(res, 200, {
+          success: true,
+          verified: true,
+          razorpay_order_id,
+          razorpay_payment_id,
+          message: 'Payment signature verified successfully.'
+        });
+      }
+
+      // --- BRANCH B: STANDARD UPI / SIMULATION VERIFICATION ---
+      const { orderId, paymentStatus, simulationStatus, utr } = body;
       if (!orderId) {
         return sendJSON(res, 400, { error: 'Order ID is required for payment verification.' });
       }
@@ -1116,104 +1209,7 @@ async function handler(req, res) {
       }
     }
 
-    // ---------------- RAZORPAY: VERIFY PAYMENT SIGNATURE (STEP 3) ----------------
-    if ((pathname === '/api/verify-payment' || pathname === '/api/razorpay/verify') && req.method === 'POST') {
-      const session = getOrCreateStudentSession(req, res, isSecure);
-      if (!session) return;
 
-      const body = await readJSONBody(req);
-      const razorpay_order_id = body.razorpay_order_id || body.order_id || '';
-      const razorpay_payment_id = body.razorpay_payment_id || body.payment_id || '';
-      const razorpay_signature = body.razorpay_signature || body.signature || '';
-      const internalOrderId = body.orderId || body.internalOrderId || '';
-
-      // Missing fields: return 400
-      if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-        return sendJSON(res, 400, {
-          success: false,
-          error: 'Missing required Razorpay verification fields (razorpay_order_id, razorpay_payment_id, razorpay_signature).'
-        });
-      }
-
-      // Verify HMAC-SHA256 signature
-      const isValid = verifyRazorpaySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
-      if (!isValid) {
-        console.warn(`[Razorpay] Invalid payment signature for order ${razorpay_order_id}, payment ${razorpay_payment_id}`);
-        return sendJSON(res, 400, {
-          success: false,
-          error: 'Invalid payment signature. Payment verification failed.'
-        });
-      }
-
-      // Find and update the internal order if internalOrderId or razorpay_order_id is provided
-      let matchedOrder = null;
-      const orders = await getOrders();
-      if (internalOrderId) {
-        matchedOrder = orders.find(o => o.orderId.toUpperCase() === String(internalOrderId).trim().toUpperCase());
-      }
-      if (!matchedOrder && razorpay_order_id) {
-        matchedOrder = orders.find(o => o.razorpayOrderId === razorpay_order_id);
-      }
-
-      if (matchedOrder) {
-        // Enforce student ownership if order exists
-        if (matchedOrder.ownerId && matchedOrder.ownerId !== session.userId) {
-          return sendJSON(res, 403, { error: "Forbidden: You cannot verify payment for another student's order." });
-        }
-
-        matchedOrder.paymentStatus = 'PAID';
-        matchedOrder.status = 'REQUEST_RECEIVED';
-        matchedOrder.paymentMethod = 'Razorpay';
-        matchedOrder.paymentId = razorpay_payment_id;
-        matchedOrder.razorpayPaymentId = razorpay_payment_id;
-        matchedOrder.razorpayOrderId = razorpay_order_id;
-        matchedOrder.razorpaySignature = razorpay_signature;
-        matchedOrder.updatedAt = new Date().toISOString();
-        await saveOrders(orders);
-
-        const printRequest = await createPrintRequest({
-          orderId: matchedOrder.orderId,
-          studentId: session.userId,
-          studentName: matchedOrder.ownerName,
-          studentEmail: matchedOrder.ownerEmail,
-          items: matchedOrder.items,
-          copies: matchedOrder.copies || 1,
-          pageRange: matchedOrder.pageRange || 'all',
-          amount: matchedOrder.total,
-          paymentStatus: 'PAID',
-          requestStatus: 'REQUEST_RECEIVED'
-        });
-
-        try {
-          await updateNotificationByOrderId(matchedOrder.orderId, {
-            type: 'NEW_PRINT_REQUEST',
-            paymentStatus: 'PAID',
-            status: 'UNREAD',
-            message: `New Print Request #${matchedOrder.orderId} from ${matchedOrder.ownerName} (Paid via Razorpay)`
-          });
-        } catch (e) {}
-
-        return sendJSON(res, 200, {
-          success: true,
-          verified: true,
-          orderId: matchedOrder.orderId,
-          razorpay_order_id,
-          razorpay_payment_id,
-          paymentStatus: 'PAID',
-          requestStatus: 'REQUEST_RECEIVED',
-          printRequestId: printRequest ? printRequest.id : null
-        });
-      }
-
-      // Standalone Razorpay verification success
-      return sendJSON(res, 200, {
-        success: true,
-        verified: true,
-        razorpay_order_id,
-        razorpay_payment_id,
-        message: 'Payment signature verified successfully.'
-      });
-    }
 
     // ---------------- ORDERS: LIST MY ORDERS (STUDENTS ONLY - PREVIOUS 10 PRINTS) ----------------
     if (pathname === '/api/orders' && req.method === 'GET') {
@@ -1347,15 +1343,6 @@ async function handler(req, res) {
       if (status === 'Collected') normStatus = 'COMPLETED';
 
       const updatedReq = await updatePrintRequestStatus(reqIdOrOrderId, normStatus);
-      // Sync corresponding order in orders.json so student tracking reflects stage immediately
-      const orders = await getOrders();
-      const order = orders.find(o => o.orderId === reqIdOrOrderId || (updatedReq && o.orderId === updatedReq.orderId));
-      if (order) {
-        order.status = normStatus;
-        order.updatedAt = new Date().toISOString();
-        await saveOrders(orders);
-      }
-
       return sendJSON(res, 200, { success: true, request: updatedReq || { id: reqIdOrOrderId, requestStatus: normStatus } });
     }
 
@@ -1536,17 +1523,14 @@ async function handler(req, res) {
       if (status === 'Ready for Collection' || status === 'Ready for Pickup') normStatus = 'READY';
       if (status === 'Collected' || status === 'Completed') normStatus = 'COMPLETED';
 
-      const orders = await getOrders();
-      const existingOrder = orders.find(o => o.orderId.toLowerCase() === orderId.toLowerCase());
-      const previousStatus = existingOrder ? existingOrder.status : 'UNKNOWN';
-
       const updated = await updateOrderStatus(orderId, normStatus);
-      await updatePrintRequestStatus(orderId, normStatus);
+      if (!updated) return sendJSON(res, 404, { error: 'Order not found.' });
+      await updatePrintRequestStatus(orderId, normStatus, true);
 
       // Auto-purge uploaded files when marked COMPLETED or CANCELLED to preserve database space
       if (normStatus === 'COMPLETED' || normStatus === 'CANCELLED') {
         try {
-          await cleanupOrderFiles(existingOrder || updated);
+          await cleanupOrderFiles(updated);
         } catch (e) {
           console.warn('Could not cleanup order files:', e.message);
         }
@@ -1554,8 +1538,7 @@ async function handler(req, res) {
 
       console.log('[Admin Review Action] Status update:', {
         orderId,
-        previousStatus,
-        nextStatus: normStatus,
+        status: normStatus,
         adminUser: session.email
       });
 
@@ -1572,6 +1555,11 @@ async function handler(req, res) {
       const nowIST = getISTDateParts(new Date());
       const currentMonth = `${nowIST.yearStr}-${nowIST.monthStr}`;
       const activeMonth = filterMonth && filterMonth.toLowerCase() === 'all' ? null : (filterMonth || currentMonth);
+
+      // Auto-purge stale unpaid drafts older than 24h to keep database lean
+      try {
+        await purgeStaleUnpaidOrders(24);
+      } catch (e) {}
 
       const allOrders = await getOrders();
       const printRequests = await getPrintRequests();
