@@ -229,7 +229,7 @@ async function runTests() {
   console.log('10. Testing GET /api/orders/:id (order tracking)...');
   const trackRes = await invokeHandler({
     method: 'GET',
-    url: `/api/orders/${createdOrderId}`,
+    url: `/api/orders/${encodeURIComponent(createdOrderId)}`,
     headers: { cookie: sessionCookie }
   });
   assert.strictEqual(trackRes.statusCode, 200);
@@ -238,6 +238,16 @@ async function runTests() {
   assert.strictEqual(trackData.total, 30);
   assert.strictEqual(trackData.status, 'REQUEST_RECEIVED');
   console.log('   ✅ Order tracking passed (initial status: REQUEST_RECEIVED)');
+
+  // Verify payment so order transitions to PAID and lands on Admin Panel
+  const payTest9Res = await invokeHandler({
+    method: 'POST',
+    url: '/api/payments/verify',
+    headers: { cookie: sessionCookie },
+    body: { orderId: createdOrderId, paymentStatus: 'PAID' }
+  });
+  assert.strictEqual(payTest9Res.statusCode, 200);
+  console.log('   ✅ Payment confirmed: Order transitioned to PAID and forwarded to Xerox admin queue');
 
   // Test 11: Logout via POST /api/logout
   console.log('11. Testing POST /api/logout...');
@@ -1110,8 +1120,8 @@ async function runTests() {
   assert(completedList.some(o => o.orderId === audit1OrderId), 'Completed order must be in completed filter list');
   console.log('   ✅ Scenario 2 passed: Filters strictly partition pending vs completed items');
 
-  // Test 45: Audit Scenario 3 — Multiple payment-pending orders produce exactly 1 notification each (no duplicates)
-  console.log('45. Testing Audit Scenario 3: Multiple payment-pending orders emit exactly 1 notification each...');
+  // Test 45: Audit Scenario 3 — Payment-pending orders do NOT appear on admin panel or notifications
+  console.log('45. Testing Audit Scenario 3: Unpaid orders hidden from admin panel & notifications until payment...');
   const initPendingA = await invokeHandler({
     method: 'POST',
     url: '/api/orders/initiate',
@@ -1126,12 +1136,18 @@ async function runTests() {
     headers: { cookie: adminCookie }
   });
   const notifsForA = notifsCheck1.json().notifications.filter(n => n.orderId === idPendingA);
-  assert.strictEqual(notifsForA.length, 1, 'Exactly one notification must exist for pending order');
-  assert.strictEqual(notifsForA[0].paymentStatus, 'PENDING_PAYMENT');
-  console.log('   ✅ Scenario 3 passed: Exactly one payment-pending notification created without duplicates');
+  assert.strictEqual(notifsForA.length, 0, 'No notification must exist for pending payment order');
 
-  // Test 46: Audit Scenario 4 — Payment confirmation updates notification in-place without duplication
-  console.log('46. Testing Audit Scenario 4: Payment confirmation updates notification to PAID in-place...');
+  const adminOrdersCheckUnpaid = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/orders',
+    headers: { cookie: adminCookie }
+  });
+  assert(!adminOrdersCheckUnpaid.json().orders.some(o => o.orderId === idPendingA), 'Unpaid order must NOT appear in admin orders queue');
+  console.log('   ✅ Scenario 3 passed: Unpaid order successfully suppressed from admin queue & notifications');
+
+  // Test 46: Audit Scenario 4 — Successful payment dispatches request to admin panel with 1 notification
+  console.log('46. Testing Audit Scenario 4: Successful payment forwards request to admin panel & creates notification...');
   await invokeHandler({
     method: 'POST',
     url: '/api/payments/verify',
@@ -1145,9 +1161,16 @@ async function runTests() {
     headers: { cookie: adminCookie }
   });
   const notifsForAAfterPay = notifsCheck2.json().notifications.filter(n => n.orderId === idPendingA);
-  assert.strictEqual(notifsForAAfterPay.length, 1, 'Still exactly one notification must exist (no duplicate created on payment)');
+  assert.strictEqual(notifsForAAfterPay.length, 1, 'Exactly one notification must exist on successful payment');
   assert.strictEqual(notifsForAAfterPay[0].paymentStatus, 'PAID');
-  console.log('   ✅ Scenario 4 passed: Notification updated to PAID smoothly without duplication');
+
+  const adminOrdersCheckPaid = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/orders',
+    headers: { cookie: adminCookie }
+  });
+  assert(adminOrdersCheckPaid.json().orders.some(o => o.orderId === idPendingA), 'Paid order must now appear in admin orders queue');
+  console.log('   ✅ Scenario 4 passed: Request forwarded to admin panel and notification delivered upon payment');
 
   // Test 47: Audit Scenario 5 — Tap notification resolves exact order by canonical ID even if not on active page
   console.log('47. Testing Audit Scenario 5: Notification click resolves exact canonical order record...');
@@ -1782,14 +1805,23 @@ async function runTests() {
   // --- TESTS 76-80: NEW PERFORMANCE & BUSINESS LOGIC FEATURES ---
   console.log('\n--- 2000-STUDENT SCALE & MEMORABLE ORDER ID SUITE ---');
 
-  // Test 76: Memorable Order ID format verification
-  console.log('76. Testing Memorable Order ID Generator format ([email_5][date_2][serial_3])...');
+  // Test 76: Memorable Order ID format verification (with # padding for handles < 5 characters)
+  console.log('76. Testing Memorable Order ID Generator format ([email_5][date_2][serial_3]) with # padding...');
   const { generateMemorableOrderId } = require('../lib/storage');
   const testDate = new Date('2026-09-24T10:00:00Z');
-  const sampleOrderId = await generateMemorableOrderId('sumit.jangra@aitpune.edu.in', testDate);
-  console.log(`   Sample generated Order ID: ${sampleOrderId}`);
-  assert.match(sampleOrderId, /^sumit24\d{3}$/, 'Order ID must begin with first 5 letters of email, 2-digit date, and 3-digit serial');
-  console.log('   ✅ Memorable Order ID format verified (matches sumit24001 pattern)');
+  const sampleOrderId1 = await generateMemorableOrderId('sumit.jangra@aitpune.edu.in', testDate);
+  console.log(`   Sample generated Order ID 1: ${sampleOrderId1}`);
+  assert.match(sampleOrderId1, /^sumit24\d{3}$/, 'Order ID must begin with first 5 letters of email, 2-digit date, and 3-digit serial');
+
+  // Verify short names before @ or _ are padded with # up to 5 chars
+  const sampleOrderId2 = await generateMemorableOrderId('ali@aitpune.edu.in', testDate);
+  console.log(`   Sample generated Order ID 2 (ali -> ali##): ${sampleOrderId2}`);
+  assert.match(sampleOrderId2, /^ali##24\d{3}$/, 'Handles shorter than 5 chars before @ must be padded with #');
+
+  const sampleOrderId3 = await generateMemorableOrderId('om_dev@aitpune.edu.in', testDate);
+  console.log(`   Sample generated Order ID 3 (om_dev -> om###): ${sampleOrderId3}`);
+  assert.match(sampleOrderId3, /^om###24\d{3}$/, 'Handles before _ shorter than 5 chars must be padded with #');
+  console.log('   ✅ Memorable Order ID format verified (sumit24001, ali##24001, and om###24001)');
 
   // Test 77: Student order history limit to previous 10 prints
   console.log('77. Testing Student Order History Cap (Previous 10 prints limit)...');

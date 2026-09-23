@@ -387,15 +387,15 @@ async function handler(req, res) {
   const isSecure = process.env.NODE_ENV === 'production' || !!process.env.VERCEL || (req.headers['x-forwarded-proto'] === 'https');
 
   const parsed = new URL(req.url, 'http://localhost');
-  let pathname = decodeURIComponent(parsed.pathname || '');
+  let pathname = parsed.search ? decodeURIComponent(parsed.pathname || '') : decodeURIComponent((parsed.pathname || '') + (parsed.hash || ''));
 
   // Handle Vercel rewrites: /api/(.*) -> /api/index.js?__route=$1
   if (pathname === '/api' || pathname === '/api/index.js' || pathname === '/api/') {
     const routeParam = parsed.searchParams.get('__route');
     if (routeParam) {
-      pathname = '/api/' + routeParam.split('?')[0];
+      pathname = '/api/' + decodeURIComponent(routeParam.split('?')[0]);
     } else if (req.headers['x-matched-path']) {
-      pathname = req.headers['x-matched-path'].split('?')[0];
+      pathname = decodeURIComponent(req.headers['x-matched-path'].split('?')[0]);
     }
   }
 
@@ -886,19 +886,7 @@ async function handler(req, res) {
         itemsCount: cleanItems.length
       });
 
-      // Immediately queue persistent notification for admin
-      try {
-        await createNotification({
-          orderId: order.orderId,
-          type: 'PAYMENT_PENDING',
-          paymentStatus: 'PENDING_PAYMENT',
-          studentName: canonicalName,
-          studentEmail: canonicalEmail,
-          amount: order.total,
-          fileCount: cleanItems.length,
-          message: `Payment Pending: Order #${order.orderId} from ${canonicalName}`
-        });
-      } catch (e) {}
+      // Note: Admin notifications & queue entries are only dispatched after successful payment verification
 
       return sendJSON(res, 200, {
         success: true,
@@ -1315,7 +1303,8 @@ async function handler(req, res) {
       const requests = await getPrintRequests();
       const filesDb = await getFiles();
 
-      const enriched = requests.map(r => {
+      const paidRequests = requests.filter(r => (r.paymentStatus || 'PAID') === 'PAID');
+      const enriched = paidRequests.map(r => {
         const items = (r.items || []).map(item => {
           const fileRecord = filesDb.find(f => f.id === item.fileId);
           return {
@@ -1376,11 +1365,12 @@ async function handler(req, res) {
       if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
 
       const allNotifs = await getNotifications();
-      const unread = allNotifs.filter(n => n.status === 'UNREAD');
+      const paidNotifs = allNotifs.filter(n => (n.paymentStatus || 'PAID') === 'PAID');
+      const unread = paidNotifs.filter(n => n.status === 'UNREAD');
 
       return sendJSON(res, 200, {
         success: true,
-        notifications: allNotifs,
+        notifications: paidNotifs,
         unread,
         unreadCount: unread.length
       });
@@ -1475,7 +1465,10 @@ async function handler(req, res) {
       }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
       const filterStatus = parsed.searchParams.get('status');
-      const filterOrderId = parsed.searchParams.get('orderId');
+      let filterOrderId = parsed.searchParams.get('orderId');
+      if (filterOrderId && parsed.hash) {
+        filterOrderId = filterOrderId + parsed.hash;
+      }
       const filterMonth = parsed.searchParams.get('month'); // e.g. '2026-09' or 'all'
 
       // Monthly renewal: Compute active month in Indian Standard Time (IST)
@@ -1488,6 +1481,11 @@ async function handler(req, res) {
       // Filter by active month unless 'all' is requested or querying a specific orderId
       if (activeMonth && !filterOrderId) {
         resultOrders = resultOrders.filter(o => isDateInMonth(o.createdAt, activeMonth));
+      }
+
+      // Hide unpaid / pending payment orders from admin panel: requests only arrive after successful payment
+      if (!filterOrderId) {
+        resultOrders = resultOrders.filter(o => o.paymentStatus === 'PAID');
       }
 
       if (filterOrderId) {
@@ -1578,8 +1576,9 @@ async function handler(req, res) {
       const allOrders = await getOrders();
       const printRequests = await getPrintRequests();
 
-      // Filter by active month unless 'all'
-      const orders = activeMonth ? allOrders.filter(o => isDateInMonth(o.createdAt, activeMonth)) : allOrders;
+      // Only include PAID orders in admin metrics and queue
+      const paidOrders = allOrders.filter(o => o.paymentStatus === 'PAID');
+      const orders = activeMonth ? paidOrders.filter(o => isDateInMonth(o.createdAt, activeMonth)) : paidOrders;
 
       let totalRevenue = 0;
       let newCount = 0;
@@ -1589,9 +1588,7 @@ async function handler(req, res) {
       let collectedCount = 0;
 
       for (const o of orders) {
-        if (o.paymentStatus !== 'CANCELLED' && o.paymentStatus !== 'FAILED') {
-          totalRevenue += (o.total || 0);
-        }
+        totalRevenue += (o.total || 0);
         const st = computeOrderStatus(o);
         if (st === 'REQUEST_RECEIVED') newCount++;
         else if (st === 'ACCEPTED') acceptedCount++;
@@ -1600,7 +1597,7 @@ async function handler(req, res) {
         else if (st === 'COMPLETED') collectedCount++;
       }
 
-      const activeRequests = printRequests.filter(r => r.requestStatus !== 'COMPLETED' && r.requestStatus !== 'CANCELLED');
+      const activeRequests = printRequests.filter(r => (r.paymentStatus || 'PAID') === 'PAID' && r.requestStatus !== 'COMPLETED' && r.requestStatus !== 'CANCELLED');
 
       return sendJSON(res, 200, {
         totalOrders: orders.length,
