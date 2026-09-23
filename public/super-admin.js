@@ -328,12 +328,121 @@ window.toggleStaffStatus = async function(staffId, newDisabledState) {
   } catch (err) { showToast(err.message, 'error'); }
 };
 
-window.openResetPwdModal = function(id, name, email) {
+window.openResetPwdModal = function(id, name, email, targetType = 'staff') {
   document.getElementById('reset-staff-target-id').value = id;
+  document.getElementById('reset-staff-target-id').dataset.type = targetType;
   document.getElementById('reset-staff-target-name').textContent = name;
   document.getElementById('reset-staff-target-email').textContent = email;
   document.getElementById('reset-pwd-input').value = '';
   document.getElementById('reset-pwd-modal').style.display = 'flex';
+};
+
+// ===================================================================
+// SECTION: STUDENTS MANAGEMENT
+// ===================================================================
+let allStudents = [];
+let currentStudentSearch = '';
+let currentStudentFilter = 'all';
+
+async function loadStudents() {
+  const loadingEl = document.getElementById('student-loading');
+  const tableEl   = document.getElementById('student-table');
+  const tbodyEl   = document.getElementById('student-tbody');
+  const emptyEl   = document.getElementById('student-empty');
+  if (loadingEl) loadingEl.style.display = 'block';
+  if (tableEl)   tableEl.style.display = 'none';
+  if (emptyEl)   emptyEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/superadmin/students');
+    if (!res.ok) throw new Error('Could not fetch student accounts');
+    const data = await res.json();
+    allStudents = data.students || [];
+
+    const countEl = document.getElementById('tab-student-count');
+    if (countEl) countEl.textContent = allStudents.length;
+
+    renderStudents();
+  } catch (err) {
+    showToast('Failed to load students: ' + err.message, 'error');
+  } finally {
+    if (loadingEl) loadingEl.style.display = 'none';
+  }
+}
+
+function renderStudents() {
+  const tableEl = document.getElementById('student-table');
+  const tbodyEl = document.getElementById('student-tbody');
+  const emptyEl = document.getElementById('student-empty');
+  if (!tbodyEl) return;
+
+  tbodyEl.innerHTML = '';
+
+  let filtered = allStudents;
+  if (currentStudentSearch) {
+    const q = currentStudentSearch.toLowerCase();
+    filtered = filtered.filter(s =>
+      (s.name && s.name.toLowerCase().includes(q)) ||
+      (s.email && s.email.toLowerCase().includes(q))
+    );
+  }
+
+  if (currentStudentFilter === 'active') {
+    filtered = filtered.filter(s => !s.disabled);
+  } else if (currentStudentFilter === 'disabled') {
+    filtered = filtered.filter(s => !!s.disabled);
+  }
+
+  if (filtered.length === 0) {
+    if (tableEl) tableEl.style.display = 'none';
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (tableEl) tableEl.style.display = 'table';
+
+  filtered.forEach(s => {
+    const tr = document.createElement('tr');
+    const isDisabled = !!s.disabled;
+    const statusBadge = isDisabled
+      ? '<span class="sbadge-disabled">Disabled</span>'
+      : '<span class="sbadge-active">Active</span>';
+    const dateStr = s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-IN') : 'N/A';
+    tr.innerHTML = `
+      <td><strong>${s.name || 'Student'}</strong></td>
+      <td><code>${s.email}</code></td>
+      <td>${dateStr}</td>
+      <td>${statusBadge}</td>
+      <td>
+        <div class="staff-actions">
+          <button type="button" class="btn-sm ${isDisabled ? 'btn-enable-sm' : 'btn-disable-sm'}"
+            onclick="toggleStudentStatus('${s.id}', ${!isDisabled})">
+            ${isDisabled ? '✅ Enable' : '🚫 Disable'}
+          </button>
+          <button type="button" class="btn-sm btn-reset-sm"
+            onclick="openResetPwdModal('${s.id}', '${s.name || 'Student'}', '${s.email}', 'student')">
+            🔑 Reset Pwd
+          </button>
+        </div>
+      </td>`;
+    tbodyEl.appendChild(tr);
+  });
+}
+
+window.toggleStudentStatus = async function(studentId, newDisabledState) {
+  if (!confirm(`${newDisabledState ? 'Disable' : 'Enable'} access for this student account?`)) return;
+  try {
+    const res = await fetch(`/api/superadmin/students/${studentId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ disabled: newDisabledState })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Status update failed');
+    showToast(`Student account ${newDisabledState ? 'disabled' : 'enabled'}.`, 'success');
+    loadStudents();
+  } catch (err) { showToast(err.message, 'error'); }
 };
 
 // ===================================================================
@@ -898,30 +1007,56 @@ function wireEventListeners() {
   });
   document.getElementById('reset-pwd-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const staffId     = document.getElementById('reset-staff-target-id').value;
+    const targetInput = document.getElementById('reset-staff-target-id');
+    const targetId    = targetInput.value;
+    const targetType  = targetInput.dataset.type || 'staff';
     const newPassword = document.getElementById('reset-pwd-input').value;
+    const endpoint    = targetType === 'student'
+      ? `/api/superadmin/students/${targetId}/reset-password`
+      : `/api/superadmin/staff/${targetId}/reset-password`;
+
     try {
-      const res = await fetch(`/api/superadmin/staff/${staffId}/reset-password`, {
+      const res = await fetch(endpoint, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ newPassword })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Password reset failed');
-      showToast('Password updated!', 'success');
+      showToast(`${targetType === 'student' ? 'Student' : 'Staff'} password updated successfully!`, 'success');
       document.getElementById('reset-pwd-modal').style.display = 'none';
     } catch (err) { showToast(err.message, 'error'); }
   });
 
+  // Student search and filter listeners
+  document.getElementById('student-search-input')?.addEventListener('input', (e) => {
+    currentStudentSearch = e.target.value.trim();
+    renderStudents();
+  });
+
+  document.querySelectorAll('#student-status-filters .fpill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#student-status-filters .fpill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentStudentFilter = btn.dataset.sfilter || 'all';
+      renderStudents();
+    });
+  });
+
+  document.getElementById('btn-refresh-students')?.addEventListener('click', () => {
+    loadStudents();
+  });
+
   // Section switching — load data when section opens
   window.showSection = function(name) {
-    ['assignments','staff','pricing'].forEach(s => {
+    ['assignments','students','staff','pricing'].forEach(s => {
       const el = document.getElementById('section-' + s);
       const card = document.getElementById('acard-' + s);
       if (el) el.style.display = s === name ? 'block' : 'none';
       if (card) card.classList.toggle('active-action', s === name);
     });
-    if (name === 'staff')   loadStaff();
-    if (name === 'pricing') loadPricing();
+    if (name === 'students')    loadStudents();
+    if (name === 'staff')       loadStaff();
+    if (name === 'pricing')     loadPricing();
     if (name === 'assignments') loadAssignments();
   };
 }

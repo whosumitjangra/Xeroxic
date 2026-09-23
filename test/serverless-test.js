@@ -1779,7 +1779,96 @@ async function runTests() {
   assert(asgnDownloadRes.headers.location.includes('/object/sign/'), 'Redirect URL must be a signed Supabase URL');
   console.log('   ✅ HTTP 302 signed URL redirection verified for Supabase assignment downloads');
 
-  console.log('\n🎉 ALL 75 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP tests + 8 Razorpay tests + 11 storage & maintenance tests verified.\n');
+  // --- TESTS 76-80: NEW PERFORMANCE & BUSINESS LOGIC FEATURES ---
+  console.log('\n--- 2000-STUDENT SCALE & MEMORABLE ORDER ID SUITE ---');
+
+  // Test 76: Memorable Order ID format verification
+  console.log('76. Testing Memorable Order ID Generator format ([email_5][date_2][serial_3])...');
+  const { generateMemorableOrderId } = require('../lib/storage');
+  const testDate = new Date('2026-09-24T10:00:00Z');
+  const sampleOrderId = await generateMemorableOrderId('sumit.jangra@aitpune.edu.in', testDate);
+  console.log(`   Sample generated Order ID: ${sampleOrderId}`);
+  assert.match(sampleOrderId, /^sumit24\d{3}$/, 'Order ID must begin with first 5 letters of email, 2-digit date, and 3-digit serial');
+  console.log('   ✅ Memorable Order ID format verified (matches sumit24001 pattern)');
+
+  // Test 77: Student order history limit to previous 10 prints
+  console.log('77. Testing Student Order History Cap (Previous 10 prints limit)...');
+  const studentHistoryRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/orders',
+    headers: { cookie: sessionCookie }
+  });
+  assert.strictEqual(studentHistoryRes.statusCode, 200);
+  const studentOrders = studentHistoryRes.json().orders;
+  assert(Array.isArray(studentOrders), 'Orders must be an array');
+  assert(studentOrders.length <= 10, `Student history must contain at most 10 orders, found ${studentOrders.length}`);
+  console.log(`   ✅ Student order history cap verified: returned ${studentOrders.length} orders (<= 10 cap)`);
+
+  // Test 78: Admin Monthly Renewal
+  console.log('78. Testing Monthly Renewal for Admin Orders (/api/admin/orders & stats)...');
+  const adminMonthlyOrdersRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/orders',
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(adminMonthlyOrdersRes.statusCode, 200);
+  const monthlyOrdersData = adminMonthlyOrdersRes.json();
+  assert(monthlyOrdersData.currentMonth, 'Response must include currentMonth');
+  assert(monthlyOrdersData.activeMonth, 'Response must include activeMonth');
+
+  const adminMonthlyStatsRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/stats',
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(adminMonthlyStatsRes.statusCode, 200);
+  const statsData = adminMonthlyStatsRes.json();
+  assert(statsData.currentMonth, 'Stats must include currentMonth');
+  console.log(`   ✅ Monthly renewal verified (Active Month: ${monthlyOrdersData.activeMonth}, Orders in month: ${monthlyOrdersData.totalInMonth})`);
+
+  // Test 79: Super Admin Student List
+  console.log('79. Testing Super Admin GET /api/superadmin/students...');
+  const studentListRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/superadmin/students',
+    headers: { cookie: superCookie }
+  });
+  assert.strictEqual(studentListRes.statusCode, 200);
+  const studentList = studentListRes.json().students;
+  assert(Array.isArray(studentList), 'Students must be an array');
+  assert(studentList.length > 0, 'Must contain registered students');
+  const testStudent = studentList[0];
+  console.log(`   ✅ Super Admin student listing verified: retrieved ${studentList.length} student accounts`);
+
+  // Test 80: Super Admin Student Toggle Status & Password Reset
+  console.log('80. Testing Super Admin Student Toggle Status & Password Reset...');
+  const disableStudentRes = await invokeHandler({
+    method: 'PATCH',
+    url: `/api/superadmin/students/${testStudent.id}/status`,
+    headers: { cookie: superCookie },
+    body: { disabled: true }
+  });
+  assert.strictEqual(disableStudentRes.statusCode, 200);
+  assert.strictEqual(disableStudentRes.json().student.disabled, true);
+
+  const resetStudentPwdRes = await invokeHandler({
+    method: 'POST',
+    url: `/api/superadmin/students/${testStudent.id}/reset-password`,
+    headers: { cookie: superCookie },
+    body: { newPassword: 'studentNewPassword123' }
+  });
+  assert.strictEqual(resetStudentPwdRes.statusCode, 200);
+
+  // Re-enable student account
+  await invokeHandler({
+    method: 'PATCH',
+    url: `/api/superadmin/students/${testStudent.id}/status`,
+    headers: { cookie: superCookie },
+    body: { disabled: false }
+  });
+  console.log('   ✅ Super Admin student status toggle & password reset verified successfully');
+
+  console.log('\n🎉 ALL 80 TESTS PASSED SUCCESSFULLY! 8 workflow audit scenarios + 6 OWASP tests + 8 Razorpay tests + 11 storage & maintenance tests + 5 scale & memorable order ID tests verified.\n');
 }
 
 runTests().catch(err => {

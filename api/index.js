@@ -69,6 +69,10 @@ const {
   createAdminUser,
   toggleUserDisabled,
   resetUserPassword,
+  getStudentUsers,
+  getOrdersForUser,
+  generateMemorableOrderId,
+  isDateInMonth,
   saveUploadedFile,
   saveUploadedFileRecord,
   getUploadedFileBuffer,
@@ -850,7 +854,7 @@ async function handler(req, res) {
       const canonicalEmail = (currentUser && currentUser.email) ? currentUser.email : (session.email || 'N/A');
 
       const orders = await getOrders();
-      const orderId = 'ORD-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+      const orderId = await generateMemorableOrderId(canonicalEmail);
       const paymentId = utr || ('PAY-' + crypto.randomBytes(4).toString('hex').toUpperCase());
       const order = {
         orderId,
@@ -1222,13 +1226,12 @@ async function handler(req, res) {
       });
     }
 
-    // ---------------- ORDERS: LIST MY ORDERS (STUDENTS ONLY) ----------------
+    // ---------------- ORDERS: LIST MY ORDERS (STUDENTS ONLY - PREVIOUS 10 PRINTS) ----------------
     if (pathname === '/api/orders' && req.method === 'GET') {
       const session = getOrCreateStudentSession(req, res, isSecure);
       if (!session) return;
-      const orders = await getOrders();
-      const mine = orders
-        .filter(o => o.ownerId === session.userId)
+      const userOrders = await getOrdersForUser(session.userId, 10);
+      const mine = userOrders
         .map(o => ({
           orderId: o.orderId,
           total: o.total,
@@ -1239,8 +1242,7 @@ async function handler(req, res) {
           createdAt: o.createdAt,
           status: computeOrderStatus(o),
           items: o.items || []
-        }))
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        }));
       return sendJSON(res, 200, { orders: mine });
     }
 
@@ -1473,8 +1475,20 @@ async function handler(req, res) {
 
       const filterStatus = parsed.searchParams.get('status');
       const filterOrderId = parsed.searchParams.get('orderId');
+      const filterMonth = parsed.searchParams.get('month'); // e.g. '2026-09' or 'all'
+
+      // Monthly renewal: Compute active month
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const activeMonth = filterMonth && filterMonth.toLowerCase() === 'all' ? null : (filterMonth || currentMonth);
 
       let resultOrders = enriched;
+
+      // Filter by active month unless 'all' is requested or querying a specific orderId
+      if (activeMonth && !filterOrderId) {
+        resultOrders = resultOrders.filter(o => isDateInMonth(o.createdAt, activeMonth));
+      }
+
       if (filterOrderId) {
         resultOrders = resultOrders.filter(o => o.orderId.toLowerCase() === filterOrderId.trim().toLowerCase());
       }
@@ -1490,7 +1504,13 @@ async function handler(req, res) {
         }
       }
 
-      return sendJSON(res, 200, { success: true, orders: resultOrders });
+      return sendJSON(res, 200, {
+        success: true,
+        orders: resultOrders,
+        currentMonth,
+        activeMonth: activeMonth || 'all',
+        totalInMonth: resultOrders.length
+      });
     }
 
     // ---------------- ADMIN: UPDATE ORDER STATUS ----------------
@@ -1544,13 +1564,22 @@ async function handler(req, res) {
       return sendJSON(res, 200, { success: true, orderId: updated.orderId, status: updated.status });
     }
 
-    // ---------------- ADMIN: GET STATS ----------------
+    // ---------------- ADMIN: GET STATS (RENEWED MONTHLY) ----------------
     if (pathname === '/api/admin/stats' && req.method === 'GET') {
       const session = getSessionFromReq(req);
       if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
 
-      const orders = await getOrders();
+      const filterMonth = parsed.searchParams.get('month'); // e.g. '2026-09' or 'all'
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const activeMonth = filterMonth && filterMonth.toLowerCase() === 'all' ? null : (filterMonth || currentMonth);
+
+      const allOrders = await getOrders();
       const printRequests = await getPrintRequests();
+
+      // Filter by active month unless 'all'
+      const orders = activeMonth ? allOrders.filter(o => isDateInMonth(o.createdAt, activeMonth)) : allOrders;
+
       let totalRevenue = 0;
       let newCount = 0;
       let acceptedCount = 0;
@@ -1583,7 +1612,9 @@ async function handler(req, res) {
         collectedCount,
         completedCount: collectedCount,
         inProgressCount: newCount + acceptedCount + printingCount,
-        totalRevenue
+        totalRevenue,
+        currentMonth,
+        activeMonth: activeMonth || 'all'
       });
     }
 
@@ -1643,6 +1674,41 @@ async function handler(req, res) {
       const updated = await resetUserPassword(staffId, newPassword);
       if (!updated) return sendJSON(res, 404, { error: 'Staff account not found.' });
       return sendJSON(res, 200, { success: true, message: 'Password reset successfully.' });
+    }
+
+    // ---------------- SUPER ADMIN: GET REGISTERED STUDENTS ----------------
+    if (pathname === '/api/superadmin/students' && req.method === 'GET') {
+      const session = getSessionFromReq(req);
+      if (!checkRoleAccess(session, ['SUPER_ADMIN'], res)) return;
+      const students = await getStudentUsers();
+      return sendJSON(res, 200, { success: true, students, count: students.length });
+    }
+
+    // ---------------- SUPER ADMIN: TOGGLE STUDENT ACTIVE/DISABLED ----------------
+    if (pathname.startsWith('/api/superadmin/students/') && pathname.endsWith('/status') && (req.method === 'PATCH' || req.method === 'POST')) {
+      const session = getSessionFromReq(req);
+      if (!checkRoleAccess(session, ['SUPER_ADMIN'], res)) return;
+      const parts = pathname.split('/');
+      const studentId = decodeURIComponent(parts[parts.length - 2]);
+      const { disabled } = await readJSONBody(req);
+      const updated = await toggleUserDisabled(studentId, Boolean(disabled));
+      if (!updated) return sendJSON(res, 404, { error: 'Student account not found.' });
+      return sendJSON(res, 200, { success: true, student: updated });
+    }
+
+    // ---------------- SUPER ADMIN: RESET STUDENT PASSWORD ----------------
+    if (pathname.startsWith('/api/superadmin/students/') && pathname.endsWith('/reset-password') && req.method === 'POST') {
+      const session = getSessionFromReq(req);
+      if (!checkRoleAccess(session, ['SUPER_ADMIN'], res)) return;
+      const parts = pathname.split('/');
+      const studentId = decodeURIComponent(parts[parts.length - 2]);
+      const { newPassword } = await readJSONBody(req);
+      if (!newPassword || newPassword.length < 6) {
+        return sendJSON(res, 400, { error: 'New password must be at least 6 characters long.' });
+      }
+      const updated = await resetUserPassword(studentId, newPassword);
+      if (!updated) return sendJSON(res, 404, { error: 'Student account not found.' });
+      return sendJSON(res, 200, { success: true, message: 'Student password reset successfully.' });
     }
 
     // ---------------- SUPER ADMIN: GET PRICING ----------------

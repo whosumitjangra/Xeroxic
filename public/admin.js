@@ -40,11 +40,12 @@ async function checkAdminAuth() {
       Notification.requestPermission().catch(() => {});
     }
 
-    // Start 4-second responsive polling for real-time incoming requests & persistent notifications
+    // High-scale responsive polling (8s with document.hidden guard to prevent tab storms)
     setInterval(() => {
+      if (document.hidden) return; // Pause network load when admin tab is in background
       loadDashboardData(true);
       loadAdminNotifications(true);
-    }, 4000);
+    }, 8000);
   } catch (err) {
     window.location.href = '/admin';
   }
@@ -318,16 +319,35 @@ async function loadDashboardData(isPolling = false) {
     if (emptyEl) emptyEl.style.display = 'none';
   }
 
+  const monthSelect = document.getElementById('admin-month-select');
+  const selectedMonthVal = monthSelect ? monthSelect.value : 'current';
+  const monthQueryParam = selectedMonthVal === 'all' ? '&month=all' : '';
+
   try {
     const [ordersRes, statsRes] = await Promise.all([
-      fetch(`/api/admin/orders?_t=${Date.now()}`, { cache: 'no-store' }),
-      fetch(`/api/admin/stats?_t=${Date.now()}`, { cache: 'no-store' })
+      fetch(`/api/admin/orders?_t=${Date.now()}${monthQueryParam}`, { cache: 'no-store' }),
+      fetch(`/api/admin/stats?_t=${Date.now()}${monthQueryParam}`, { cache: 'no-store' })
     ]);
 
     if (!ordersRes.ok) throw new Error('Failed to load orders');
 
     const ordersData = await ordersRes.json();
     const freshOrders = ordersData.orders || [];
+
+    // Update active month label in UI
+    const monthLabelEl = document.getElementById('admin-current-month-label');
+    if (monthLabelEl) {
+      if (ordersData.activeMonth === 'all') {
+        monthLabelEl.textContent = 'All Time';
+      } else {
+        const ym = ordersData.activeMonth || ordersData.currentMonth || '';
+        if (ym) {
+          const [y, m] = ym.split('-');
+          const d = new Date(parseInt(y), parseInt(m) - 1, 1);
+          monthLabelEl.textContent = d.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+        }
+      }
+    }
 
     if (isPolling && freshOrders.length < allOrders.length) {
       // KV may have returned a stale/incomplete snapshot.
@@ -1628,6 +1648,11 @@ document.getElementById('admin-asgn-modal')?.addEventListener('click', (e) => {
   if (e.target.id === 'admin-asgn-modal') {
     e.target.style.display = 'none';
   }
+});
+
+// Month selector change handler for monthly renewal
+document.getElementById('admin-month-select')?.addEventListener('change', () => {
+  loadDashboardData(false);
 });
 
 // Run auth check on initialization

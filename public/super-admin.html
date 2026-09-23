@@ -280,6 +280,11 @@
       <div class="action-card-icon">📋</div>
       <div class="action-card-label">Add<br>Assignment</div>
     </div>
+    <div class="action-card" id="acard-students" onclick="showSection('students')">
+      <span class="action-card-beacon" style="background:#10b981; animation-name:beacon-pulse-green;"></span>
+      <div class="action-card-icon">🎓</div>
+      <div class="action-card-label">Manage<br>Students</div>
+    </div>
     <div class="action-card" id="acard-staff" onclick="showSection('staff')">
       <span class="action-card-beacon blue"></span>
       <div class="action-card-icon">👤</div>
@@ -317,6 +322,47 @@
         <div id="sa-asgn-empty" style="display:none;text-align:center;padding:32px;color:#8fa896;">
           <div style="font-size:36px;margin-bottom:10px;">📚</div>
           <p style="margin:0;font-weight:600;">No assignments published yet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== STUDENTS PANEL ===== -->
+  <div id="section-students" style="display:none;">
+    <div class="content-panel">
+      <div class="content-panel-header">
+        <div>
+          <h2 class="content-panel-title">🎓 Registered Students (<span id="tab-student-count">0</span>)</h2>
+          <p class="content-panel-sub">Manage student portal accounts, status and credentials</p>
+        </div>
+        <button class="btn-green" id="btn-refresh-students" style="padding:7px 16px; font-size:12px;">🔄 Refresh List</button>
+      </div>
+      <div class="filter-row">
+        <div class="search-box-wrap">
+          <span class="s-icon">🔍</span>
+          <input type="text" class="search-box-input" id="student-search-input" placeholder="Search students by name or college email…">
+        </div>
+        <div class="filter-pills" id="student-status-filters">
+          <button type="button" class="fpill active" data-sfilter="all">All Students</button>
+          <button type="button" class="fpill" data-sfilter="active">Active Only</button>
+          <button type="button" class="fpill" data-sfilter="disabled">Disabled</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div id="student-loading"><div class="spinner"></div><p style="color:#7d9183;font-size:13px;">Loading student accounts…</p></div>
+        <div style="overflow-x:auto;">
+          <table class="staff-table" id="student-table" style="display:none;">
+            <thead>
+              <tr>
+                <th>Student Name</th><th>Email</th><th>Registered On</th><th>Status</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="student-tbody"></tbody>
+          </table>
+        </div>
+        <div id="student-empty" style="display:none;text-align:center;padding:32px;color:#8fa896;">
+          <div style="font-size:36px;margin-bottom:10px;">🎓</div>
+          <p style="margin:0;font-weight:600;">No registered students found.</p>
         </div>
       </div>
     </div>

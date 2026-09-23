@@ -558,9 +558,15 @@
       <div class="content-panel-header">
         <div>
           <h2 class="content-panel-title" id="orders-panel-title">All Print Requests</h2>
-          <p class="content-panel-sub">Live view • auto-refreshes every 4 seconds</p>
+          <p class="content-panel-sub" id="orders-panel-sub">📅 Monthly View: <strong id="admin-current-month-label">Active Month</strong> • Auto-refreshes</p>
         </div>
-        <button class="refresh-btn" id="refresh-orders-btn">🔄 Refresh</button>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <select id="admin-month-select" style="padding:7px 12px; border:1.5px solid #dce5dc; border-radius:10px; font-family:'Poppins'; font-size:12px; font-weight:600; color:#2d6b2d; background:#fff; cursor:pointer;">
+            <option value="current">Current Month</option>
+            <option value="all">All Time (Full History)</option>
+          </select>
+          <button class="refresh-btn" id="refresh-orders-btn">🔄 Refresh</button>
+        </div>
       </div>
 
       <div class="filter-row">

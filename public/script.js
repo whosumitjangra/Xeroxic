@@ -1141,8 +1141,11 @@ async function trackOrder(orderId) {
   // Initial fetch (shows loading message)
   await fetchAndRender(false);
 
-  // Start live auto-polling every 8 seconds (only for non-terminal statuses)
-  _trackingPoller = setInterval(() => fetchAndRender(true), 8000);
+  // Start live auto-polling every 8 seconds (only for non-terminal statuses, paused when tab in background)
+  _trackingPoller = setInterval(() => {
+    if (document.hidden) return;
+    fetchAndRender(true);
+  }, 8000);
 }
 
 // ---------- Dual-Tab Order History & In-Process Cards Tracker ----------
