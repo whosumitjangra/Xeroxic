@@ -73,6 +73,7 @@ const {
   getOrdersForUser,
   generateMemorableOrderId,
   isDateInMonth,
+  getISTDateParts,
   saveUploadedFile,
   saveUploadedFileRecord,
   getUploadedFileBuffer,
@@ -1477,9 +1478,9 @@ async function handler(req, res) {
       const filterOrderId = parsed.searchParams.get('orderId');
       const filterMonth = parsed.searchParams.get('month'); // e.g. '2026-09' or 'all'
 
-      // Monthly renewal: Compute active month
-      const now = new Date();
-      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      // Monthly renewal: Compute active month in Indian Standard Time (IST)
+      const nowIST = getISTDateParts(new Date());
+      const currentMonth = `${nowIST.yearStr}-${nowIST.monthStr}`;
       const activeMonth = filterMonth && filterMonth.toLowerCase() === 'all' ? null : (filterMonth || currentMonth);
 
       let resultOrders = enriched;
@@ -1570,8 +1571,8 @@ async function handler(req, res) {
       if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
 
       const filterMonth = parsed.searchParams.get('month'); // e.g. '2026-09' or 'all'
-      const now = new Date();
-      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const nowIST = getISTDateParts(new Date());
+      const currentMonth = `${nowIST.yearStr}-${nowIST.monthStr}`;
       const activeMonth = filterMonth && filterMonth.toLowerCase() === 'all' ? null : (filterMonth || currentMonth);
 
       const allOrders = await getOrders();
