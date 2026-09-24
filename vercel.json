@@ -62,10 +62,6 @@
       "destination": "/super-admin.html"
     },
     {
-      "source": "/demo-video",
-      "destination": "/demo-video.html"
-    },
-    {
       "source": "/admin/:file((?!dashboard$).*\\..*)",
       "destination": "/:file"
     },
