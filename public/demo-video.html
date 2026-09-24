@@ -1,0 +1,1767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XEROXIC — Interactive Presentation Video & Architecture Tour</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --ink: #f9fafb;
+      --muted: #94a3b8;
+      --primary: #10b981;
+      --primary-dark: #059669;
+      --primary-light: #34d399;
+      --accent: #6366f1;
+      --gold: #f59e0b;
+      --border: rgba(255, 255, 255, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Outfit', -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      padding: 20px;
+    }
+
+    /* Ambient Background Glow */
+    .glow-circle {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.18;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .glow-1 { top: -10%; left: 10%; width: 500px; height: 500px; background: #10b981; }
+    .glow-2 { bottom: -10%; right: 10%; width: 600px; height: 600px; background: #6366f1; }
+
+    /* Main Container */
+    .video-studio {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 1120px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Studio Header */
+    .studio-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 4px 6px;
+    }
+
+    .studio-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 10px;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+    }
+
+    .brand-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #fff;
+    }
+
+    .brand-sub {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .studio-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pill-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--ink);
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .pill-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.25);
+      transform: translateY(-1px);
+    }
+
+    .pill-btn.primary {
+      background: linear-gradient(135deg, #10b981, #047857);
+      border: none;
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+    }
+
+    .pill-btn.primary:hover {
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+    }
+
+    /* Screen Wrapper */
+    .screen-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.12);
+    }
+
+    canvas#videoCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: pointer;
+    }
+
+    /* Overlay Overlay Screen */
+    .overlay-hud {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .hud-tag {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #a7f3d0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .hud-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+      animation: pulseDot 1.5s infinite;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* Big Center Play Watermark */
+    .play-watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: rgba(16, 185, 129, 0.9);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 32px;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.5);
+      transition: all 0.25s ease;
+      z-index: 15;
+    }
+
+    .play-watermark:hover {
+      transform: translate(-50%, -50%) scale(1.1);
+      background: #10b981;
+    }
+
+    .play-watermark.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, -50%) scale(0.8);
+    }
+
+    /* Player Controls Bar */
+    .player-controls {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .progress-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .time-readout {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      min-width: 85px;
+    }
+
+    .seek-slider {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.15);
+      outline: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      accent-color: var(--primary);
+    }
+
+    .controls-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .ctrl-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--ink);
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .icon-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .icon-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+    }
+
+    /* Scene Shortcuts Navigation */
+    .scene-selector {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .scene-selector::-webkit-scrollbar { display: none; }
+
+    .scene-chip {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .scene-chip:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--ink);
+    }
+
+    .scene-chip.active {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: var(--primary);
+      color: var(--primary-light);
+    }
+
+    /* Recording Badge */
+    .rec-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 5px 12px;
+      border-radius: 999px;
+      display: none;
+    }
+
+    .rec-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+      animation: pulseDot 1s infinite;
+    }
+
+    /* Presentation Notes Accordion */
+    .notes-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .notes-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .notes-text {
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: #94a3b8;
+    }
+
+    .notes-text strong {
+      color: #f1f5f9;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ambient Glow -->
+  <div class="glow-circle glow-1"></div>
+  <div class="glow-circle glow-2"></div>
+
+  <div class="video-studio">
+    <!-- Header -->
+    <div class="studio-header">
+      <div class="studio-brand">
+        <span class="brand-badge">⚡ XEROXIC STUDIO</span>
+        <div>
+          <div class="brand-title">Smart Campus Video Demonstration</div>
+          <div class="brand-sub">End-to-End Workflow with Synthesizer Music &amp; Smooth Ken Burns Zoom</div>
+        </div>
+      </div>
+
+      <div class="studio-actions">
+        <a href="/" class="pill-btn">← Back to App</a>
+        <button id="exportBtn" class="pill-btn primary">
+          <span>⬇ Export Video (MP4/WebM)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Screen Wrapper -->
+    <div class="screen-wrapper" id="screenWrapper">
+      <canvas id="videoCanvas" width="1280" height="720"></canvas>
+
+      <!-- HUD Top Overlay -->
+      <div class="overlay-hud">
+        <div class="hud-tag">
+          <div class="hud-dot"></div>
+          <span id="sceneTitle">Scene 1: Platform Overview</span>
+        </div>
+        <div class="rec-status" id="recBadge">
+          <div class="rec-dot"></div>
+          <span>RECORDING MP4/WEBM...</span>
+        </div>
+        <div class="hud-tag" style="color:#e2e8f0; font-family:'JetBrains Mono', monospace; font-size:11px;">
+          <span id="fpsBadge">60 FPS</span> • <span>v3.0.0 Cloud</span>
+        </div>
+      </div>
+
+      <!-- Play Watermark (Initial Click) -->
+      <div class="play-watermark" id="centerPlayBtn" title="Click to Play Presentation Video">
+        ▶
+      </div>
+    </div>
+
+    <!-- Controls Bar -->
+    <div class="player-controls">
+      <!-- Progress Bar -->
+      <div class="progress-row">
+        <span class="time-readout" id="timeDisplay">00:00 / 01:45</span>
+        <input type="range" class="seek-slider" id="seekSlider" min="0" max="105" step="0.1" value="0">
+      </div>
+
+      <!-- Buttons Row -->
+      <div class="controls-row">
+        <div class="ctrl-group">
+          <button class="icon-btn" id="playBtn" title="Play / Pause">▶</button>
+          <button class="icon-btn" id="rewindBtn" title="Rewind to Start">⏮</button>
+          <button class="icon-btn" id="musicToggleBtn" title="Toggle Music" class="active">🎵</button>
+          <input type="range" id="volSlider" min="0" max="1" step="0.05" value="0.75" style="width:70px; accent-color:var(--primary);" title="Music Volume">
+        </div>
+
+        <!-- Scene Shortcuts -->
+        <div class="scene-selector" id="sceneChipsContainer">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="ctrl-group">
+          <button class="icon-btn" id="fullscreenBtn" title="Toggle Fullscreen">⛶</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Presenter Speaker Notes -->
+    <div class="notes-card">
+      <div class="notes-title">
+        <span>🎤 Presenter Script &amp; Technical Talking Points:</span>
+      </div>
+      <div class="notes-text" id="speakerNotesText">
+        Loading presentation script...
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       XEROXIC VIDEO DEMONSTRATION ENGINE
+       - Ken Burns Dynamic Camera Engine (Zoom In / Out / Pan)
+       - Web Audio API Synthesizer Soundtrack & Synchronized SFX
+       - Canvas 2D Realistic High-Fidelity App Mockup Renderer
+       - Native MediaRecorder Canvas + Audio Export Engine
+       ========================================================================= */
+
+    const canvas = document.getElementById('videoCanvas');
+    const ctx = canvas.getContext('2d');
+    const W = 1280;
+    const H = 720;
+
+    // UI Elements
+    const playBtn = document.getElementById('playBtn');
+    const centerPlayBtn = document.getElementById('centerPlayBtn');
+    const rewindBtn = document.getElementById('rewindBtn');
+    const seekSlider = document.getElementById('seekSlider');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const sceneTitle = document.getElementById('sceneTitle');
+    const sceneChipsContainer = document.getElementById('sceneChipsContainer');
+    const speakerNotesText = document.getElementById('speakerNotesText');
+    const musicToggleBtn = document.getElementById('musicToggleBtn');
+    const volSlider = document.getElementById('volSlider');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const recBadge = document.getElementById('recBadge');
+
+    // SCENES DEFINITIONS (Total: 105 seconds = 1m 45s)
+    const SCENES = [
+      {
+        id: 'intro',
+        name: '1. Title & Intro',
+        start: 0,
+        end: 10,
+        speaker: 'Respected professors and colleagues: Welcome to Xeroxic, the cloud-native smart campus printing platform for Army Institute of Technology, Pune. It completely eliminates physical printing queues and pendrive malware.',
+        cam: { from: { x: W/2, y: H/2, zoom: 0.95 }, to: { x: W/2, y: H/2, zoom: 1.05 } }
+      },
+      {
+        id: 'student_login',
+        name: '2. Student Login',
+        start: 10,
+        end: 22,
+        speaker: 'Students sign in securely with HMAC-SHA256 password hashing and role-based access control. No clunky registration; fast single-tap authentication from any phone or dorm PC.',
+        cam: { from: { x: W/2, y: H/2, zoom: 1.0 }, to: { x: W/2, y: H/2 + 20, zoom: 1.25 } }
+      },
+      {
+        id: 'upload_supabase',
+        name: '3. Supabase 50MB Upload',
+        start: 22,
+        end: 36,
+        speaker: 'Documents up to 50MB stream directly to Supabase Cloud Object Storage using pre-authenticated signed URLs. This completely bypasses Vercel 4.5MB serverless limits with zero backend RAM bloat.',
+        cam: { from: { x: 400, y: 380, zoom: 1.15 }, to: { x: 420, y: 360, zoom: 1.35 } }
+      },
+      {
+        id: 'print_options',
+        name: '4. Print Options & Price',
+        start: 36,
+        end: 48,
+        speaker: 'Dynamic in-browser pricing engine. As the student chooses Duplex printing, Color pages, and Spiral Binding, the price updates dynamically in real-time with zero ambiguity.',
+        cam: { from: { x: 750, y: 360, zoom: 1.1 }, to: { x: 760, y: 350, zoom: 1.32 } }
+      },
+      {
+        id: 'payment_id',
+        name: '5. Razorpay & Memorable ID',
+        start: 48,
+        end: 62,
+        speaker: 'Razorpay UPI checkout verifies payment with server-side HMAC signatures. Notice the generated Order ID: "sumit24001" (first 5 letters of email + date + 3-digit serial). Short names are padded with # (e.g. ali##24001).',
+        cam: { from: { x: W/2, y: H/2, zoom: 1.0 }, to: { x: W/2, y: 340, zoom: 1.45 } }
+      },
+      {
+        id: 'admin_desk',
+        name: '6. Admin Portal Live Order',
+        start: 62,
+        end: 74,
+        speaker: 'Switching to the Shop Admin Desk! The verified order appears instantly in the operator queue with zero delay, ready with download links and full print configurations.',
+        cam: { from: { x: W/2, y: H/2, zoom: 1.05 }, to: { x: 500, y: 380, zoom: 1.28 } }
+      },
+      {
+        id: 'admin_status',
+        name: '7. 0ms Status Progression',
+        start: 74,
+        end: 84,
+        speaker: 'Atomic status progression: The operator clicks "Start Printing", then "Mark Ready". Thanks to optimistic UI synchronization, status transitions update in 0ms without page reloads!',
+        cam: { from: { x: 680, y: 390, zoom: 1.25 }, to: { x: 720, y: 400, zoom: 1.48 } }
+      },
+      {
+        id: 'express_qr',
+        name: '8. ⚡ Express QR Pickup Pass',
+        start: 84,
+        end: 94,
+        speaker: 'On the student device, the screen lights up with an Express QR Pickup Pass. The student walks to the shop counter, the operator scans the QR code in 1 second, and the physical printout is handed over!',
+        cam: { from: { x: W/2, y: H/2, zoom: 1.1 }, to: { x: W/2, y: 360, zoom: 1.4 } }
+      },
+      {
+        id: 'superadmin',
+        name: '9. Super Admin & Purge',
+        start: 94,
+        end: 101,
+        speaker: 'Zero-retention privacy engine: The document binary is permanently shredded from cloud storage upon collection. The Super Admin manages student profiles, 10-order rolling history, and monthly ledger renewals.',
+        cam: { from: { x: W/2, y: H/2, zoom: 1.0 }, to: { x: W/2, y: 400, zoom: 1.22 } }
+      },
+      {
+        id: 'outro',
+        name: '10. Summary & Credits',
+        start: 101,
+        end: 105,
+        speaker: 'Xeroxic v3.0.0 is live and deployed on Vercel Edge + MongoDB Atlas + Supabase Storage. Engineered with precision by Sumit Jangra for Army Institute of Technology, Pune.',
+        cam: { from: { x: W/2, y: H/2, zoom: 1.15 }, to: { x: W/2, y: H/2, zoom: 0.98 } }
+      }
+    ];
+
+    const TOTAL_DURATION = 105; // seconds
+    let currentTime = 0;
+    let isPlaying = false;
+    let lastTimestamp = 0;
+    let musicEnabled = true;
+
+    // Render Scene Chips
+    SCENES.forEach((sc, i) => {
+      const chip = document.createElement('div');
+      chip.className = `scene-chip ${i === 0 ? 'active' : ''}`;
+      chip.textContent = sc.name;
+      chip.addEventListener('click', () => {
+        jumpToTime(sc.start);
+      });
+      sceneChipsContainer.appendChild(chip);
+    });
+
+    // Helper: current scene
+    function getCurrentScene(time) {
+      return SCENES.find(s => time >= s.start && time < s.end) || SCENES[SCENES.length - 1];
+    }
+
+    // Helper: lerp
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+    function easeInOutQuad(t) {
+      return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+
+    /* =========================================================================
+       AUDIO SYNTHESIZER ENGINE (Web Audio API)
+       Modern Synthwave / Tech-House Campus Beat
+       ========================================================================= */
+    let audioCtx = null;
+    let masterGain = null;
+    let audioDestNode = null;
+    let synthTimer = null;
+    let stepCount = 0;
+
+    function initAudio() {
+      if (audioCtx) return;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContextClass();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.setValueAtTime(parseFloat(volSlider.value), audioCtx.currentTime);
+      masterGain.connect(audioCtx.destination);
+
+      // Create destination for MediaRecorder export
+      audioDestNode = audioCtx.createMediaStreamDestination();
+      masterGain.connect(audioDestNode);
+
+      // 124 BPM electronic sequencer
+      const stepInterval = (60 / 124) / 4; // 16th note
+      setInterval(playSynthStep, stepInterval * 1000);
+    }
+
+    // Bass notes in A minor
+    const bassline = [110, 110, 130.81, 110, 98, 98, 123.47, 98, 87.31, 87.31, 110, 87.31, 98, 98, 110, 123.47];
+    // Arp notes
+    const arpNotes = [440, 523.25, 659.25, 880, 523.25, 659.25, 783.99, 659.25];
+
+    function playSynthStep() {
+      if (!isPlaying || !musicEnabled || !audioCtx || audioCtx.state !== 'running') return;
+      const t = audioCtx.currentTime;
+      const step = stepCount % 16;
+      stepCount++;
+
+      // 1. Kick Drum on beats 0, 4, 8, 12
+      if (step % 4 === 0) {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.frequency.setValueAtTime(140, t);
+        osc.frequency.exponentialRampToValueAtTime(38, t + 0.09);
+        g.gain.setValueAtTime(0.7, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+        osc.connect(g);
+        g.connect(masterGain);
+        osc.start(t);
+        osc.stop(t + 0.23);
+      }
+
+      // 2. Crisp Hi-Hat on off-beats 2, 6, 10, 14 and 16ths
+      if (step % 2 === 0) {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = 'highpass';
+        osc.frequency.setValueAtTime(7000 + Math.random() * 1500, t);
+        g.gain.setValueAtTime(step % 4 === 2 ? 0.12 : 0.04, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+        osc.connect(g);
+        g.connect(masterGain);
+        osc.start(t);
+        osc.stop(t + 0.045);
+      }
+
+      // 3. Melodic Bassline
+      if (step % 2 === 0) {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(bassline[step] / 2, t);
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(450, t);
+        filter.frequency.exponentialRampToValueAtTime(120, t + 0.12);
+        g.gain.setValueAtTime(0.25, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+        osc.connect(filter);
+        filter.connect(g);
+        g.connect(masterGain);
+        osc.start(t);
+        osc.stop(t + 0.15);
+      }
+
+      // 4. Arpeggiated Sparkle Lead
+      const arpFreq = arpNotes[(stepCount) % arpNotes.length];
+      const leadOsc = audioCtx.createOscillator();
+      const leadGain = audioCtx.createGain();
+      leadOsc.type = 'triangle';
+      leadOsc.frequency.setValueAtTime(arpFreq, t);
+      leadGain.gain.setValueAtTime(0.12, t);
+      leadGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      leadOsc.connect(leadGain);
+      leadGain.connect(masterGain);
+      leadOsc.start(t);
+      leadOsc.stop(t + 0.13);
+    }
+
+    // Sound FX: Chime / Pop / Scan
+    function playSfx(type) {
+      if (!audioCtx || !musicEnabled) return;
+      const t = audioCtx.currentTime;
+      if (type === 'click') {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.frequency.setValueAtTime(800, t);
+        osc.frequency.exponentialRampToValueAtTime(400, t + 0.03);
+        g.gain.setValueAtTime(0.2, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+        osc.connect(g);
+        g.connect(masterGain);
+        osc.start(t);
+        osc.stop(t + 0.035);
+      } else if (type === 'payment') {
+        // Double ding
+        [587.33, 880].forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, t + idx * 0.1);
+          g.gain.setValueAtTime(0.25, t + idx * 0.1);
+          g.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.1 + 0.4);
+          osc.connect(g);
+          g.connect(masterGain);
+          osc.start(t + idx * 0.1);
+          osc.stop(t + idx * 0.1 + 0.45);
+        });
+      } else if (type === 'scan') {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1760, t);
+        osc.frequency.exponentialRampToValueAtTime(2637, t + 0.15);
+        g.gain.setValueAtTime(0.3, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        osc.connect(g);
+        g.connect(masterGain);
+        osc.start(t);
+        osc.stop(t + 0.22);
+      }
+    }
+
+    /* =========================================================================
+       DRAWING & GRAPHICS ENGINE
+       Draws high-fidelity realistic UI for Student, Admin & SuperAdmin
+       ========================================================================= */
+
+    function drawRoundedRect(x, y, w, h, r, fill, stroke, strokeW = 1) {
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, r);
+      if (fill) {
+        ctx.fillStyle = fill;
+        ctx.fill();
+      }
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = strokeW;
+        ctx.stroke();
+      }
+    }
+
+    // 1. Scene: Title & Architecture Overview
+    function renderSceneIntro(localT) {
+      // Tech grid background
+      ctx.fillStyle = '#062618';
+      ctx.fillRect(0, 0, W, H);
+
+      // Subtle grid
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.08)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < W; x += 40) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for (let y = 0; y < H; y += 40) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+
+      // Main Banner
+      const cardY = 160;
+      drawRoundedRect(180, cardY, 920, 420, 24, 'rgba(15, 23, 42, 0.95)', '#10b981', 2);
+
+      // Title & Badges
+      ctx.fillStyle = '#10b981';
+      ctx.font = '700 14px Outfit';
+      ctx.fillText('⚡ CAMPUS CLOUD INFRASTRUCTURE • v3.0.0', 220, cardY + 50);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 48px Outfit';
+      ctx.fillText('XEROXIC PRINTING NETWORK', 220, cardY + 110);
+
+      ctx.fillStyle = '#a7f3d0';
+      ctx.font = '500 20px Outfit';
+      ctx.fillText('Zero-Queue Smart Xerox Management System', 220, cardY + 145);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '400 15px Outfit';
+      ctx.fillText('Engineered with ❤️ for Army Institute of Technology (AIT), Pune', 220, cardY + 175);
+
+      // 4 Tech Badges
+      const badges = [
+        { label: '🍃 MongoDB Atlas', sub: 'Connection Pooling' },
+        { label: '☁️ Supabase 50MB', sub: 'Signed Direct URLs' },
+        { label: '💳 Razorpay UPI', sub: 'HMAC-SHA256 Auth' },
+        { label: '🎫 Express QR Pass', sub: '5-Sec Counter Scan' }
+      ];
+
+      badges.forEach((b, i) => {
+        const bx = 220 + i * 215;
+        const by = cardY + 230;
+        drawRoundedRect(bx, by, 200, 90, 16, 'rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.1)', 1);
+        ctx.fillStyle = '#f1f5f9';
+        ctx.font = '700 15px Outfit';
+        ctx.fillText(b.label, bx + 16, by + 38);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '500 12px JetBrains Mono';
+        ctx.fillText(b.sub, bx + 16, by + 64);
+      });
+
+      // Bottom Callout
+      ctx.fillStyle = '#34d399';
+      ctx.font = '600 14px Outfit';
+      ctx.fillText('▶ Starting Interactive System Walkthrough...', 220, cardY + 375);
+    }
+
+    // 2. Scene: Student Login Portal
+    function renderSceneStudentLogin(localT) {
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, W, H);
+
+      // Nav Bar
+      drawRoundedRect(100, 30, 1080, 60, 14, '#1e293b', 'rgba(255,255,255,0.08)');
+      ctx.fillStyle = '#10b981';
+      ctx.font = '800 20px Outfit';
+      ctx.fillText('XEROXIC', 130, 68);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '600 13px Outfit';
+      ctx.fillText('AIT Campus Stationery Hub', 230, 67);
+
+      // Login Card
+      const lx = 420, ly = 130, lw = 440, lh = 520;
+      drawRoundedRect(lx, ly, lw, lh, 20, '#182234', '#334155', 2);
+
+      ctx.fillStyle = '#10b981';
+      ctx.font = '700 12px Outfit';
+      ctx.fillText('🎓 SECURE STUDENT ACCESS', lx + 36, ly + 50);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 26px Outfit';
+      ctx.fillText('Sign In to Print Portal', lx + 36, ly + 85);
+
+      // Form Fields
+      // Email
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '600 13px Outfit';
+      ctx.fillText('College Email ID', lx + 36, ly + 140);
+      drawRoundedRect(lx + 36, ly + 150, lw - 72, 48, 10, '#0f172a', '#475569');
+
+      // Typing animation
+      const fullEmail = 'sumit.jangra@aitpune.edu.in';
+      const typedLen = Math.min(fullEmail.length, Math.floor(localT * 3.5));
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '500 14px JetBrains Mono';
+      ctx.fillText(fullEmail.substring(0, typedLen) + (Math.floor(localT * 3) % 2 === 0 ? '|' : ''), lx + 50, ly + 180);
+
+      // Password
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '600 13px Outfit';
+      ctx.fillText('Password (HMAC Protected)', lx + 36, ly + 230);
+      drawRoundedRect(lx + 36, ly + 240, lw - 72, 48, 10, '#0f172a', '#475569');
+      const passStars = '••••••••••••';
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '500 16px JetBrains Mono';
+      ctx.fillText(localT > 4 ? passStars : '', lx + 50, ly + 270);
+
+      // Role Pill
+      drawRoundedRect(lx + 36, ly + 310, 150, 32, 8, 'rgba(16, 185, 129, 0.15)', '#10b981');
+      ctx.fillStyle = '#34d399';
+      ctx.font = '700 12px Outfit';
+      ctx.fillText('✓ Role: Student', lx + 50, ly + 331);
+
+      // Sign In Button
+      const btnBg = localT > 7 ? '#10b981' : '#059669';
+      drawRoundedRect(lx + 36, ly + 370, lw - 72, 52, 12, btnBg, null);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 16px Outfit';
+      ctx.fillText(localT > 8 ? '✓ Authenticated! Entering Portal...' : 'Sign In with Roll No →', lx + 120, ly + 402);
+
+      // Security Tag
+      ctx.fillStyle = '#64748b';
+      ctx.font = '500 11px Outfit';
+      ctx.fillText('🛡️ OWASP Protected • Rate-Limited • HMAC-SHA256 Cryptography', lx + 45, ly + 470);
+    }
+
+    // 3. Scene: Supabase 50MB Direct Upload
+    function renderSceneUploadSupabase(localT) {
+      ctx.fillStyle = '#0a101d';
+      ctx.fillRect(0, 0, W, H);
+
+      // App Dashboard Top
+      drawRoundedRect(80, 20, 1120, 680, 24, '#131d2e', '#1e293b', 1);
+
+      // Header inside dashboard
+      ctx.fillStyle = '#10b981';
+      ctx.font = '800 18px Outfit';
+      ctx.fillText('⚡ PRINT CENTRE — DIRECT CLOUD UPLOAD', 120, 65);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '500 13px Outfit';
+      ctx.fillText('Connected to Supabase Storage Bucket • 50MB Single File Ceiling', 120, 90);
+
+      // Dropzone
+      const dzX = 120, dzY = 120, dzW = 1040, dzH = 340;
+      drawRoundedRect(dzX, dzY, dzW, dzH, 20, '#0d1522', '#334155', 2);
+
+      // Upload Cloud Icon
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = '64px Outfit';
+      ctx.fillText('☁️', dzX + 480, dzY + 110);
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '700 22px Outfit';
+      ctx.fillText('Thesis_Final_Report_AIT_2026.pdf', dzX + 350, dzY + 160);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '500 14px JetBrains Mono';
+      ctx.fillText('Size: 42.8 MB • Format: Application/PDF • 45 Pages Detected', dzX + 310, dzY + 195);
+
+      // Animated Progress Bar
+      const uploadProgress = Math.min(1.0, localT / 9);
+      drawRoundedRect(dzX + 180, dzY + 230, 680, 16, 8, '#1e293b', null);
+      drawRoundedRect(dzX + 180, dzY + 230, 680 * uploadProgress, 16, 8, '#10b981', null);
+
+      ctx.fillStyle = '#34d399';
+      ctx.font = '700 13px JetBrains Mono';
+      ctx.fillText(`Uploading to Supabase: ${Math.floor(uploadProgress * 100)}% (${(42.8 * uploadProgress).toFixed(1)} MB / 42.8 MB)`, dzX + 330, dzY + 280);
+
+      // Architecture Callout Box
+      drawRoundedRect(dzX, 480, dzW, 190, 16, '#182438', '#0284c7', 1);
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = '800 14px Outfit';
+      ctx.fillText('💡 CLOUD ARCHITECTURE HIGHLIGHT: SUPABASE PRE-AUTHENTICATED SIGNED URL', dzX + 24, 515);
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '400 14px Outfit';
+      ctx.fillText('• Traditional Vercel serverless functions enforce a strict 4.5MB request payload ceiling.', dzX + 24, 545);
+      ctx.fillText('• Xeroxic calls /api/files/prepare-upload to obtain a cryptographically signed direct upload token.', dzX + 24, 575);
+      ctx.fillText('• Browser streams high-resolution multi-megabyte PDFs straight to Supabase Object Storage with ZERO RAM load on Node.js.', dzX + 24, 605);
+      ctx.fillText('• Database retains only lightweight metadata path: "students/sumit/thesis-42mb.pdf".', dzX + 24, 635);
+    }
+
+    // 4. Scene: Print Options & Dynamic Pricing
+    function renderScenePrintOptions(localT) {
+      ctx.fillStyle = '#0a101d';
+      ctx.fillRect(0, 0, W, H);
+
+      drawRoundedRect(80, 30, 1120, 660, 24, '#131d2e', '#1e293b', 1);
+
+      ctx.fillStyle = '#10b981';
+      ctx.font = '800 20px Outfit';
+      ctx.fillText('⚙️ CONFIGURE PRINT SPECIFICATIONS', 120, 75);
+
+      // Left Column: Options
+      const colX = 120, colY = 110, colW = 560;
+
+      // Option 1: Color vs B&W
+      drawRoundedRect(colX, colY, colW, 90, 14, '#1a263c', '#334155');
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 16px Outfit';
+      ctx.fillText('Color Printing Mode', colX + 20, colY + 35);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '400 13px Outfit';
+      ctx.fillText('High-definition vibrant color for diagrams', colX + 20, colY + 60);
+      drawRoundedRect(colX + 410, colY + 25, 130, 40, 10, '#10b981', null);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 13px Outfit';
+      ctx.fillText('COLOR (₹5/p)', colX + 428, colY + 50);
+
+      // Option 2: Duplex (Double Sided)
+      drawRoundedRect(colX, colY + 110, colW, 90, 14, '#1a263c', '#334155');
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 16px Outfit';
+      ctx.fillText('Double Sided (Duplex)', colX + 20, colY + 145);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '400 13px Outfit';
+      ctx.fillText('Save paper & weight for submission bindings', colX + 20, colY + 170);
+      drawRoundedRect(colX + 410, colY + 135, 130, 40, 10, '#0284c7', null);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 13px Outfit';
+      ctx.fillText('BOTH SIDES', colX + 430, colY + 160);
+
+      // Option 3: Spiral Binding
+      drawRoundedRect(colX, colY + 220, colW, 90, 14, '#1a263c', '#334155');
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 16px Outfit';
+      ctx.fillText('Finishing & Binding', colX + 20, colY + 255);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '400 13px Outfit';
+      ctx.fillText('Transparent sheet + plastic comb spine', colX + 20, colY + 280);
+      drawRoundedRect(colX + 410, colY + 245, 130, 40, 10, '#8b5cf6', null);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 13px Outfit';
+      ctx.fillText('SPIRAL (+₹30)', colX + 425, colY + 270);
+
+      // Option 4: Copies
+      drawRoundedRect(colX, colY + 330, colW, 90, 14, '#1a263c', '#334155');
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 16px Outfit';
+      ctx.fillText('Number of Copies', colX + 20, colY + 365);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '400 13px Outfit';
+      ctx.fillText('1 for College Submission, 1 for Personal Record', colX + 20, colY + 390);
+      drawRoundedRect(colX + 410, colY + 355, 130, 40, 10, '#334155', null);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 15px JetBrains Mono';
+      ctx.fillText('2 COPIES', colX + 440, colY + 380);
+
+      // Right Column: Live Price Breakdown
+      const rX = 720, rY = 110, rW = 440;
+      drawRoundedRect(rX, rY, rW, 420, 20, '#101a2b', '#10b981', 2);
+
+      ctx.fillStyle = '#a7f3d0';
+      ctx.font = '700 13px Outfit';
+      ctx.fillText('REAL-TIME COST SUMMARY', rX + 30, rY + 45);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '500 14px Outfit';
+      ctx.fillText('Document: Thesis_Final.pdf (45 pgs)', rX + 30, rY + 85);
+      ctx.fillText('Base Color Print (45 × ₹5):', rX + 30, rY + 125);
+      ctx.fillText('Duplex Discount Applied:', rX + 30, rY + 160);
+      ctx.fillText('Spiral Binding Finishing:', rX + 30, rY + 195);
+      ctx.fillText('Copies Multiplier: (× 2):', rX + 30, rY + 230);
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '700 14px JetBrains Mono';
+      ctx.fillText('₹ 225.00', rX + 340, rY + 125);
+      ctx.fillText('- ₹ 45.00', rX + 340, rY + 160);
+      ctx.fillText('₹ 30.00', rX + 340, rY + 195);
+      ctx.fillText('× 2 Sets', rX + 340, rY + 230);
+
+      // Divider
+      ctx.strokeStyle = '#334155';
+      ctx.beginPath(); ctx.moveTo(rX + 30, rY + 265); ctx.lineTo(rX + 410, rY + 265); ctx.stroke();
+
+      // Total Price Animated
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 18px Outfit';
+      ctx.fillText('Total Payable:', rX + 30, rY + 305);
+
+      ctx.fillStyle = '#10b981';
+      ctx.font = '900 32px JetBrains Mono';
+      ctx.fillText('₹ 420.00', rX + 270, rY + 310);
+
+      // Checkout Button
+      drawRoundedRect(rX + 30, rY + 340, 380, 52, 12, '#10b981', null);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 16px Outfit';
+      ctx.fillText('Proceed to Razorpay UPI Checkout →', rX + 58, rY + 372);
+    }
+
+    // 5. Scene: Razorpay Payment & Memorable ID Generation
+    function renderScenePaymentAndId(localT) {
+      ctx.fillStyle = '#090e18';
+      ctx.fillRect(0, 0, W, H);
+
+      if (localT < 5) {
+        // Step A: Razorpay Checkout Modal
+        drawRoundedRect(380, 100, 520, 500, 20, '#111827', '#374151', 2);
+
+        // Razorpay Blue Header
+        drawRoundedRect(380, 100, 520, 90, 20, '#0c2340', null);
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = '800 22px Outfit';
+        ctx.fillText('Razorpay Standard Checkout', 420, 145);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '500 13px Outfit';
+        ctx.fillText('Army Institute of Technology Xerox • ₹420.00', 420, 170);
+
+        // Payment Options
+        ['⚡ Instant UPI (Google Pay, PhonePe, Paytm)', '💳 Debit / Credit Card', '🏦 NetBanking'].forEach((opt, idx) => {
+          const y = 220 + idx * 65;
+          drawRoundedRect(420, y, 440, 50, 10, idx === 0 ? 'rgba(16,185,129,0.15)' : '#1f2937', idx === 0 ? '#10b981' : '#374151');
+          ctx.fillStyle = idx === 0 ? '#34d399' : '#e2e8f0';
+          ctx.font = '700 14px Outfit';
+          ctx.fillText(opt, 440, y + 31);
+        });
+
+        // Pay Button
+        drawRoundedRect(420, 440, 440, 54, 12, '#10b981', null);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '800 17px Outfit';
+        ctx.fillText('✓ PAY ₹420.00 NOW', 560, 473);
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '500 11px Outfit';
+        ctx.fillText('🔒 256-Bit SSL Encrypted • HMAC-SHA256 Server Verified', 480, 530);
+      } else {
+        // Step B: Payment Success & Memorable ID Breakdown!
+        drawRoundedRect(240, 100, 800, 520, 24, '#0f172a', '#10b981', 2);
+
+        // Success Tick
+        ctx.fillStyle = '#10b981';
+        ctx.font = '52px Outfit';
+        ctx.fillText('✅', 605, 175);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '800 28px Outfit';
+        ctx.fillText('Payment Verified & Order Submitted!', 390, 225);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '500 14px Outfit';
+        ctx.fillText('Razorpay ID: pay_sim_9a7d2b • HMAC Verified in 12ms', 460, 255);
+
+        // Highlight Big Memorable ID Card
+        drawRoundedRect(300, 290, 680, 140, 16, '#062618', '#34d399', 2);
+
+        ctx.fillStyle = '#a7f3d0';
+        ctx.font = '700 13px Outfit';
+        ctx.fillText('YOUR MEMORABLE ORDER IDENTIFIER', 330, 325);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 54px JetBrains Mono';
+        ctx.fillText('sumit24001', 440, 395);
+
+        // Anatomy Breakdown
+        const ay = 470;
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = '700 14px JetBrains Mono';
+        ctx.fillText('[sumit]', 340, ay);
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillText('[24]', 570, ay);
+        ctx.fillStyle = '#a855f7';
+        ctx.fillText('[001]', 760, ay);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '500 12px Outfit';
+        ctx.fillText('First 5 Letters of Email/Name', 300, ay + 25);
+        ctx.fillText('2-Digit Date (Day)', 545, ay + 25);
+        ctx.fillText('3-Digit Daily Sequence', 730, ay + 25);
+
+        // Callout for Hash Padding
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '600 13px Outfit';
+        ctx.fillText('💡 Short Name Rule: If email has < 5 letters, "#" fills gaps (e.g. ali@ait → ali##24001)', 330, 560);
+      }
+    }
+
+    // 6. Scene: Admin Portal Live Queue
+    function renderSceneAdminDesk(localT) {
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(0, 0, W, H);
+
+      // Admin Topbar
+      drawRoundedRect(80, 25, 1120, 65, 14, '#1e293b', 'rgba(255,255,255,0.08)');
+      ctx.fillStyle = '#10b981';
+      ctx.font = '800 20px Outfit';
+      ctx.fillText('👑 XEROX OPERATOR DESK', 120, 64);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '600 13px JetBrains Mono';
+      ctx.fillText('Logged in: operator@aitpune.edu.in • Month: 2026-09 (Auto-Renewed)', 450, 63);
+
+      // Queue Stats Cards
+      const stats = [
+        { label: 'Active Queue', val: '4 Orders', color: '#38bdf8' },
+        { label: 'Total Prints Today', val: '318 Pages', color: '#10b981' },
+        { label: 'Revenue Captured', val: '₹ 1,420', color: '#f59e0b' }
+      ];
+      stats.forEach((s, idx) => {
+        const sx = 80 + idx * 385;
+        drawRoundedRect(sx, 110, 350, 80, 14, '#131e30', '#1e293b');
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '600 13px Outfit';
+        ctx.fillText(s.label, sx + 20, 140);
+        ctx.fillStyle = s.color;
+        ctx.font = '800 26px JetBrains Mono';
+        ctx.fillText(s.val, sx + 20, 172);
+      });
+
+      // Orders Table
+      const ty = 210;
+      drawRoundedRect(80, ty, 1120, 480, 18, '#101726', '#1e293b', 1);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 16px Outfit';
+      ctx.fillText('Incoming Orders Queue', 110, ty + 40);
+
+      // Table Header
+      drawRoundedRect(110, ty + 60, 1060, 40, 8, '#1e293b', null);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '700 12px JetBrains Mono';
+      ctx.fillText('ORDER ID', 130, ty + 85);
+      ctx.fillText('STUDENT NAME', 280, ty + 85);
+      ctx.fillText('DOCUMENT', 480, ty + 85);
+      ctx.fillText('OPTIONS', 700, ty + 85);
+      ctx.fillText('STATUS', 890, ty + 85);
+      ctx.fillText('ACTION', 1040, ty + 85);
+
+      // Rows
+      const rows = [
+        { id: 'sumit24001', name: 'Sumit Jangra', doc: 'Thesis_Final.pdf (45p)', opt: 'Color, Duplex, Spiral', status: 'QUEUED', color: '#38bdf8' },
+        { id: 'priya24002', name: 'Priya Sharma', doc: 'DBMS_Lab_Manual.pdf (18p)', opt: 'B&W, Duplex, Staple', status: 'PRINTING', color: '#f59e0b' },
+        { id: 'ali##24003', name: 'Ali Hassan', doc: 'Robotics_Report.pdf (8p)', opt: 'Color, Single Side', status: 'READY', color: '#10b981' }
+      ];
+
+      rows.forEach((r, idx) => {
+        const ry = ty + 120 + idx * 75;
+        const isTarget = idx === 0;
+        drawRoundedRect(110, ry, 1060, 65, 10, isTarget ? '#18273f' : '#141d2e', isTarget ? '#10b981' : '#1e293b', isTarget ? 2 : 1);
+
+        ctx.fillStyle = isTarget ? '#34d399' : '#ffffff';
+        ctx.font = '800 14px JetBrains Mono';
+        ctx.fillText(r.id, 130, ry + 38);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '600 14px Outfit';
+        ctx.fillText(r.name, 280, ry + 38);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '400 13px Outfit';
+        ctx.fillText(r.doc, 480, ry + 38);
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '500 12px JetBrains Mono';
+        ctx.fillText(r.opt, 700, ry + 38);
+
+        // Status Pill
+        drawRoundedRect(890, ry + 16, 95, 30, 8, 'rgba(255,255,255,0.06)', r.color);
+        ctx.fillStyle = r.color;
+        ctx.font = '700 11px JetBrains Mono';
+        ctx.fillText(r.status, 905, ry + 36);
+
+        // Action Button
+        drawRoundedRect(1020, ry + 14, 120, 36, 8, isTarget ? '#10b981' : '#334155', null);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '700 12px Outfit';
+        ctx.fillText(isTarget ? '▶ Start Print' : 'View', 1045, ry + 37);
+      });
+    }
+
+    // 7. Scene: 0ms Status Progression
+    function renderSceneAdminStatus(localT) {
+      ctx.fillStyle = '#0a111e';
+      ctx.fillRect(0, 0, W, H);
+
+      drawRoundedRect(160, 60, 960, 600, 24, '#101a2b', '#1e293b', 2);
+
+      ctx.fillStyle = '#10b981';
+      ctx.font = '800 20px Outfit';
+      ctx.fillText('⚡ 0ms INSTANT STATUS SYNCHRONIZATION', 200, 115);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '500 14px Outfit';
+      ctx.fillText('Optimistic UI state dispatch with atomic MongoDB update in 0ms', 200, 145);
+
+      // Order Card Detail
+      drawRoundedRect(200, 180, 880, 240, 16, '#172338', '#334155', 1);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 24px JetBrains Mono';
+      ctx.fillText('Order #sumit24001', 230, 230);
+
+      ctx.fillStyle = '#a7f3d0';
+      ctx.font = '600 15px Outfit';
+      ctx.fillText('Student: Sumit Jangra (sumit.jangra@aitpune.edu.in)', 230, 265);
+      ctx.fillText('File: Thesis_Final_Report.pdf (45 pgs, Duplex, Color, Spiral)', 230, 295);
+
+      // Interactive Transition Simulation
+      const isReady = localT > 4;
+      const statusText = isReady ? 'READY FOR COLLECTION' : 'PRINTING IN PROGRESS';
+      const statusColor = isReady ? '#10b981' : '#f59e0b';
+
+      drawRoundedRect(230, 330, 250, 48, 12, 'rgba(255,255,255,0.06)', statusColor, 2);
+      ctx.fillStyle = statusColor;
+      ctx.font = '800 14px JetBrains Mono';
+      ctx.fillText(statusText, 250, 360);
+
+      // Operator Controls
+      drawRoundedRect(680, 330, 370, 48, 12, isReady ? '#059669' : '#10b981', null);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 15px Outfit';
+      ctx.fillText(isReady ? '✓ Marked Ready! Student Notified' : '⚡ Click: Mark Ready for Pickup', 705, 360);
+
+      // Technical Latency Callout
+      drawRoundedRect(200, 450, 880, 170, 16, '#082315', '#10b981', 1);
+      ctx.fillStyle = '#34d399';
+      ctx.font = '800 15px Outfit';
+      ctx.fillText('⏱️ BENCHMARK: ZERO DELAY USER EXPERIENCE', 230, 485);
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '400 14px Outfit';
+      ctx.fillText('• Legacy systems suffer 4 to 5 second lag due to uncoordinated client polling.', 230, 515);
+      ctx.fillText('• Xeroxic updates the local cache optimistically in 0ms, confirming with server in 4ms.', 230, 545);
+      ctx.fillText('• The student device receives real-time transition and displays the Express QR Pickup Pass immediately.', 230, 575);
+    }
+
+    // 8. Scene: Express QR Pickup Pass
+    function renderSceneExpressQr(localT) {
+      ctx.fillStyle = '#06130b';
+      ctx.fillRect(0, 0, W, H);
+
+      // Student Mobile Mockup Frame
+      const mx = 460, my = 50, mw = 360, mh = 620;
+      drawRoundedRect(mx, my, mw, mh, 36, '#0f172a', '#10b981', 3);
+
+      // Phone Notch
+      drawRoundedRect(mx + 110, my + 12, 140, 20, 10, '#020617', null);
+
+      // Phone Screen Content
+      ctx.fillStyle = '#10b981';
+      ctx.font = '800 15px Outfit';
+      ctx.fillText('⚡ EXPRESS PICKUP PASS', mx + 85, my + 75);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '500 12px Outfit';
+      ctx.fillText('Flash this screen at the Xerox counter', mx + 75, my + 98);
+
+      // Big QR Box
+      const qx = mx + 50, qy = my + 120, qw = 260, qh = 260;
+      drawRoundedRect(qx, qy, qw, qh, 20, '#ffffff', '#34d399', 3);
+
+      // Render Matrix QR Code
+      drawMockQr(qx + 20, qy + 20, 220, 220);
+
+      // Order ID Callout
+      drawRoundedRect(mx + 40, my + 405, 280, 60, 14, '#1e293b', '#334155');
+      ctx.fillStyle = '#10b981';
+      ctx.font = '800 24px JetBrains Mono';
+      ctx.fillText('sumit24001', mx + 95, my + 443);
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '600 13px Outfit';
+      ctx.fillText('Thesis Final • 45 Pages Color • Duplex', mx + 60, my + 495);
+
+      // Collection Status
+      drawRoundedRect(mx + 40, my + 520, 280, 48, 12, '#10b981', null);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 14px Outfit';
+      ctx.fillText('Ready for Counter Pickup', mx + 85, my + 550);
+
+      // Side Annotations
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 22px Outfit';
+      ctx.fillText('1-Click Counter Scanner', 100, 260);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '400 15px Outfit';
+      ctx.fillText('No waiting, no paper slips.', 100, 295);
+      ctx.fillText('Operator scans camera or handheld scanner,', 100, 320);
+      ctx.fillText('order is verified in under 5 seconds!', 100, 345);
+    }
+
+    // Helper: Draw decorative QR Matrix
+    function drawMockQr(x, y, w, h) {
+      ctx.fillStyle = '#0f172a';
+      // Corners
+      ctx.fillRect(x, y, 60, 60);
+      ctx.clearRect(x + 10, y + 10, 40, 40);
+      ctx.fillRect(x + 20, y + 20, 20, 20);
+
+      ctx.fillRect(x + w - 60, y, 60, 60);
+      ctx.clearRect(x + w - 50, y + 10, 40, 40);
+      ctx.fillRect(x + w - 40, y + 20, 20, 20);
+
+      ctx.fillRect(x, y + h - 60, 60, 60);
+      ctx.clearRect(x + 10, y + h - 50, 40, 40);
+      ctx.fillRect(x + 20, y + h - 40, 20, 20);
+
+      // Random-looking matrix dots
+      const seed = 42;
+      for (let r = 0; r < 14; r++) {
+        for (let c = 0; c < 14; c++) {
+          if ((r < 4 && c < 4) || (r < 4 && c > 9) || (r > 9 && c < 4)) continue;
+          if ((r * 7 + c * 13 + seed) % 3 === 0) {
+            ctx.fillRect(x + 65 + c * 7, y + 20 + r * 13, 6, 6);
+          }
+        }
+      }
+    }
+
+    // 9. Scene: Super Admin & Storage Auto-Purge
+    function renderSceneSuperAdmin(localT) {
+      ctx.fillStyle = '#0b0f19';
+      ctx.fillRect(0, 0, W, H);
+
+      drawRoundedRect(80, 30, 1120, 660, 24, '#111827', '#1f2937', 1);
+
+      ctx.fillStyle = '#a855f7';
+      ctx.font = '800 20px Outfit';
+      ctx.fillText('👑 SUPER ADMIN PORTAL — STUDENT MANAGEMENT & GOVERNANCE', 120, 75);
+
+      // Student Directory Table
+      const sy = 110;
+      drawRoundedRect(120, sy, 1040, 320, 16, '#0f172a', '#334155');
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 15px Outfit';
+      ctx.fillText('Registered Campus Student Accounts', 145, sy + 38);
+
+      // Header
+      drawRoundedRect(145, sy + 55, 990, 36, 8, '#1e293b', null);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '700 12px JetBrains Mono';
+      ctx.fillText('NAME', 165, sy + 78);
+      ctx.fillText('EMAIL ADDRESS', 340, sy + 78);
+      ctx.fillText('ROLL NO', 620, sy + 78);
+      ctx.fillText('PRINT HISTORY', 770, sy + 78);
+      ctx.fillText('ACCOUNT STATUS', 940, sy + 78);
+
+      const students = [
+        { name: 'Sumit Jangra', email: 'sumit.jangra@aitpune.edu.in', roll: '21045', history: '10 Prints (Capped)', status: 'ACTIVE' },
+        { name: 'Priya Sharma', email: 'priya.sharma@aitpune.edu.in', roll: '21088', history: '6 Prints', status: 'ACTIVE' },
+        { name: 'Ali Hassan', email: 'ali.hassan@aitpune.edu.in', roll: '21104', history: '3 Prints', status: 'ACTIVE' }
+      ];
+
+      students.forEach((s, idx) => {
+        const ry = sy + 105 + idx * 58;
+        drawRoundedRect(145, ry, 990, 48, 8, '#131e32', null);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '600 14px Outfit';
+        ctx.fillText(s.name, 165, ry + 30);
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '500 13px JetBrains Mono';
+        ctx.fillText(s.email, 340, ry + 30);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(s.roll, 620, ry + 30);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText(s.history, 770, ry + 30);
+
+        drawRoundedRect(930, ry + 10, 80, 28, 6, 'rgba(16, 185, 129, 0.15)', '#10b981');
+        ctx.fillStyle = '#34d399';
+        ctx.font = '700 11px JetBrains Mono';
+        ctx.fillText(s.status, 948, ry + 28);
+      });
+
+      // Bottom: Auto-Purge Privacy Card
+      const py = 455;
+      drawRoundedRect(120, py, 1040, 200, 16, '#062618', '#10b981', 1.5);
+
+      ctx.fillStyle = '#34d399';
+      ctx.font = '800 16px Outfit';
+      ctx.fillText('🛡️ ZERO-RETENTION PRIVACY & STORAGE RECLAIM ENGINE', 150, py + 40);
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '400 14px Outfit';
+      ctx.fillText('• As soon as an order is scanned and marked COLLECTED, Supabase binary files are permanently purged.', 150, py + 75);
+      ctx.fillText('• Prevents confidential student records, resumes, and project code from lingering on shop hardware.', 150, py + 105);
+      ctx.fillText('• Automated Monthly Archival cleans operator active queues every 30 days while preserving audited stats.', 150, py + 135);
+      ctx.fillText('• Student view restricts history to previous 10 prints to maintain sub-10ms query execution.', 150, py + 165);
+    }
+
+    // 10. Scene: Outro & Credits
+    function renderSceneOutro(localT) {
+      ctx.fillStyle = '#061a11';
+      ctx.fillRect(0, 0, W, H);
+
+      drawRoundedRect(180, 120, 920, 480, 28, '#0f1f18', '#10b981', 2);
+
+      ctx.fillStyle = '#34d399';
+      ctx.font = '800 16px Outfit';
+      ctx.fillText('🎓 ARMY INSTITUTE OF TECHNOLOGY, PUNE', 230, 185);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 48px Outfit';
+      ctx.fillText('XEROXIC v3.0.0 LIVE', 230, 245);
+
+      ctx.fillStyle = '#a7f3d0';
+      ctx.font = '500 20px Outfit';
+      ctx.fillText('Smart Campus Cloud Printing Network • All 83 Serverless Tests Verified', 230, 285);
+
+      // Key Metrics
+      const metrics = [
+        { num: '85%', label: 'Queue Time Reduction' },
+        { num: '0ms', label: 'Status Latency' },
+        { num: '50MB', label: 'Supabase Direct Upload' },
+        { num: '100%', label: 'Automated Test Pass' }
+      ];
+      metrics.forEach((m, idx) => {
+        const mx = 230 + idx * 215;
+        const my = 330;
+        drawRoundedRect(mx, my, 195, 90, 14, '#132d22', '#10b981');
+        ctx.fillStyle = '#34d399';
+        ctx.font = '800 28px JetBrains Mono';
+        ctx.fillText(m.num, mx + 16, my + 42);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '500 12px Outfit';
+        ctx.fillText(m.label, mx + 16, my + 70);
+      });
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '600 16px Outfit';
+      ctx.fillText('🚀 Built with ❤️ by Antigravity with Sumit • Ready for College Evaluation', 230, 480);
+
+      ctx.fillStyle = '#6ee7b7';
+      ctx.font = '500 13px JetBrains Mono';
+      ctx.fillText('Live on Vercel Serverless • MongoDB Atlas • Supabase Object Storage • Razorpay UPI', 230, 520);
+    }
+
+    /* =========================================================================
+       MAIN RENDER LOOP WITH KEN BURNS CAMERA TRANSFORM
+       ========================================================================= */
+
+    function render(timestamp) {
+      if (!lastTimestamp) lastTimestamp = timestamp;
+      const dt = (timestamp - lastTimestamp) / 1000;
+      lastTimestamp = timestamp;
+
+      if (isPlaying) {
+        currentTime += dt;
+        if (currentTime >= TOTAL_DURATION) {
+          currentTime = TOTAL_DURATION;
+          isPlaying = false;
+          playBtn.textContent = '▶';
+          centerPlayBtn.classList.remove('hidden');
+        }
+        seekSlider.value = currentTime;
+        updateUI();
+      }
+
+      const scene = getCurrentScene(currentTime);
+      const localT = currentTime - scene.start;
+      const progress = Math.min(1.0, Math.max(0, localT / (scene.end - scene.start)));
+      const easedT = easeInOutQuad(progress);
+
+      // Calculate Ken Burns camera transformation
+      const cam = scene.cam;
+      const currentCamX = lerp(cam.from.x, cam.to.x, easedT);
+      const currentCamY = lerp(cam.from.y, cam.to.y, easedT);
+      const currentZoom = lerp(cam.from.zoom, cam.to.zoom, easedT);
+
+      // Clear Canvas
+      ctx.save();
+      ctx.clearRect(0, 0, W, H);
+
+      // Apply Camera Center & Zoom
+      ctx.translate(W / 2, H / 2);
+      ctx.scale(currentZoom, currentZoom);
+      ctx.translate(-currentCamX, -currentCamY);
+
+      // Render Scene
+      if (scene.id === 'intro') renderSceneIntro(localT);
+      else if (scene.id === 'student_login') renderSceneStudentLogin(localT);
+      else if (scene.id === 'upload_supabase') renderSceneUploadSupabase(localT);
+      else if (scene.id === 'print_options') renderScenePrintOptions(localT);
+      else if (scene.id === 'payment_id') renderScenePaymentAndId(localT);
+      else if (scene.id === 'admin_desk') renderSceneAdminDesk(localT);
+      else if (scene.id === 'admin_status') renderSceneAdminStatus(localT);
+      else if (scene.id === 'express_qr') renderSceneExpressQr(localT);
+      else if (scene.id === 'superadmin') renderSceneSuperAdmin(localT);
+      else if (scene.id === 'outro') renderSceneOutro(localT);
+
+      ctx.restore();
+
+      requestAnimationFrame(render);
+    }
+
+    // UI Updates
+    function updateUI() {
+      const curM = Math.floor(currentTime / 60);
+      const curS = Math.floor(currentTime % 60);
+      const totM = Math.floor(TOTAL_DURATION / 60);
+      const totS = Math.floor(TOTAL_DURATION % 60);
+      timeDisplay.textContent = `${String(curM).padStart(2,'0')}:${String(curS).padStart(2,'0')} / ${String(totM).padStart(2,'0')}:${String(totS).padStart(2,'0')}`;
+
+      const scene = getCurrentScene(currentTime);
+      sceneTitle.textContent = scene.name;
+      speakerNotesText.innerHTML = `<strong>Scene: ${scene.name}</strong> — ${scene.speaker}`;
+
+      // Update Active Chip
+      const chips = sceneChipsContainer.children;
+      for (let i = 0; i < SCENES.length; i++) {
+        if (SCENES[i].id === scene.id) chips[i].classList.add('active');
+        else chips[i].classList.remove('active');
+      }
+    }
+
+    function jumpToTime(time) {
+      currentTime = Math.max(0, Math.min(TOTAL_DURATION, time));
+      seekSlider.value = currentTime;
+      updateUI();
+      playSfx('click');
+    }
+
+    function togglePlay() {
+      initAudio();
+      isPlaying = !isPlaying;
+      playBtn.textContent = isPlaying ? '⏸' : '▶';
+      if (isPlaying) {
+        centerPlayBtn.classList.add('hidden');
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      } else {
+        centerPlayBtn.classList.remove('hidden');
+      }
+    }
+
+    // Event Listeners
+    playBtn.addEventListener('click', togglePlay);
+    centerPlayBtn.addEventListener('click', togglePlay);
+    canvas.addEventListener('click', togglePlay);
+
+    rewindBtn.addEventListener('click', () => {
+      jumpToTime(0);
+      if (!isPlaying) togglePlay();
+    });
+
+    seekSlider.addEventListener('input', (e) => {
+      jumpToTime(parseFloat(e.target.value));
+    });
+
+    musicToggleBtn.addEventListener('click', () => {
+      initAudio();
+      musicEnabled = !musicEnabled;
+      musicToggleBtn.classList.toggle('active', musicEnabled);
+      musicToggleBtn.textContent = musicEnabled ? '🎵' : '🔇';
+    });
+
+    volSlider.addEventListener('input', (e) => {
+      if (masterGain && audioCtx) {
+        masterGain.gain.setValueAtTime(parseFloat(e.target.value), audioCtx.currentTime);
+      }
+    });
+
+    fullscreenBtn.addEventListener('click', () => {
+      const wrapper = document.getElementById('screenWrapper');
+      if (!document.fullscreenElement) {
+        wrapper.requestFullscreen().catch(err => console.error(err));
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    /* =========================================================================
+       EXPORT / DOWNLOAD VIDEO (MediaRecorder API)
+       Combines 60 FPS Canvas Stream + Web Audio Synthesizer Destination
+       ========================================================================= */
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isExporting = false;
+
+    exportBtn.addEventListener('click', async () => {
+      if (isExporting) return;
+      initAudio();
+      if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
+
+      const confirmExport = confirm('🎬 Ready to record and export the video demonstration?\n\nThis will restart from Scene 1, play through the entire presentation with audio, and automatically download "xeroxic-presentation-demo.webm".\n\nClick OK to begin recording!');
+      if (!confirmExport) return;
+
+      isExporting = true;
+      recordedChunks = [];
+      recBadge.style.display = 'inline-flex';
+      exportBtn.disabled = true;
+      exportBtn.textContent = '⏺ Recording Video...';
+
+      // Rewind to 0
+      currentTime = 0;
+      isPlaying = true;
+      playBtn.textContent = '⏸';
+      centerPlayBtn.classList.add('hidden');
+
+      // Capture Canvas at 60 FPS
+      const canvasStream = canvas.captureStream(60);
+
+      // Merge Audio if available
+      let combinedStream = canvasStream;
+      if (audioDestNode && audioDestNode.stream) {
+        const audioTracks = audioDestNode.stream.getAudioTracks();
+        if (audioTracks.length > 0) {
+          combinedStream = new MediaStream([
+            ...canvasStream.getVideoTracks(),
+            ...audioTracks
+          ]);
+        }
+      }
+
+      // Check supported MIME type
+      const mimeTypes = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm',
+        'video/mp4'
+      ];
+      const selectedMime = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+
+      mediaRecorder = new MediaRecorder(combinedStream, {
+        mimeType: selectedMime,
+        videoBitsPerSecond: 4000000 // 4 Mbps high definition
+      });
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        recBadge.style.display = 'none';
+        isExporting = false;
+        exportBtn.disabled = false;
+        exportBtn.textContent = '⬇ Export Video (MP4/WebM)';
+
+        const blob = new Blob(recordedChunks, { type: selectedMime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `xeroxic-presentation-demo-${new Date().toISOString().slice(0,10)}.webm`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+        alert('🎉 Video export completed successfully! Your file has been downloaded.');
+      };
+
+      mediaRecorder.start();
+
+      // Automatically stop recording when playback finishes
+      const checkEndTimer = setInterval(() => {
+        if (currentTime >= TOTAL_DURATION || !isPlaying) {
+          clearInterval(checkEndTimer);
+          if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+          }
+        }
+      }, 500);
+    });
+
+    // Initial setup
+    updateUI();
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>

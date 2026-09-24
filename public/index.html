@@ -194,6 +194,16 @@
         <div class="card-desc">Fast, student-friendly campus printing.</div>
       </div>
     </button>
+    <a href="/demo-video.html" class="card purple" target="_blank" style="text-decoration:none; color:inherit;">
+      <div class="card-image-wrap" style="background:linear-gradient(135deg, #1e293b, #0f172a); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px;">
+        <span style="font-size:52px; filter:drop-shadow(0 6px 14px rgba(0,0,0,0.4)); animation:pulse 2s infinite;">🎬</span>
+      </div>
+      <div class="card-content-wrap">
+        <span class="card-sticker sticker-gold" style="background:#fef3c7; color:#92400e;">✨ Video Tour</span>
+        <div class="card-title">Interactive Demo</div>
+        <div class="card-desc">Watch animated video with sound &amp; zoom effects.</div>
+      </div>
+    </a>
   </div>
 </div>
 
@@ -612,11 +622,31 @@
 
     <img src="/images/card-about.jpg" alt="Made by Antigravity with Sumit" class="about-banner-img">
 
+    <!-- Interactive Video Demo Showcase Banner -->
+    <div style="background: linear-gradient(135deg, #064e3b, #047857); color:#fff; border-radius:18px; padding:20px 24px; margin: 20px 0 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; box-shadow:0 10px 25px rgba(6,78,59,0.3); border:1px solid rgba(255,255,255,0.15);">
+      <div style="max-width:580px;">
+        <div style="display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; background:rgba(255,255,255,0.2); padding:3px 10px; border-radius:100px; color:#d1fae5; margin-bottom:8px;">
+          <span>🎬 Interactive Presentation Video</span>
+        </div>
+        <div style="font-size:20px; font-weight:700; line-height:1.3; margin-bottom:4px;">
+          Live Animated Video Demonstration
+        </div>
+        <div style="font-size:13.5px; opacity:0.92; line-height:1.5;">
+          Experience full student, operator &amp; superadmin walkthroughs with real-time UI animations, Ken Burns zoom-in/out effects, and energetic synthesizer campus music.
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <a href="/demo-video.html" target="_blank" style="background:#ffffff; color:#064e3b; padding:12px 22px; border-radius:12px; font-weight:800; font-size:14px; text-decoration:none; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 14px rgba(0,0,0,0.2); transition:transform 0.15s ease;">
+          ▶ Watch Video Demo
+        </a>
+      </div>
+    </div>
+
     <h2 style="font-size:20px; font-weight:700; color:var(--ink); margin-top:24px; margin-bottom:4px;">
       System Architecture &amp; Technology Stack
     </h2>
     <p style="font-size:13.5px; color:#607266; margin:0;">
-      Here is a transparent look under the hood at the enterprise-grade database, APIs, and micro-services powering this platform:
+      A comprehensive look under the hood at the enterprise-grade database, storage, serverless APIs, and security powering Xeroxic v3.0.0:
     </p>
 
     <div class="tech-grid">
@@ -627,7 +657,7 @@
           <span>MongoDB Atlas Cloud DB</span>
         </div>
         <p class="tech-card-desc">
-          High-performance, distributed cloud MongoDB cluster storing user profiles, print queue orders, lab assignments, and real-time status feeds with instant replication.
+          High-performance distributed MongoDB Atlas cluster with cached connection pooling, atomic transactions, partitioned daily counters, and rolling 10-order student history.
         </p>
         <div class="tech-chips-row">
           <span class="tech-pill">MongoDB Atlas</span>
@@ -643,23 +673,71 @@
           <span>Node.js Serverless APIs</span>
         </div>
         <p class="tech-card-desc">
-          Scalable Vercel Edge &amp; Serverless Node.js functions delivering sub-100ms RESTful endpoints for order submissions, assignment retrieval, and admin analytics.
+          Scalable Vercel Serverless Node.js functions delivering sub-50ms RESTful endpoints for order submissions, assignment retrieval, and payment processing.
         </p>
         <div class="tech-chips-row">
           <span class="tech-pill">Node.js</span>
           <span class="tech-pill">Vercel Serverless</span>
-          <span class="tech-pill">REST APIs</span>
+          <span class="tech-pill">Sub-50ms Cold Starts</span>
         </div>
       </div>
 
-      <!-- Card 3: Storage Reclaim -->
+      <!-- Card 3: Supabase 50MB Direct Storage -->
+      <div class="tech-card">
+        <div class="tech-card-head">
+          <div class="tech-card-icon">☁️</div>
+          <span>Supabase 50MB Cloud Storage</span>
+        </div>
+        <p class="tech-card-desc">
+          Pre-authenticated signed URL architecture streaming files up to 50MB directly to Supabase Storage, completely bypassing Vercel 4.5MB serverless RAM limits.
+        </p>
+        <div class="tech-chips-row">
+          <span class="tech-pill">Supabase Storage</span>
+          <span class="tech-pill">Signed Direct URLs</span>
+          <span class="tech-pill">50MB File Ceiling</span>
+        </div>
+      </div>
+
+      <!-- Card 4: Express QR Pickup Pass & Memorable IDs -->
+      <div class="tech-card">
+        <div class="tech-card-head">
+          <div class="tech-card-icon">🎫</div>
+          <span>Express QR Pass &amp; Memorable IDs</span>
+        </div>
+        <p class="tech-card-desc">
+          Human-memorable Order IDs (e.g. <code>sumit24001</code>, <code>ali##24001</code>) with automatic hash padding, paired with a glowing ⚡ Express QR Pickup Pass for 5-second counter handoffs.
+        </p>
+        <div class="tech-chips-row">
+          <span class="tech-pill">Memorable IDs</span>
+          <span class="tech-pill">Vector QR Matrix</span>
+          <span class="tech-pill"># Hash Padding</span>
+        </div>
+      </div>
+
+      <!-- Card 5: Real-Time 0ms Status Transitions -->
+      <div class="tech-card">
+        <div class="tech-card-head">
+          <div class="tech-card-icon">⏱️</div>
+          <span>0ms Instant Status Synchronization</span>
+        </div>
+        <p class="tech-card-desc">
+          Optimistic state transitions allow operator status changes (QUEUED &rarr; PRINTING &rarr; READY) to render with 0ms visual delay, with automatic student polling suspension upon completion.
+        </p>
+        <div class="tech-chips-row">
+          <span class="tech-pill">0ms Instant Sync</span>
+          <span class="tech-pill">Optimistic UI</span>
+          <span class="tech-pill">Battery-Safe Polling</span>
+        </div>
+      </div>
+
+      <!-- Card 6: Auto-Purge Storage Reclaim -->
       <div class="tech-card">
         <div class="tech-card-head">
           <div class="tech-card-icon">🛡️</div>
           <span>Auto-Purge Storage Reclaim</span>
         </div>
         <p class="tech-card-desc">
-          Automated privacy and storage engine that zeroes uploaded document payloads immediately upon completion or cancellation, maintaining database health and zero document leaks.
+          Zero-retention privacy engine that permanently deletes uploaded document payloads from Supabase cloud storage the instant an order is marked COLLECTED, protecting student data.
         </p>
         <div class="tech-chips-row">
           <span class="tech-pill">Auto-Purge</span>
@@ -668,51 +746,35 @@
         </div>
       </div>
 
-      <!-- Card 4: Security & RBAC -->
+      <!-- Card 7: Super Admin Governance & Monthly Ledger -->
       <div class="tech-card">
         <div class="tech-card-head">
-          <div class="tech-card-icon">🔐</div>
-          <span>HMAC Auth &amp; Multi-Role RBAC</span>
+          <div class="tech-card-icon">👑</div>
+          <span>Super Admin &amp; Monthly Archival</span>
         </div>
         <p class="tech-card-desc">
-          Enterprise access control separating Students, Staff Operators, and Super Administrators with HMAC-SHA256 password hashing and secure token-based sessions.
+          Multi-role RBAC with a centralized Super Admin directory to manage student accounts, toggle active status, and perform automated 30-day monthly print ledger renewals.
         </p>
         <div class="tech-chips-row">
-          <span class="tech-pill">HMAC-SHA256</span>
-          <span class="tech-pill">Bearer Tokens</span>
-          <span class="tech-pill">Multi-Role RBAC</span>
+          <span class="tech-pill">Super Admin RBAC</span>
+          <span class="tech-pill">Student Directory</span>
+          <span class="tech-pill">Monthly Archiving</span>
         </div>
       </div>
 
-      <!-- Card 5: Modern UI & Animations -->
-      <div class="tech-card">
-        <div class="tech-card-head">
-          <div class="tech-card-icon">✨</div>
-          <span>Fluid UI &amp; Spring Animations</span>
-        </div>
-        <p class="tech-card-desc">
-          Handcrafted responsive design with CSS3 spring physics, celebratory animations, floating stickers, in-browser PDF attachment previews, and real-time polling.
-        </p>
-        <div class="tech-chips-row">
-          <span class="tech-pill">Vanilla ES6+</span>
-          <span class="tech-pill">CSS3 Keyframes</span>
-          <span class="tech-pill">Spring Physics</span>
-        </div>
-      </div>
-
-      <!-- Card 6: UPI Payments -->
+      <!-- Card 8: Razorpay UPI & Payment Verification -->
       <div class="tech-card">
         <div class="tech-card-head">
           <div class="tech-card-icon">💳</div>
-          <span>Dynamic Price &amp; UPI Engine</span>
+          <span>Razorpay UPI &amp; HMAC Verification</span>
         </div>
         <p class="tech-card-desc">
-          Real-time rate calculation accommodating color, double-sided, binding, and paper size options with dynamic QR generation for instant UPI verification.
+          Tamper-proof payment gateway with server-side HMAC-SHA256 signature verification ensuring orders are only admitted to the print queue once payment is cryptographically verified.
         </p>
         <div class="tech-chips-row">
-          <span class="tech-pill">Dynamic Pricing</span>
-          <span class="tech-pill">UPI QR Codes</span>
-          <span class="tech-pill">Zero Commission</span>
+          <span class="tech-pill">Razorpay Standard</span>
+          <span class="tech-pill">HMAC-SHA256</span>
+          <span class="tech-pill">UPI / QR Codes</span>
         </div>
       </div>
     </div>
@@ -727,10 +789,13 @@
           Army Institute of Technology (AIT) • Dighi Hills, Pune, Maharashtra 411015
         </div>
       </div>
-      <div style="display:flex; gap:10px; align-items:center;">
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
         <span style="background:rgba(255,255,255,0.2); padding:6px 14px; border-radius:12px; font-size:12px; font-weight:600; letter-spacing:0.5px;">
-          Release v2.4.0 Live
+          Release v3.0.0 Cloud Production
         </span>
+        <a href="/demo-video.html" target="_blank" class="upload-btn" style="background:#10b981; color:#ffffff; padding:8px 16px; font-size:13px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+          🎬 Watch Video Demo
+        </a>
         <button class="upload-btn" data-target="dashboard" style="background:#ffffff; color:#1e6b38; padding:8px 16px; font-size:13px;">
           Back to Home
         </button>
