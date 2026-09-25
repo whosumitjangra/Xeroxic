@@ -7,8 +7,8 @@ async function checkAuth() {
   try {
     const res = await fetch('/api/me');
     if (!res.ok) {
-      // Unauthenticated visitor -> Display Landing Page with Three Role Cards
-      showPage('landing');
+      // Unauthenticated visitor -> Display Dashboard
+      showPage('dashboard');
       return null;
     }
     const data = await res.json();
@@ -34,9 +34,9 @@ async function checkAuth() {
       authBtn.textContent = 'Sign Out';
       authBtn.onclick = async () => {
         await fetch('/api/logout', { method: 'POST' });
-        showPage('landing');
+        showPage('dashboard');
         if (nameEl) nameEl.textContent = '';
-        authBtn.textContent = 'Sign In';
+        authBtn.textContent = 'Student Sign In';
         authBtn.onclick = () => window.location.href = 'login.html';
       };
     }
@@ -45,7 +45,7 @@ async function checkAuth() {
     loadMyOrders();
     return data;
   } catch (err) {
-    showPage('landing');
+    showPage('dashboard');
     return null;
   }
 }
@@ -99,12 +99,7 @@ document.addEventListener('click', (e) => {
 });
 
 document.getElementById('asgn-back-btn')?.addEventListener('click', () => {
-  const nameEl = document.getElementById('welcome-name');
-  if (nameEl && nameEl.textContent) {
-    showPage('dashboard');
-  } else {
-    showPage('landing');
-  }
+  showPage('dashboard');
 });
 
 // ---------- Image compression helper for fast & reliable cloud uploads ----------
