@@ -109,10 +109,10 @@
           <!-- STEP 2: Password Input (Matches Screenshot 1) -->
           <div class="front-step-pane" id="frontStep2">
             
-            <!-- User Email Chip with Edit option -->
-            <div class="front-user-chip">
+            <!-- User Email Chip with Edit option (Centered) -->
+            <div class="front-user-chip" onclick="backFrontToEmail()" title="Click to change email address">
               <span id="frontUserEmailChipText" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:240px; font-weight:500;">student@aitpune.edu.in</span>
-              <a href="javascript:void(0)" class="front-link" onclick="backFrontToEmail()" style="font-size:0.82rem; font-weight:600;">Edit</a>
+              <a href="javascript:void(0)" class="front-link" onclick="backFrontToEmail(); event.stopPropagation();" style="font-size:0.82rem; font-weight:600;">Edit</a>
             </div>
 
             <!-- Password Input with Toggle -->
