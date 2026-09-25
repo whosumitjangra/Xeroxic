@@ -274,6 +274,80 @@ body{
   display: block;
 }
 
+/* ==========================================================================
+   FRONT LOGIN MODALS (HIDDEN BY DEFAULT, FIXED OVERLAY ON TOP)
+   ========================================================================== */
+.info-modal-overlay {
+  display: none !important;
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.55) !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+  z-index: 100000 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 20px !important;
+  box-sizing: border-box !important;
+}
+
+.info-modal-overlay.active {
+  display: flex !important;
+}
+
+.info-modal-box {
+  background: #ffffff !important;
+  border-radius: 16px !important;
+  max-width: 440px !important;
+  width: 100% !important;
+  padding: 28px 24px 24px !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25) !important;
+  position: relative !important;
+  font-family: 'MS Serif', 'Microsoft Serif', 'Times New Roman', Times, Georgia, serif !important;
+  animation: modalPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-sizing: border-box !important;
+}
+
+@keyframes modalPopIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.modal-close-icon {
+  position: absolute !important;
+  top: 14px !important;
+  right: 16px !important;
+  background: transparent !important;
+  border: none !important;
+  font-size: 1.5rem !important;
+  cursor: pointer !important;
+  color: #6b7280 !important;
+  line-height: 1 !important;
+  padding: 4px !important;
+}
+
+.modal-close-icon:hover {
+  color: #111827 !important;
+}
+
+.modal-heading {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  margin-bottom: 12px !important;
+  color: #111827 !important;
+  font-family: 'MS Serif', 'Microsoft Serif', 'Times New Roman', Times, Georgia, serif !important;
+}
+
+.modal-body-text {
+  font-size: 0.92rem !important;
+  color: #4b5563 !important;
+  line-height: 1.55 !important;
+  margin-bottom: 22px !important;
+  font-family: 'MS Serif', 'Microsoft Serif', 'Times New Roman', Times, Georgia, serif !important;
+}
+
 /* Header */
 header{
   background: var(--green);
