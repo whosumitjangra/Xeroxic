@@ -650,7 +650,7 @@ async function runTests() {
   console.log('30. Testing Clean URL Routing (/admin, /admin/dashboard, /super-admin)...');
   const adminPageRes = await invokeHandler({ method: 'GET', url: '/admin' });
   assert.strictEqual(adminPageRes.statusCode, 200);
-  assert(adminPageRes.text().includes('Admin Portal Sign In'));
+  assert(adminPageRes.text().includes('Admin Sign in') || adminPageRes.text().includes('Admin Portal Sign In'));
 
   const adminDashRes = await invokeHandler({ method: 'GET', url: '/admin/dashboard' });
   assert.strictEqual(adminDashRes.statusCode, 200);

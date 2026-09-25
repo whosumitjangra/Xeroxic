@@ -1,82 +1,367 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sign Up — Xerox Centre</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create an account — Xeroxic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-screen: #f0f2f7;
+      --bg-card: #ffffff;
+      --primary-green: #28ba5d;
+      --primary-green-hover: #22a351;
+      --link-blue: #1d68ed;
+      --link-blue-hover: #1551be;
+      --text-main: #111827;
+      --text-muted: #6b7280;
+      --input-bg: #edf2f7;
+      --input-focus-border: #28ba5d;
+      --border-radius-card: 18px;
+      --border-radius-input: 10px;
+      --border-radius-btn: 10px;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background-color: var(--bg-screen);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .signin-card {
+      background: var(--bg-card);
+      width: 100%;
+      max-width: 440px;
+      border-radius: var(--border-radius-card);
+      padding: 44px 38px 36px;
+      box-shadow: 
+        0 4px 24px rgba(0, 0, 0, 0.04),
+        0 1px 3px rgba(0, 0, 0, 0.02);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    .xeroxic-logo-wrapper {
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .xeroxic-monogram {
+      width: 68px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .signin-title {
+      font-size: 1.85rem;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 24px;
+      letter-spacing: -0.015em;
+      text-align: center;
+      line-height: 1.25;
+    }
+
+    .signin-form {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .input-field {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1.5px solid transparent;
+      border-radius: var(--border-radius-input);
+      padding: 14px 16px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      color: #111827;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .input-field::placeholder {
+      color: #8c939d;
+      font-weight: 400;
+    }
+
+    .input-field:focus {
+      background: #ffffff;
+      border-color: var(--input-focus-border);
+      box-shadow: 0 0 0 3px rgba(40, 186, 93, 0.15);
+    }
+
+    .password-input-group {
+      position: relative;
+      width: 100%;
+    }
+
+    .password-input-group .input-field {
+      padding-right: 44px;
+    }
+
+    .password-toggle-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: #6b7280;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+      border-radius: 6px;
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: var(--primary-green);
+      color: #ffffff;
+      border: none;
+      border-radius: var(--border-radius-btn);
+      padding: 13px 16px;
+      font-family: inherit;
+      font-size: 0.98rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      background: var(--primary-green-hover);
+      box-shadow: 0 4px 14px rgba(40, 186, 93, 0.35);
+    }
+
+    .btn-submit:active:not(:disabled) {
+      transform: scale(0.99);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .auth-error-banner {
+      color: #ef4444;
+      font-size: 0.84rem;
+      text-align: center;
+      display: none;
+    }
+
+    .auth-error-banner.visible {
+      display: block;
+    }
+
+    .bottom-prompt-text {
+      margin-top: 24px;
+      font-size: 0.88rem;
+      color: #1f2937;
+      text-align: center;
+    }
+
+    .accent-link {
+      color: var(--primary-green);
+      font-weight: 500;
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+
+    .accent-link:hover {
+      text-decoration: underline;
+      color: var(--primary-green-hover);
+    }
+
+    @media (max-width: 480px) {
+      .signin-card {
+        padding: 34px 22px 28px;
+      }
+      .signin-title {
+        font-size: 1.6rem;
+      }
+    }
+  </style>
 </head>
 <body>
 
-<div class="auth-wrap">
-  <div class="auth-card">
-    <div class="auth-logo"><img src="logo.gif" alt="AIT Pune Logo"></div>
-    <h1 class="auth-title">Create Student Account</h1>
-    <p class="auth-sub">Join Xerox Centre Student Printing Portal — AIT, Pune</p>
+  <div class="signin-card">
+    
+    <div class="xeroxic-logo-wrapper">
+      <div class="xeroxic-monogram">
+        <svg class="logo-svg" viewBox="0 0 120 76" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M16 12 H38 V17 H30 L48 42 L30 67 H38 V72 H16 V67 H24 L44 39 L24 17 H16 V12 Z" fill="#000000"/>
+          <path d="M104 12 H82 V17 H90 L72 42 L90 67 H82 V72 H104 V67 H96 L76 39 L96 17 H104 V12 Z" fill="#000000"/>
+          <path d="M46 12 H74 V17 H66 L55 33 L65 47 L76 17 H68 V12 Z" fill="#000000"/>
+          <path d="M46 72 H74 V67 H66 L55 51 L45 37 L34 67 H42 V72 Z" fill="#000000"/>
+          <rect x="18" y="31" width="84" height="16" fill="#ffffff" stroke="#000000" stroke-width="1.2"/>
+          <text x="60" y="42.5" text-anchor="middle" font-family="'Cinzel', 'Times New Roman', Georgia, serif" font-weight="700" font-size="9.5" letter-spacing="3.2" fill="#000000">XEROXIC</text>
+        </svg>
+      </div>
+    </div>
 
-    <form id="signup-form">
-      <label class="auth-label">Full Name</label>
-      <input class="auth-input" type="text" id="name" placeholder="Your name" required autocomplete="name">
+    <h1 class="signin-title">Create account</h1>
 
-      <label class="auth-label">Email</label>
-      <input class="auth-input" type="email" id="email" placeholder="student@aitpune.edu.in" required autocomplete="email">
+    <form class="signin-form" id="signupForm" onsubmit="handleSignup(event)">
+      <input 
+        type="text" 
+        class="input-field" 
+        id="nameInput" 
+        placeholder="Full Name" 
+        required 
+        autocomplete="name"
+        autofocus
+      >
 
-      <label class="auth-label">Password</label>
-      <input class="auth-input" type="password" id="password" placeholder="At least 6 characters" required minlength="6" autocomplete="new-password">
+      <input 
+        type="email" 
+        class="input-field" 
+        id="emailInput" 
+        placeholder="Email" 
+        required 
+        autocomplete="email"
+      >
 
-      <p class="auth-error" id="error-msg"></p>
+      <div class="password-input-group">
+        <input 
+          type="password" 
+          class="input-field" 
+          id="passwordInput" 
+          placeholder="Password (at least 6 chars)" 
+          required 
+          minlength="6"
+          autocomplete="new-password"
+        >
+        <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility()" title="Show/Hide Password">
+          <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </button>
+      </div>
 
-      <button type="submit" class="auth-btn" id="signup-submit-btn">Sign Up as Student</button>
+      <p class="auth-error-banner" id="errorBanner"></p>
+
+      <button type="submit" class="btn-submit" id="btnSubmit">
+        <span>Create account</span>
+      </button>
     </form>
 
-    <p class="auth-switch">Already have an account? <a href="login.html">Sign in</a></p>
-    <p class="auth-switch" style="margin-top: 14px;">
-      <a href="/admin" style="color: #556b5e; font-size: 13px; text-decoration: none;">🛡️ Staff or Admin? Sign in to Admin Portal →</a>
+    <p class="bottom-prompt-text">
+      Already have an account? <a href="login.html" class="accent-link">Sign in</a>
     </p>
+
   </div>
-</div>
 
-<script>
-const submitBtn = document.getElementById('signup-submit-btn');
-const nameInput = document.getElementById('name');
-const emailInput = document.getElementById('email');
-const passwordInput = document.getElementById('password');
-const errorMsg = document.getElementById('error-msg');
+  <script>
+    const nameInput = document.getElementById('nameInput');
+    const emailInput = document.getElementById('emailInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const errorBanner = document.getElementById('errorBanner');
+    const btnSubmit = document.getElementById('btnSubmit');
 
-document.getElementById('signup-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = nameInput.value.trim();
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
-  errorMsg.textContent = '';
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Creating account...';
-
-  try {
-    const res = await fetch('/api/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, role: 'student' })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      errorMsg.textContent = data.error || 'Registration failed. Please try again.';
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Sign Up as Student';
-      return;
+    function togglePasswordVisibility() {
+      const eyeIcon = document.getElementById('eyeIcon');
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        eyeIcon.innerHTML = `
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+          <line x1="1" y1="1" x2="23" y2="23"></line>
+        `;
+      } else {
+        passwordInput.type = 'password';
+        eyeIcon.innerHTML = `
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        `;
+      }
     }
-    
-    // Always navigate to student portal
-    window.location.href = '/';
-  } catch (err) {
-    errorMsg.textContent = 'Could not reach the server. Please check your connection.';
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Sign Up as Student';
-  }
-});
-</script>
 
+    async function handleSignup(e) {
+      e.preventDefault();
+      const name = nameInput.value.trim();
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      errorBanner.textContent = '';
+      errorBanner.classList.remove('visible');
+
+      if (!name || !email || !password) {
+        errorBanner.textContent = 'Please fill out all fields.';
+        errorBanner.classList.add('visible');
+        return;
+      }
+
+      if (password.length < 6) {
+        errorBanner.textContent = 'Password must be at least 6 characters.';
+        errorBanner.classList.add('visible');
+        return;
+      }
+
+      btnSubmit.disabled = true;
+      btnSubmit.innerHTML = '<span>Creating account...</span>';
+
+      try {
+        const res = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, role: 'student' })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorBanner.textContent = data.error || 'Registration failed. Please try again.';
+          errorBanner.classList.add('visible');
+          btnSubmit.disabled = false;
+          btnSubmit.innerHTML = '<span>Create account</span>';
+          return;
+        }
+
+        btnSubmit.innerHTML = '<span>✓ Account Created!</span>';
+        window.location.href = '/';
+      } catch (err) {
+        errorBanner.textContent = 'Could not reach server. Please check your connection.';
+        errorBanner.classList.add('visible');
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = '<span>Create account</span>';
+      }
+    }
+  </script>
 </body>
 </html>
