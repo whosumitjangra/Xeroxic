@@ -43,6 +43,10 @@
   ],
   "rewrites": [
     {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
       "source": "/admin",
       "destination": "/admin-login.html"
     },
