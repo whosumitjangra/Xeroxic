@@ -20,6 +20,249 @@ body{
 .page{ display:none; max-width: 1200px; margin: 0 auto; padding: 0 24px 60px; }
 .page.active{ display:block; }
 
+/* ==========================================================================
+   FRONT LOGIN PAGE (REPLACING 3-CARD INTERFACE)
+   ========================================================================== */
+#login-page.page {
+  display: none;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 20px;
+  background: #f4f8f4 url('/images/login-bg.png') no-repeat center center fixed;
+  background-size: cover;
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+#login-page.page.active {
+  display: flex !important;
+}
+
+#login-page,
+#login-page * {
+  font-family: 'MS Serif', 'Microsoft Serif', 'Times New Roman', Times, Georgia, serif !important;
+  box-sizing: border-box;
+}
+
+.front-signin-card {
+  background: rgba(255, 255, 255, 0.97);
+  width: 100%;
+  max-width: 440px;
+  border-radius: 18px;
+  padding: 44px 38px 36px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.08), 0 2px 10px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  margin: auto;
+}
+
+.front-logo-wrapper {
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.front-logo-img {
+  width: 140px;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.04));
+}
+
+.front-signin-title {
+  font-size: 1.95rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 24px;
+  letter-spacing: -0.01em;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.front-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.front-steps-viewport {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.front-steps-slider {
+  display: flex;
+  width: 200%;
+  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.front-step-pane {
+  width: 50%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.front-input {
+  width: 100%;
+  background: #edf2f7;
+  border: 1.5px solid transparent;
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 1rem;
+  color: #111827;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.front-input::placeholder {
+  color: #8c939d;
+  font-weight: 400;
+}
+
+.front-input:focus {
+  background: #ffffff;
+  border-color: #28ba5d;
+  box-shadow: 0 0 0 3px rgba(40, 186, 93, 0.15);
+}
+
+.front-input.input-error {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.front-password-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.front-password-wrap .front-input {
+  padding-right: 44px;
+}
+
+.front-eye-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+}
+
+.front-user-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #f1f3f7;
+  border: 1px solid #e2e5eb;
+  border-radius: 20px;
+  padding: 5px 12px 5px 14px;
+  font-size: 0.86rem;
+  color: #374151;
+  margin-bottom: 16px;
+  align-self: flex-start;
+}
+
+.front-links-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  margin-bottom: 24px;
+  min-height: 20px;
+}
+
+.front-link {
+  font-size: 0.9rem;
+  color: #1d68ed;
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.front-link:hover {
+  text-decoration: underline;
+  color: #1551be;
+}
+
+.front-btn-submit {
+  width: 100%;
+  background: #28ba5d;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 13px 16px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.front-btn-submit:hover:not(:disabled) {
+  background: #22a351;
+  box-shadow: 0 4px 14px rgba(40, 186, 93, 0.35);
+}
+
+.front-btn-submit:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.front-bottom-text {
+  margin-top: 28px;
+  font-size: 0.92rem;
+  color: #1f2937;
+  text-align: center;
+}
+
+.front-accent-link {
+  color: #28ba5d;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.front-accent-link:hover {
+  text-decoration: underline;
+  color: #22a351;
+}
+
+.front-error-banner {
+  color: #ef4444;
+  font-size: 0.88rem;
+  margin-top: 14px;
+  text-align: center;
+  display: none;
+}
+
+.front-error-banner.visible {
+  display: block;
+}
+
 /* Header */
 header{
   background: var(--green);

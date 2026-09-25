@@ -7,8 +7,8 @@ async function checkAuth() {
   try {
     const res = await fetch('/api/me');
     if (!res.ok) {
-      // Unauthenticated visitor -> Display Dashboard
-      showPage('dashboard');
+      // Unauthenticated visitor -> Display Front Login Page (replacing old 3-card landing)
+      showPage('login-page');
       return null;
     }
     const data = await res.json();
@@ -34,10 +34,10 @@ async function checkAuth() {
       authBtn.textContent = 'Sign Out';
       authBtn.onclick = async () => {
         await fetch('/api/logout', { method: 'POST' });
-        showPage('dashboard');
+        showPage('login-page');
         if (nameEl) nameEl.textContent = '';
         authBtn.textContent = 'Student Sign In';
-        authBtn.onclick = () => window.location.href = 'login.html';
+        authBtn.onclick = () => showPage('login-page');
       };
     }
 
@@ -45,11 +45,204 @@ async function checkAuth() {
     loadMyOrders();
     return data;
   } catch (err) {
-    showPage('dashboard');
+    showPage('login-page');
     return null;
   }
 }
 checkAuth();
+
+// ===================================================================
+// Front Login Page Logic (Google-style Two-Step Auth)
+// ===================================================================
+let frontStep = 1;
+let frontRole = 'student'; // 'student' or 'admin'
+
+function proceedFrontToPassword() {
+  const emailInput = document.getElementById('frontEmailInput');
+  const userChipText = document.getElementById('frontUserEmailChipText');
+  const slider = document.getElementById('frontStepsSlider');
+  const title = document.getElementById('frontPageTitle');
+  const passInput = document.getElementById('frontPasswordInput');
+
+  clearFrontError();
+  const email = emailInput ? emailInput.value.trim() : '';
+  if (!email) {
+    showFrontError(frontRole === 'admin' ? 'Please enter your staff email.' : 'Please enter your email address.');
+    emailInput?.classList.add('input-error');
+    emailInput?.focus();
+    return;
+  }
+
+  frontStep = 2;
+  if (userChipText) userChipText.textContent = email;
+  if (slider) slider.style.transform = 'translateX(-50%)';
+  if (title) title.textContent = 'Enter your password';
+  setTimeout(() => passInput?.focus(), 300);
+}
+
+function backFrontToEmail() {
+  frontStep = 1;
+  const slider = document.getElementById('frontStepsSlider');
+  const title = document.getElementById('frontPageTitle');
+  const emailInput = document.getElementById('frontEmailInput');
+  if (slider) slider.style.transform = 'translateX(0%)';
+  if (title) title.textContent = frontRole === 'admin' ? 'Admin Sign in' : 'Sign in';
+  clearFrontError();
+  setTimeout(() => emailInput?.focus(), 300);
+}
+
+function toggleFrontRole() {
+  frontRole = frontRole === 'student' ? 'admin' : 'student';
+  const title = document.getElementById('frontPageTitle');
+  const roleToggleBtn = document.getElementById('frontRoleToggleBtn');
+  const bottomPrompt = document.getElementById('frontBottomPrompt');
+  const emailInput = document.getElementById('frontEmailInput');
+
+  backFrontToEmail();
+
+  if (frontRole === 'admin') {
+    if (title) title.textContent = 'Admin Sign in';
+    if (roleToggleBtn) roleToggleBtn.textContent = 'Student Portal →';
+    if (bottomPrompt) {
+      bottomPrompt.innerHTML = 'Login as Superadmin, <a href="/super-admin" class="front-accent-link">Click here</a>';
+    }
+    if (emailInput) emailInput.placeholder = 'Staff Email';
+  } else {
+    if (title) title.textContent = 'Sign in';
+    if (roleToggleBtn) roleToggleBtn.textContent = 'Admin account';
+    if (bottomPrompt) {
+      bottomPrompt.innerHTML = 'New to Xeroxic? <a href="javascript:void(0)" class="front-accent-link" onclick="window.location.href=\'signup.html\'">Create a account</a>';
+    }
+    if (emailInput) emailInput.placeholder = 'Email';
+  }
+}
+
+function toggleFrontPasswordVisibility() {
+  const passInput = document.getElementById('frontPasswordInput');
+  const eyeIcon = document.getElementById('frontEyeIcon');
+  if (!passInput) return;
+  if (passInput.type === 'password') {
+    passInput.type = 'text';
+    if (eyeIcon) eyeIcon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+  } else {
+    passInput.type = 'password';
+    if (eyeIcon) eyeIcon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+  }
+}
+
+async function handleFrontSubmit(e) {
+  e.preventDefault();
+  if (frontStep === 1) {
+    proceedFrontToPassword();
+    return;
+  }
+
+  const emailInput = document.getElementById('frontEmailInput');
+  const passInput = document.getElementById('frontPasswordInput');
+  const btnSignIn = document.getElementById('frontBtnSignIn');
+  clearFrontError();
+
+  const email = emailInput ? emailInput.value.trim() : '';
+  const password = passInput ? passInput.value : '';
+
+  if (!password) {
+    showFrontError('Please enter your password.');
+    passInput?.classList.add('input-error');
+    passInput?.focus();
+    return;
+  }
+
+  if (btnSignIn) {
+    btnSignIn.disabled = true;
+    btnSignIn.textContent = 'Signing In...';
+  }
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, role: frontRole })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showFrontError(data.error || 'Invalid credentials or login rejected.');
+      passInput?.classList.add('input-error');
+      if (btnSignIn) {
+        btnSignIn.disabled = false;
+        btnSignIn.textContent = 'Next';
+      }
+      return;
+    }
+
+    if (btnSignIn) btnSignIn.textContent = '✓ Success!';
+
+    const roleUpper = (data.role || '').toUpperCase();
+    if (roleUpper === 'SUPER_ADMIN' || roleUpper === 'SUPERADMIN') {
+      window.location.href = '/super-admin';
+      return;
+    }
+    if (roleUpper === 'ADMIN') {
+      window.location.href = '/admin/dashboard';
+      return;
+    }
+
+    // Student -> Reveal dashboard
+    const nameEl = document.getElementById('welcome-name');
+    const authBtn = document.getElementById('auth-btn');
+    if (nameEl) nameEl.textContent = 'Hi, ' + (data.name || 'Student');
+    if (authBtn) {
+      authBtn.textContent = 'Sign Out';
+      authBtn.onclick = async () => {
+        await fetch('/api/logout', { method: 'POST' });
+        showPage('login-page');
+        if (nameEl) nameEl.textContent = '';
+        authBtn.textContent = 'Student Sign In';
+        authBtn.onclick = () => showPage('login-page');
+      };
+    }
+    showPage('dashboard');
+    fetchLivePricing();
+    loadMyOrders();
+  } catch (err) {
+    showFrontError('Could not reach the server. Please check your internet connection.');
+    if (btnSignIn) {
+      btnSignIn.disabled = false;
+      btnSignIn.textContent = 'Next';
+    }
+  }
+}
+
+function showFrontError(msg) {
+  const eb = document.getElementById('frontErrorBanner');
+  if (eb) {
+    eb.textContent = msg;
+    eb.classList.add('visible');
+  }
+}
+
+function clearFrontError() {
+  const eb = document.getElementById('frontErrorBanner');
+  if (eb) {
+    eb.textContent = '';
+    eb.classList.remove('visible');
+  }
+  document.getElementById('frontEmailInput')?.classList.remove('input-error');
+  document.getElementById('frontPasswordInput')?.classList.remove('input-error');
+}
+
+function openFrontForgotEmailModal() {
+  document.getElementById('frontForgotEmailModal')?.classList.add('active');
+}
+function closeFrontForgotEmailModal() {
+  document.getElementById('frontForgotEmailModal')?.classList.remove('active');
+}
+function openFrontForgotPasswordModal() {
+  document.getElementById('frontForgotPasswordModal')?.classList.add('active');
+}
+function closeFrontForgotPasswordModal() {
+  document.getElementById('frontForgotPasswordModal')?.classList.remove('active');
+}
 
 // ===================================================================
 // Page Navigation & Router
