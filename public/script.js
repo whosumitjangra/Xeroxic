@@ -104,7 +104,7 @@ function toggleFrontRole() {
     if (title) title.textContent = 'Admin Sign in';
     if (roleToggleBtn) roleToggleBtn.textContent = 'Student Portal →';
     if (bottomPrompt) {
-      bottomPrompt.innerHTML = 'Login as Superadmin, <a href="/super-admin" class="front-accent-link">Click here</a>';
+      bottomPrompt.innerHTML = 'Login as Superadmin. <a href="/super-admin" class="front-accent-link">Click here</a>';
     }
     if (emailInput) emailInput.placeholder = 'Staff Email';
   } else {

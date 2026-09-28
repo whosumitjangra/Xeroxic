@@ -21,7 +21,7 @@ body{
 .page.active{ display:block; }
 
 /* ==========================================================================
-   FRONT LOGIN PAGE (REPLACING 3-CARD INTERFACE)
+   FRONT LOGIN PAGE (FIGMA DESIGN IMPLEMENTATION)
    ========================================================================== */
 #login-page.page {
   display: none;
@@ -32,8 +32,7 @@ body{
   max-width: 100% !important;
   margin: 0 !important;
   padding: 20px;
-  background: #f4f8f4 url('/images/login-bg.png') no-repeat center center fixed;
-  background-size: cover;
+  background: #f2f1f6;
   z-index: 9999;
   align-items: center;
   justify-content: center;
@@ -47,23 +46,22 @@ body{
 
 #login-page,
 #login-page * {
-  font-family: 'MS Serif', 'Microsoft Serif', 'Times New Roman', Times, Georgia, serif !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 'Inter', Helvetica, Arial, sans-serif !important;
   box-sizing: border-box;
 }
 
 .front-signin-card {
-  background: rgba(255, 255, 255, 0.97);
+  background: #ffffff;
   width: 100%;
   max-width: 440px;
-  border-radius: 18px;
+  border-radius: 16px;
   padding: 44px 38px 36px;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.08), 0 2px 10px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.02);
   display: flex;
   flex-direction: column;
   align-items: center;
   position: relative;
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.04);
   margin: auto;
 }
 
@@ -83,8 +81,8 @@ body{
 }
 
 .front-signin-title {
-  font-size: 1.95rem;
-  font-weight: 700;
+  font-size: 1.85rem;
+  font-weight: 600;
   color: #111827;
   margin-bottom: 24px;
   letter-spacing: -0.01em;
@@ -119,25 +117,25 @@ body{
 
 .front-input {
   width: 100%;
-  background: #edf2f7;
+  background: #f2f1f6;
   border: 1.5px solid transparent;
   border-radius: 10px;
   padding: 14px 16px;
-  font-size: 1rem;
+  font-size: 0.98rem;
   color: #111827;
   outline: none;
   transition: all 0.2s ease;
 }
 
 .front-input::placeholder {
-  color: #8c939d;
+  color: #8e94a0;
   font-weight: 400;
 }
 
 .front-input:focus {
   background: #ffffff;
-  border-color: #28ba5d;
-  box-shadow: 0 0 0 3px rgba(40, 186, 93, 0.15);
+  border-color: #ff8344;
+  box-shadow: 0 0 0 3px rgba(255, 131, 68, 0.2);
 }
 
 .front-input.input-error {
@@ -205,8 +203,8 @@ body{
 }
 
 .front-link {
-  font-size: 0.9rem;
-  color: #1d68ed;
+  font-size: 0.88rem;
+  color: #2b59fe;
   text-decoration: none;
   cursor: pointer;
   font-weight: 500;
@@ -214,12 +212,12 @@ body{
 
 .front-link:hover {
   text-decoration: underline;
-  color: #1551be;
+  color: #1a42db;
 }
 
 .front-btn-submit {
   width: 100%;
-  background: #28ba5d;
+  background: #ff8344;
   color: #ffffff;
   border: none;
   border-radius: 10px;
@@ -235,8 +233,8 @@ body{
 }
 
 .front-btn-submit:hover:not(:disabled) {
-  background: #22a351;
-  box-shadow: 0 4px 14px rgba(40, 186, 93, 0.35);
+  background: #f07432;
+  box-shadow: 0 4px 14px rgba(255, 131, 68, 0.35);
 }
 
 .front-btn-submit:active:not(:disabled) {
@@ -251,7 +249,7 @@ body{
 }
 
 .front-accent-link {
-  color: #28ba5d;
+  color: #ff8344;
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
@@ -259,7 +257,7 @@ body{
 
 .front-accent-link:hover {
   text-decoration: underline;
-  color: #22a351;
+  color: #f07432;
 }
 
 .front-error-banner {
@@ -305,7 +303,7 @@ body{
   padding: 28px 24px 24px !important;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25) !important;
   position: relative !important;
-  font-family: 'MS Serif', 'Microsoft Serif', 'Times New Roman', Times, Georgia, serif !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 'Inter', Helvetica, Arial, sans-serif !important;
   animation: modalPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
   box-sizing: border-box !important;
 }
@@ -337,7 +335,7 @@ body{
   font-weight: 700 !important;
   margin-bottom: 12px !important;
   color: #111827 !important;
-  font-family: 'MS Serif', 'Microsoft Serif', 'Times New Roman', Times, Georgia, serif !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 'Inter', Helvetica, Arial, sans-serif !important;
 }
 
 .modal-body-text {
@@ -345,7 +343,7 @@ body{
   color: #4b5563 !important;
   line-height: 1.55 !important;
   margin-bottom: 22px !important;
-  font-family: 'MS Serif', 'Microsoft Serif', 'Times New Roman', Times, Georgia, serif !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 'Inter', Helvetica, Arial, sans-serif !important;
 }
 
 /* Header */
