@@ -55,7 +55,16 @@ checkAuth();
 // Front Login Page Logic (Google-style Two-Step Auth)
 // ===================================================================
 let frontStep = 1;
-let frontRole = 'student'; // 'student' or 'admin'
+let frontRole = 'student'; // 'student', 'admin', or 'super_admin'
+
+document.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('role') === 'superadmin' || window.location.hash === '#superadmin') {
+    setFrontSuperAdminMode();
+  } else if (urlParams.get('role') === 'admin' || window.location.hash === '#admin') {
+    setFrontAdminMode();
+  }
+});
 
 function proceedFrontToPassword() {
   const emailInput = document.getElementById('frontEmailInput');
@@ -67,7 +76,7 @@ function proceedFrontToPassword() {
   clearFrontError();
   const email = emailInput ? emailInput.value.trim() : '';
   if (!email) {
-    showFrontError(frontRole === 'admin' ? 'Please enter your staff email.' : 'Please enter your email address.');
+    showFrontError(frontRole === 'super_admin' ? 'Please enter your superadmin email.' : (frontRole === 'admin' ? 'Please enter your staff email.' : 'Please enter your email address.'));
     emailInput?.classList.add('input-error');
     emailInput?.focus();
     return;
@@ -86,34 +95,68 @@ function backFrontToEmail() {
   const title = document.getElementById('frontPageTitle');
   const emailInput = document.getElementById('frontEmailInput');
   if (slider) slider.style.transform = 'translateX(0%)';
-  if (title) title.textContent = frontRole === 'admin' ? 'Admin Sign in' : 'Sign in';
+  if (title) {
+    if (frontRole === 'super_admin') title.textContent = 'Super Admin Sign in';
+    else if (frontRole === 'admin') title.textContent = 'Admin Sign in';
+    else title.textContent = 'Sign in';
+  }
   clearFrontError();
   setTimeout(() => emailInput?.focus(), 300);
 }
 
-function toggleFrontRole() {
-  frontRole = frontRole === 'student' ? 'admin' : 'student';
+function setFrontSuperAdminMode() {
+  frontRole = 'super_admin';
+  backFrontToEmail();
   const title = document.getElementById('frontPageTitle');
   const roleToggleBtn = document.getElementById('frontRoleToggleBtn');
   const bottomPrompt = document.getElementById('frontBottomPrompt');
   const emailInput = document.getElementById('frontEmailInput');
 
-  backFrontToEmail();
+  if (title) title.textContent = 'Super Admin Sign in';
+  if (roleToggleBtn) roleToggleBtn.textContent = 'Student Portal →';
+  if (bottomPrompt) {
+    bottomPrompt.innerHTML = 'Switch to: <a href="javascript:void(0)" class="front-accent-link" onclick="setFrontAdminMode()">Staff Admin</a> | <a href="javascript:void(0)" class="front-accent-link" onclick="setFrontStudentMode()">Student</a>';
+  }
+  if (emailInput) emailInput.placeholder = 'Superadmin Email';
+}
 
-  if (frontRole === 'admin') {
-    if (title) title.textContent = 'Admin Sign in';
-    if (roleToggleBtn) roleToggleBtn.textContent = 'Student Portal →';
-    if (bottomPrompt) {
-      bottomPrompt.innerHTML = 'Login as Superadmin. <a href="/super-admin" class="front-accent-link">Click here</a>';
-    }
-    if (emailInput) emailInput.placeholder = 'Staff Email';
+function setFrontAdminMode() {
+  frontRole = 'admin';
+  backFrontToEmail();
+  const title = document.getElementById('frontPageTitle');
+  const roleToggleBtn = document.getElementById('frontRoleToggleBtn');
+  const bottomPrompt = document.getElementById('frontBottomPrompt');
+  const emailInput = document.getElementById('frontEmailInput');
+
+  if (title) title.textContent = 'Admin Sign in';
+  if (roleToggleBtn) roleToggleBtn.textContent = 'Student Portal →';
+  if (bottomPrompt) {
+    bottomPrompt.innerHTML = 'Login as Superadmin. <a href="javascript:void(0)" class="front-accent-link" onclick="setFrontSuperAdminMode()">Click here</a>';
+  }
+  if (emailInput) emailInput.placeholder = 'Staff Email';
+}
+
+function setFrontStudentMode() {
+  frontRole = 'student';
+  backFrontToEmail();
+  const title = document.getElementById('frontPageTitle');
+  const roleToggleBtn = document.getElementById('frontRoleToggleBtn');
+  const bottomPrompt = document.getElementById('frontBottomPrompt');
+  const emailInput = document.getElementById('frontEmailInput');
+
+  if (title) title.textContent = 'Sign in';
+  if (roleToggleBtn) roleToggleBtn.textContent = 'Admin account';
+  if (bottomPrompt) {
+    bottomPrompt.innerHTML = 'New to Xeroxic? <a href="javascript:void(0)" class="front-accent-link" onclick="window.location.href=\'signup.html\'">Create a account</a>';
+  }
+  if (emailInput) emailInput.placeholder = 'Email';
+}
+
+function toggleFrontRole() {
+  if (frontRole === 'student') {
+    setFrontAdminMode();
   } else {
-    if (title) title.textContent = 'Sign in';
-    if (roleToggleBtn) roleToggleBtn.textContent = 'Admin account';
-    if (bottomPrompt) {
-      bottomPrompt.innerHTML = 'New to Xeroxic? <a href="javascript:void(0)" class="front-accent-link" onclick="window.location.href=\'signup.html\'">Create a account</a>';
-    }
-    if (emailInput) emailInput.placeholder = 'Email';
+    setFrontStudentMode();
   }
 }
 
@@ -126,7 +169,7 @@ function toggleFrontPasswordVisibility() {
     if (eyeIcon) eyeIcon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
   } else {
     passInput.type = 'password';
-    if (eyeIcon) eyeIcon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+    if (eyeIcon) eyeIcon.innerHTML = '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle>';
   }
 }
 
@@ -903,6 +946,9 @@ async function verifyPayment(statusToSimulate = 'SUCCESS', utr = '') {
       }
       setTimeout(() => {
         renderConfirmation(data.orderId, data.amount || currentPendingOrder.amount, orderDraft, currentPaymentMethod);
+        if (typeof pushCampusNotification === 'function') {
+          pushCampusNotification(`Order #${data.orderId} Placed`, 'Your print job is queued. Show QR code at Counter #1 for express pickup.', 'trackorder');
+        }
         showPage('confirmation');
       }, 600);
       return;
@@ -1063,6 +1109,9 @@ async function launchRazorpayCheckout() {
           // Payment verified successfully!
           currentPaymentMethod = 'Razorpay';
           renderConfirmation(currentPendingOrder.orderId, currentPendingOrder.amount, orderDraft, 'Razorpay');
+          if (typeof pushCampusNotification === 'function') {
+            pushCampusNotification(`Order #${currentPendingOrder.orderId} Placed`, 'Your print job is queued. Show QR code at Counter #1 for express pickup.', 'trackorder');
+          }
           showPage('confirmation');
         } catch (verifyErr) {
           console.error('Razorpay verification error:', verifyErr);
@@ -2301,4 +2350,180 @@ document.getElementById('preview-modal')?.addEventListener('click', (e) => {
   if (e.target.id === 'preview-modal') {
     e.target.style.display = 'none';
   }
+});
+
+// ===================================================================
+// Interactive Notification System & Header Live Search
+// ===================================================================
+
+let unreadNotifCount = 3;
+
+function initNotificationSystem() {
+  const toggleBtn = document.getElementById('notif-toggle-btn');
+  const dropdown = document.getElementById('notif-dropdown');
+  const wrapper = document.getElementById('notifWrapper');
+
+  if (toggleBtn && dropdown) {
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdown.classList.toggle('active');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (wrapper && !wrapper.contains(e.target)) {
+        dropdown.classList.remove('active');
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') dropdown.classList.remove('active');
+    });
+  }
+}
+
+window.markAllNotifsRead = function() {
+  const items = document.querySelectorAll('.notif-item');
+  items.forEach(it => it.classList.remove('unread'));
+  const badge = document.getElementById('notif-badge');
+  const pill = document.getElementById('notif-counter-pill');
+  if (badge) badge.classList.add('hidden');
+  if (pill) pill.textContent = 'All caught up';
+  unreadNotifCount = 0;
+};
+
+window.clearAllNotifs = function() {
+  const list = document.getElementById('notif-list');
+  const badge = document.getElementById('notif-badge');
+  const pill = document.getElementById('notif-counter-pill');
+  if (list) {
+    list.innerHTML = `
+      <div style="padding: 32px 20px; text-align: center; color: #9ca3af; font-size: 13px;">
+        <div style="font-size: 24px; margin-bottom: 6px;">✨</div>
+        No notifications right now
+      </div>
+    `;
+  }
+  if (badge) badge.classList.add('hidden');
+  if (pill) pill.textContent = '0 new';
+  unreadNotifCount = 0;
+};
+
+window.handleNotifAction = function(target) {
+  const dropdown = document.getElementById('notif-dropdown');
+  if (dropdown) dropdown.classList.remove('active');
+  if (target) showPage(target);
+};
+
+// Add dynamic notification helper
+window.pushCampusNotification = function(title, text, target = 'trackorder') {
+  const list = document.getElementById('notif-list');
+  const badge = document.getElementById('notif-badge');
+  const pill = document.getElementById('notif-counter-pill');
+  if (!list) return;
+
+  unreadNotifCount++;
+  if (badge) {
+    badge.textContent = unreadNotifCount;
+    badge.classList.remove('hidden');
+  }
+  if (pill) pill.textContent = `${unreadNotifCount} new`;
+
+  const item = document.createElement('div');
+  item.className = 'notif-item unread';
+  item.onclick = () => handleNotifAction(target);
+  item.innerHTML = `
+    <div class="notif-icon notif-icon-printer">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+    </div>
+    <div class="notif-text-wrap">
+      <div class="notif-title">${title}</div>
+      <div class="notif-desc">${text}</div>
+      <div class="notif-time">Just now</div>
+    </div>
+    <span class="notif-dot"></span>
+  `;
+  list.insertBefore(item, list.firstChild);
+};
+
+// Header Live Search Feature
+function initHeaderLiveSearch() {
+  const searchInput = document.getElementById('headerSearchInput');
+  const dropdown = document.getElementById('searchResultsDropdown');
+  if (!searchInput || !dropdown) return;
+
+  const searchableIndex = [
+    { title: 'Print Centre (Upload Document)', category: 'Quick Service', target: 'printcentre', icon: '⚡' },
+    { title: 'Duplex & Color Print Options', category: 'Pricing & Options', target: 'printoptions', icon: '📄' },
+    { title: 'Track Order & Live Print Queue', category: 'Express Tracking', target: 'trackorder', icon: '📍' },
+    { title: 'Subject Lab Assignments & Manuals', category: 'Academic Hub', target: 'assignments', icon: '📚' },
+    { title: 'Computer Engineering (FE/SE/TE/BE)', category: 'Assignments', target: 'assignments', icon: '💻' },
+    { title: 'Information Technology (IT)', category: 'Assignments', target: 'assignments', icon: '🌐' },
+    { title: 'Electronics & Telecommunication (E&TC)', category: 'Assignments', target: 'assignments', icon: '📡' },
+    { title: 'Mechanical Engineering (MECH)', category: 'Assignments', target: 'assignments', icon: '⚙️' },
+    { title: 'Campus Timings & Operating Schedule', category: 'About Centre', target: 'aboutus', icon: '🕒' },
+    { title: 'Express Counter #1 Pickup Information', category: 'About Centre', target: 'aboutus', icon: 'ℹ️' }
+  ];
+
+  searchInput.addEventListener('input', () => {
+    const query = searchInput.value.trim().toLowerCase();
+    if (!query) {
+      dropdown.classList.remove('active');
+      dropdown.innerHTML = '';
+      return;
+    }
+
+    const matches = searchableIndex.filter(item => 
+      item.title.toLowerCase().includes(query) || 
+      item.category.toLowerCase().includes(query)
+    );
+
+    if (matches.length === 0) {
+      dropdown.innerHTML = `
+        <div style="padding: 16px; text-align: center; color: #9ca3af; font-size: 13px;">
+          No matching campus services found
+        </div>
+      `;
+      dropdown.classList.add('active');
+      return;
+    }
+
+    dropdown.innerHTML = matches.map(m => `
+      <div class="search-result-item" onclick="selectSearchResult('${m.target}')">
+        <div class="search-result-icon">${m.icon}</div>
+        <div>
+          <div class="search-result-title">${m.title}</div>
+          <div class="search-result-category">${m.category}</div>
+        </div>
+      </div>
+    `).join('');
+    dropdown.classList.add('active');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.classList.remove('active');
+    }
+  });
+
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') dropdown.classList.remove('active');
+    if (e.key === 'Enter') {
+      const first = dropdown.querySelector('.search-result-item');
+      if (first) first.click();
+    }
+  });
+}
+
+window.selectSearchResult = function(target) {
+  const searchInput = document.getElementById('headerSearchInput');
+  const dropdown = document.getElementById('searchResultsDropdown');
+  if (dropdown) dropdown.classList.remove('active');
+  if (searchInput) searchInput.value = '';
+  showPage(target);
+};
+
+// Initialize features on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  initNotificationSystem();
+  initHeaderLiveSearch();
 });

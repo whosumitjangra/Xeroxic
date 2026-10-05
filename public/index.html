@@ -127,7 +127,7 @@
               >
               <button type="button" class="front-eye-btn" onclick="toggleFrontPasswordVisibility()" title="Show/Hide Password">
                 <svg id="frontEyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"></path>
+                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
                   <circle cx="12" cy="12" r="3"></circle>
                 </svg>
               </button>
@@ -162,53 +162,265 @@
 
 <!-- DASHBOARD PAGE -->
 <div class="page" id="dashboard">
-  <header>
-    <div class="logo"><img src="logo.gif" alt="AIT Pune Logo"></div>
-    <input class="search" type="text" placeholder="Search projects, reports, or assets...">
+  <header class="main-header">
+    <div class="logo">
+      <img src="/images/xeroxic-logo.png" alt="XEROXIC" class="header-logo-img" onerror="this.src='logo.gif'">
+    </div>
+    <div class="header-search-wrap">
+      <svg class="header-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input class="search" id="headerSearchInput" type="text" placeholder="Search print options, assignments, or documents...">
+      <div class="search-results-dropdown" id="searchResultsDropdown"></div>
+    </div>
     <div class="spacer"></div>
     <div class="brand">
       <div class="title">XEROX CENTRE</div>
-      <div class="sub">AIT, PUNE</div>
+      <div class="sub">AIT PUNE CAMPUS</div>
     </div>
-    <button class="icon-btn" aria-label="Notifications">🔔</button>
+    <div class="notif-wrapper" id="notifWrapper">
+      <button class="icon-btn notif-toggle-btn" id="notif-toggle-btn" aria-label="Notifications" title="Notifications">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        <span class="notif-badge" id="notif-badge">3</span>
+      </button>
+
+      <!-- Notification Dropdown Panel -->
+      <div class="notif-dropdown" id="notif-dropdown">
+        <div class="notif-head">
+          <div class="notif-head-title">
+            <span>Notifications</span>
+            <span class="notif-counter-pill" id="notif-counter-pill">3 new</span>
+          </div>
+          <button type="button" class="notif-action-btn" onclick="markAllNotifsRead()">Mark read</button>
+        </div>
+        <div class="notif-list" id="notif-list">
+          <div class="notif-item unread" onclick="handleNotifAction('trackorder')">
+            <div class="notif-icon notif-icon-printer">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            </div>
+            <div class="notif-text-wrap">
+              <div class="notif-title">Laser Printers Ready</div>
+              <div class="notif-desc">Printers #1 &amp; #2 operating with zero waiting delay. Pickup in ~3 mins.</div>
+              <div class="notif-time">Just now</div>
+            </div>
+            <span class="notif-dot"></span>
+          </div>
+          <div class="notif-item unread" onclick="handleNotifAction('assignments')">
+            <div class="notif-icon notif-icon-book">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            </div>
+            <div class="notif-text-wrap">
+              <div class="notif-title">Lab Manuals Updated</div>
+              <div class="notif-desc">New FE, SE &amp; TE practical experiment sheets are available for instant print.</div>
+              <div class="notif-time">15m ago</div>
+            </div>
+            <span class="notif-dot"></span>
+          </div>
+          <div class="notif-item unread" onclick="handleNotifAction('aboutus')">
+            <div class="notif-icon notif-icon-info">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            </div>
+            <div class="notif-text-wrap">
+              <div class="notif-title">Express QR Pickup Active</div>
+              <div class="notif-desc">Show your order QR code at Counter #1 for express contact-free collection.</div>
+              <div class="notif-time">1h ago</div>
+            </div>
+            <span class="notif-dot"></span>
+          </div>
+        </div>
+        <div class="notif-footer">
+          <button type="button" class="notif-clear-btn" onclick="clearAllNotifs()">Clear all</button>
+        </div>
+      </div>
+    </div>
     <button class="track-link" data-target="trackorder">Track Order</button>
     <span class="welcome-name" id="welcome-name"></span>
     <button class="signin" id="auth-btn">Sign In</button>
   </header>
 
-  <h1 class="page-title">Dashboard</h1>
+  <!-- CAMPUS HERO BANNER & LIVE SYSTEM STATUS -->
+  <div class="hero-campus-banner">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="hero-beacon"></span>
+        <span>AIT PUNE SMART PRINT HUB</span>
+      </div>
+      <h1 class="hero-title">Zero-Queue Campus Printing</h1>
+      <p class="hero-subtitle">Upload your documents online, select print specifications, and collect in minutes at the Ground Floor Xerox Counter.</p>
+      
+      <!-- Live Operational KPIs -->
+      <div class="hero-kpi-bar">
+        <div class="hero-kpi-item">
+          <div class="hero-kpi-icon icon-emerald">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <div>
+            <div class="hero-kpi-val">Laser Fleet Online</div>
+            <div class="hero-kpi-label">3 Heavy-Duty Units</div>
+          </div>
+        </div>
+        <div class="hero-kpi-item">
+          <div class="hero-kpi-icon icon-orange">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </div>
+          <div>
+            <div class="hero-kpi-val">~3 Mins Avg Wait</div>
+            <div class="hero-kpi-label">Express Queue Active</div>
+          </div>
+        </div>
+        <div class="hero-kpi-item">
+          <div class="hero-kpi-icon icon-blue">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          </div>
+          <div>
+            <div class="hero-kpi-val">₹2.00 / B&amp;W Page</div>
+            <div class="hero-kpi-label">Color: ₹10.00 / Page</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
+  <!-- MODERN 3-CARD DOCK (FIGMA LOGIN PALETTE & VECTOR ILLUSTRATIONS) -->
   <div class="dock">
-    <button class="card teal" data-target="printcentre">
-      <div class="card-image-wrap">
-        <img src="/images/card-print.jpg" alt="Print Centre" class="card-img" loading="lazy">
+    <!-- Card 1: Print Centre (Coral theme from login button) -->
+    <button class="card modern-card card-printcentre" data-target="printcentre">
+      <div class="card-vector-header header-coral">
+        <div class="card-icon-bubble bubble-coral">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+        </div>
+        <div class="card-header-badge badge-coral">Express Printing</div>
       </div>
-      <div class="card-content-wrap">
-        <span class="card-sticker sticker-teal">⚡ Fast Print</span>
-        <div class="card-title">Print Centre</div>
-        <div class="card-desc">Upload documents &amp; pick up in 5 mins.</div>
+      <div class="card-body">
+        <h3 class="modern-card-title">Print Centre</h3>
+        <p class="modern-card-desc">Upload PDF, Word, or presentation files. Select B&amp;W or color, single/double sided, and pick up in 5 minutes.</p>
+        <div class="card-feature-chips">
+          <span class="feature-chip">⚡ Fast Queue</span>
+          <span class="feature-chip">📄 Auto-duplex</span>
+          <span class="feature-chip">💳 UPI &amp; Cards</span>
+        </div>
       </div>
-    </button>
-    <button class="card blue" data-target="assignments">
-      <div class="card-image-wrap">
-        <img src="/images/card-assignment.jpg" alt="Assignments" class="card-img" loading="lazy">
-      </div>
-      <div class="card-content-wrap">
-        <span class="card-sticker sticker-blue">📚 Lab Manuals</span>
-        <div class="card-title">Assignments</div>
-        <div class="card-desc">Subject lab experiments &amp; demo sheets.</div>
-      </div>
-    </button>
-    <button class="card pink" data-target="aboutus">
-      <div class="card-image-wrap">
-        <img src="/images/card-about.jpg" alt="About Us" class="card-img" loading="lazy">
-      </div>
-      <div class="card-content-wrap">
-        <span class="card-sticker sticker-pink">🎓 Campus Xerox</span>
-        <div class="card-title">About Us</div>
-        <div class="card-desc">Fast, student-friendly campus printing.</div>
+      <div class="card-action-bar">
+        <span class="card-action-text">Start Printing</span>
+        <span class="card-action-arrow">→</span>
       </div>
     </button>
+
+    <!-- Card 2: Assignments (Blue theme from login links) -->
+    <button class="card modern-card card-assignments" data-target="assignments">
+      <div class="card-vector-header header-blue">
+        <div class="card-icon-bubble bubble-blue">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            <line x1="9" y1="7" x2="15" y2="7"></line>
+            <line x1="9" y1="11" x2="15" y2="11"></line>
+          </svg>
+        </div>
+        <div class="card-header-badge badge-blue">Academic Hub</div>
+      </div>
+      <div class="card-body">
+        <h3 class="modern-card-title">Subject Assignments</h3>
+        <p class="modern-card-desc">Browse pre-approved department lab experiment sheets, writeups, and demo assignments for FE, SE, TE &amp; BE.</p>
+        <div class="card-feature-chips">
+          <span class="feature-chip">📚 Lab Manuals</span>
+          <span class="feature-chip">🎓 4 Branches</span>
+          <span class="feature-chip">✓ Verified</span>
+        </div>
+      </div>
+      <div class="card-action-bar">
+        <span class="card-action-text">Browse Subjects</span>
+        <span class="card-action-arrow">→</span>
+      </div>
+    </button>
+
+    <!-- Card 3: About Us (Campus Xerox hub) -->
+    <button class="card modern-card card-aboutus" data-target="aboutus">
+      <div class="card-vector-header header-emerald">
+        <div class="card-icon-bubble bubble-emerald">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+        </div>
+        <div class="card-header-badge badge-emerald">Campus Facility</div>
+      </div>
+      <div class="card-body">
+        <h3 class="modern-card-title">About Xerox Centre</h3>
+        <p class="modern-card-desc">Operating schedule, location details, printer specifications, pricing structures, and student guidelines.</p>
+        <div class="card-feature-chips">
+          <span class="feature-chip">🕒 8:30 AM – 6:30 PM</span>
+          <span class="feature-chip">📍 Ground Floor</span>
+          <span class="feature-chip">ℹ️ Info Guide</span>
+        </div>
+      </div>
+      <div class="card-action-bar">
+        <span class="card-action-text">View Centre Details</span>
+        <span class="card-action-arrow">→</span>
+      </div>
+    </button>
+  </div>
+
+  <!-- EXPRESS 3-STEP PICKUP GUIDE (VACANT SPACE ENRICHMENT) -->
+  <div class="workflow-steps-section">
+    <div class="section-badge-center">
+      <span>SMART PICKUP GUIDE</span>
+    </div>
+    <h2 class="section-heading-center">How Express Campus Printing Works</h2>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <div class="step-icon-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        </div>
+        <h4 class="step-title">Upload Documents</h4>
+        <p class="step-desc">Drop your PDF, lab reports, or project notes directly from your phone or laptop with cloud pre-processing.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <div class="step-icon-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        </div>
+        <h4 class="step-title">Configure &amp; Pay</h4>
+        <p class="step-desc">Pick duplex, color, and binding options. Seamless UPI &amp; card payment checkout via Razorpay integration.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <div class="step-icon-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        </div>
+        <h4 class="step-title">Flash QR &amp; Collect</h4>
+        <p class="step-desc">Show your order QR token at Ground Floor Counter #1 for zero-wait contact-free collection.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK ACTION SHORTCUTS -->
+  <div class="quick-links-bar">
+    <div class="quick-link-item" onclick="showPage('printcentre')">
+      <span class="quick-link-icon">⚡</span>
+      <span>Direct File Upload</span>
+    </div>
+    <div class="quick-link-item" onclick="showPage('trackorder')">
+      <span class="quick-link-icon">📍</span>
+      <span>Check Live Order Token</span>
+    </div>
+    <div class="quick-link-item" onclick="showPage('assignments')">
+      <span class="quick-link-icon">📚</span>
+      <span>Department Lab Sheets</span>
+    </div>
+    <div class="quick-link-item" onclick="showPage('aboutus')">
+      <span class="quick-link-icon">🕒</span>
+      <span>Pricing &amp; Timing</span>
+    </div>
   </div>
 </div>
 
@@ -625,12 +837,52 @@
       Built with precision and love — <strong>Made by Antigravity with Sumit</strong> for Army Institute of Technology (AIT), Pune. Empowering students, faculty, and shop administrators with zero-queue smart printing.
     </p>
 
-    <img src="/images/card-about.jpg" alt="Made by Antigravity with Sumit" class="about-banner-img">
+    <!-- CAMPUS OPERATIONS SHOWCASE (REPLACING AI PHOTO) -->
+    <div class="about-stats-grid">
+      <div class="about-stat-card">
+        <div class="about-stat-number">12,500+</div>
+        <div class="about-stat-label">Pages Processed</div>
+      </div>
+      <div class="about-stat-card">
+        <div class="about-stat-number">3 Units</div>
+        <div class="about-stat-label">Heavy Laser Fleet</div>
+      </div>
+      <div class="about-stat-card">
+        <div class="about-stat-number">&lt; 5 Mins</div>
+        <div class="about-stat-label">Average Delivery</div>
+      </div>
+      <div class="about-stat-card">
+        <div class="about-stat-number">99.9%</div>
+        <div class="about-stat-label">Cloud Uptime</div>
+      </div>
+    </div>
+
+    <!-- Campus Facility Operations Card -->
+    <div class="about-operations-card">
+      <div class="about-op-item">
+        <div class="about-op-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
+        <div>
+          <div style="font-weight:700; font-size:14px; color:#111827;">Operating Timings</div>
+          <div style="font-size:12.5px; color:#6b7280;">Mon – Sat: 8:30 AM – 6:30 PM (Lunch: 1:30 PM – 2:00 PM)</div>
+        </div>
+      </div>
+      <div class="about-op-item">
+        <div class="about-op-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+        </div>
+        <div>
+          <div style="font-weight:700; font-size:14px; color:#111827;">Pickup Location</div>
+          <div style="font-size:12.5px; color:#6b7280;">Ground Floor Counter #1, Near Main Auditorium, AIT Campus</div>
+        </div>
+      </div>
+    </div>
 
     <h2 style="font-size:20px; font-weight:700; color:var(--ink); margin-top:24px; margin-bottom:4px;">
       System Architecture &amp; Technology Stack
     </h2>
-    <p style="font-size:13.5px; color:#607266; margin:0;">
+    <p style="font-size:13.5px; color:#607266; margin:0 0 16px;">
       A comprehensive look under the hood at the enterprise-grade database, storage, serverless APIs, and security powering Xeroxic v3.0.0:
     </p>
 
@@ -638,7 +890,9 @@
       <!-- Card 1: MongoDB Atlas -->
       <div class="tech-card">
         <div class="tech-card-head">
-          <div class="tech-card-icon">🍃</div>
+          <div class="tech-card-icon icon-svg-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>
+          </div>
           <span>MongoDB Atlas Cloud DB</span>
         </div>
         <p class="tech-card-desc">
@@ -654,7 +908,9 @@
       <!-- Card 2: Serverless APIs -->
       <div class="tech-card">
         <div class="tech-card-head">
-          <div class="tech-card-icon">⚡</div>
+          <div class="tech-card-icon icon-svg-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff8344" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </div>
           <span>Node.js Serverless APIs</span>
         </div>
         <p class="tech-card-desc">
@@ -670,7 +926,9 @@
       <!-- Card 3: Supabase 50MB Direct Storage -->
       <div class="tech-card">
         <div class="tech-card-head">
-          <div class="tech-card-icon">☁️</div>
+          <div class="tech-card-icon icon-svg-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b59fe" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+          </div>
           <span>Supabase 50MB Cloud Storage</span>
         </div>
         <p class="tech-card-desc">
@@ -686,7 +944,9 @@
       <!-- Card 4: Express QR Pickup Pass & Memorable IDs -->
       <div class="tech-card">
         <div class="tech-card-head">
-          <div class="tech-card-icon">🎫</div>
+          <div class="tech-card-icon icon-svg-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          </div>
           <span>Express QR Pass &amp; Memorable IDs</span>
         </div>
         <p class="tech-card-desc">
@@ -702,7 +962,9 @@
       <!-- Card 5: Real-Time 0ms Status Transitions -->
       <div class="tech-card">
         <div class="tech-card-head">
-          <div class="tech-card-icon">⏱️</div>
+          <div class="tech-card-icon icon-svg-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </div>
           <span>0ms Instant Status Synchronization</span>
         </div>
         <p class="tech-card-desc">
@@ -718,7 +980,9 @@
       <!-- Card 6: Auto-Purge Storage Reclaim -->
       <div class="tech-card">
         <div class="tech-card-head">
-          <div class="tech-card-icon">🛡️</div>
+          <div class="tech-card-icon icon-svg-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          </div>
           <span>Auto-Purge Storage Reclaim</span>
         </div>
         <p class="tech-card-desc">
@@ -734,7 +998,9 @@
       <!-- Card 7: Super Admin Governance & Monthly Ledger -->
       <div class="tech-card">
         <div class="tech-card-head">
-          <div class="tech-card-icon">👑</div>
+          <div class="tech-card-icon icon-svg-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </div>
           <span>Super Admin &amp; Monthly Archival</span>
         </div>
         <p class="tech-card-desc">
@@ -750,7 +1016,9 @@
       <!-- Card 8: Razorpay UPI & Payment Verification -->
       <div class="tech-card">
         <div class="tech-card-head">
-          <div class="tech-card-icon">💳</div>
+          <div class="tech-card-icon icon-svg-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+          </div>
           <span>Razorpay UPI &amp; HMAC Verification</span>
         </div>
         <p class="tech-card-desc">

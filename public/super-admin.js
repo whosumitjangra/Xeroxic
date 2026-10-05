@@ -21,19 +21,19 @@ async function initSuperAdmin() {
 async function checkSuperAdminAuth() {
   try {
     const res = await fetch('/api/me');
-    if (!res.ok) { window.location.href = '/admin'; return; }
+    if (!res.ok) { window.location.href = '/admin?role=superadmin'; return; }
     const user = await res.json();
     const roleUpper = (user.role || '').toUpperCase();
     if (roleUpper !== 'SUPER_ADMIN' && roleUpper !== 'SUPERADMIN') {
       alert('Access Restricted: Super Admin credentials required.');
-      window.location.href = (roleUpper === 'ADMIN') ? '/admin/dashboard' : '/admin';
+      window.location.href = (roleUpper === 'ADMIN') ? '/admin/dashboard' : '/admin?role=superadmin';
       return;
     }
     currentUser = user;
     const nameEl = document.getElementById('superadmin-welcome-name');
     if (nameEl) nameEl.textContent = user.name || 'Superadmin';
   } catch (err) {
-    window.location.href = '/admin';
+    window.location.href = '/admin?role=superadmin';
   }
 }
 
