@@ -9,78 +9,99 @@
 <link rel="stylesheet" href="/style.css">
 <style>
   /* ===== PORTAL SHELL ===== */
-  body { margin:0; background: #eef5f0 url('/site-bg.png') center/cover fixed no-repeat; font-family:'Poppins',sans-serif; }
+  body { margin:0; background: #f2f1f6; font-family:'Poppins',sans-serif; color: #1e293b; }
 
   .portal-header {
-    background: linear-gradient(135deg,#2d8f4e,#1e6b38);
+    background: #ffffff;
     display: flex; align-items: center; gap: 16px;
-    padding: 0 28px; height: 64px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    padding: 0 28px; height: 68px;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.03);
     position: sticky; top: 0; z-index: 100;
   }
   .portal-logo {
-    width: 40px; height: 40px; background: #fff;
-    border-radius: 10px; overflow: hidden; flex-shrink: 0;
+    width: 42px; height: 42px; background: #f8fafc;
+    border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
   }
   .portal-logo img { width:100%; height:100%; object-fit:contain; }
   .portal-brand-text { line-height:1.2; }
-  .portal-brand-text .brand-title { color:#fff; font-size:15px; font-weight:700; letter-spacing:1px; }
-  .portal-brand-text .brand-sub { color:rgba(255,255,255,0.7); font-size:10px; font-weight:500; }
-  .portal-divider { width:1px; height:32px; background:rgba(255,255,255,0.25); margin:0 8px; }
-  .portal-page-title { color:#fff; font-size:18px; font-weight:700; letter-spacing:0.5px; flex:1; }
+  .portal-brand-text .brand-title { color:#111827; font-size:15px; font-weight:700; letter-spacing:0.8px; }
+  .portal-brand-text .brand-sub { color:#6b7280; font-size:10.5px; font-weight:600; }
+  .portal-divider { width:1px; height:32px; background:#e5e7eb; margin:0 8px; }
+  .portal-page-title { color:#1e293b; font-size:16px; font-weight:700; letter-spacing:0.3px; flex:1; display:flex; align-items:center; gap:8px; }
   .portal-header-right { display:flex; align-items:center; gap:12px; }
+
+  /* Scan to Collect button */
+  .scan-collect-btn {
+    background: #eff6ff !important; border: 1.5px solid #bfdbfe !important;
+    color: #2563eb !important; border-radius: 12px !important;
+    padding: 8px 16px !important; font-family: 'Poppins', sans-serif !important;
+    font-size: 13px !important; font-weight: 600 !important; cursor: pointer;
+    display: flex; align-items: center; gap: 8px; transition: all 0.2s;
+  }
+  .scan-collect-btn:hover { background: #dbeafe !important; border-color: #93c5fd !important; }
 
   /* Notification bell */
   .notif-bell-btn {
-    position: relative; background: rgba(255,255,255,0.15);
-    border: 1.5px solid rgba(255,255,255,0.25); border-radius: 12px;
-    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-    cursor: pointer; transition: background 0.2s;
+    position: relative; background: #f8fafc;
+    border: 1.5px solid #e2e8f0; border-radius: 12px;
+    width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s;
   }
-  .notif-bell-btn:hover { background: rgba(255,255,255,0.25); }
-  .notif-bell-btn svg { width:20px; height:20px; stroke:#fff; fill:none; }
+  .notif-bell-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
+  .notif-bell-btn svg { width:20px; height:20px; stroke:#334155; fill:none; }
   .notif-badge {
     position: absolute; top: -4px; right: -4px;
     background: #ef4444; color: #fff; font-size: 10px; font-weight: 700;
     min-width: 18px; height: 18px; border-radius: 999px;
     display: flex; align-items: center; justify-content: center;
-    border: 2px solid #1e6b38;
+    border: 2px solid #fff;
   }
   .notif-badge.hidden { display: none; }
 
   /* User info pill */
   .user-pill {
     display: flex; align-items: center; gap: 8px;
-    background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.25);
-    border-radius: 12px; padding: 6px 12px; cursor: pointer;
+    background: #f8fafc; border: 1.5px solid #e2e8f0;
+    border-radius: 12px; padding: 6px 14px; cursor: pointer;
+    transition: all 0.2s;
   }
-  .user-pill svg { width:18px; height:18px; stroke:#fff; fill:none; }
-  .user-pill-text { color:#fff; font-size:12px; font-weight:600; line-height:1.2; }
-  .user-pill-sub { color:rgba(255,255,255,0.65); font-size:10px; }
+  .user-pill:hover { background: #f1f5f9; border-color: #cbd5e1; }
+  .user-pill svg { width:18px; height:18px; stroke:#475569; fill:none; }
+  .user-pill-text { color:#1e293b; font-size:12.5px; font-weight:600; line-height:1.2; }
+  .user-pill-sub { color:#64748b; font-size:10px; font-weight:500; }
 
   .signout-btn {
-    background: transparent; border: 1.5px solid rgba(255,255,255,0.5);
-    color: #fff; border-radius: 10px; padding: 7px 16px;
+    background: #ff8344; border: none;
+    color: #fff; border-radius: 12px; padding: 8px 18px;
     font-family: 'Poppins',sans-serif; font-size: 13px; font-weight: 600;
     cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+    box-shadow: 0 2px 8px rgba(255,131,68,0.25);
   }
-  .signout-btn:hover { background: rgba(255,255,255,0.15); }
+  .signout-btn:hover { background: #e56f32; transform: translateY(-1px); }
 
   /* ===== NOTIFICATION BANNER ===== */
   .admin-incoming-banner {
-    background: linear-gradient(90deg,#059669,#047857);
-    color: #fff; padding: 10px 28px;
+    background: linear-gradient(90deg,#2b59fe,#1d4ed8);
+    color: #fff; padding: 12px 28px;
     display: flex; align-items: center; justify-content: space-between;
     gap: 12px; flex-wrap: wrap;
     animation: slideDown 0.3s ease;
+    box-shadow: 0 4px 14px rgba(43,89,254,0.2);
   }
   @keyframes slideDown { from { transform:translateY(-100%); opacity:0; } to { transform:translateY(0); opacity:1; } }
-  .incoming-alert-content { display:flex; align-items:center; gap:10px; font-weight:600; font-size:14px; }
+  .incoming-alert-content { display:flex; align-items:center; gap:10px; font-weight:600; font-size:14px; color:#fff !important; }
+  .incoming-alert-content strong { color:#fff !important; }
+  .incoming-alert-content code {
+    background:rgba(255,255,255,0.22); color:#fff !important;
+    padding:2px 7px; border-radius:5px; font-weight:700; font-family:inherit;
+  }
   .incoming-alert-actions { display:flex; gap:8px; }
   .alert-view-btn {
-    background:#fff; color:#047857; border:none; border-radius:8px;
-    padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer;
+    background:#fff; color:#2b59fe; border:none; border-radius:8px;
+    padding:6px 16px; font-size:12.5px; font-weight:700; cursor:pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
   }
   .alert-dismiss-btn {
     background:rgba(255,255,255,0.2); color:#fff; border:none;
@@ -101,16 +122,16 @@
   @media(max-width:650px)  { .status-cards-row { grid-template-columns:repeat(2,1fr); } }
 
   .status-card {
-    background: #fff; border-radius: 18px;
-    border: 1.5px solid #e8f0eb;
+    background: #ffffff; border-radius: 18px;
+    border: 1.5px solid #e5e7eb;
     padding: 20px 16px 16px;
     display: flex; flex-direction: column; align-items: flex-start;
     cursor: pointer; transition: all 0.2s ease;
     position: relative; overflow: hidden; min-height: 140px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.03);
   }
-  .status-card:hover { border-color: #5cb85c; box-shadow: 0 6px 20px rgba(92,184,92,0.15); transform:translateY(-2px); }
-  .status-card.active-filter { border-color: #2d8f4e; box-shadow: 0 4px 16px rgba(45,143,78,0.2); }
+  .status-card:hover { border-color: #2b59fe; box-shadow: 0 8px 24px rgba(43,89,254,0.12); transform:translateY(-2px); }
+  .status-card.active-filter { border-color: #ff8344; box-shadow: 0 6px 20px rgba(255,131,68,0.2); }
 
   /* Coloured beacon dot top-right */
   .status-card-beacon {
@@ -119,13 +140,13 @@
   }
 
   .status-card-icon {
-    width: 48px; height: 48px; border-radius: 50%;
+    width: 48px; height: 48px; border-radius: 14px;
     display: flex; align-items: center; justify-content: center;
-    margin-bottom: 12px; font-size: 22px;
+    margin-bottom: 12px; font-size: 20px;
   }
-  .status-card-label { font-size: 13px; font-weight: 600; color: #2b3a30; line-height: 1.3; }
+  .status-card-label { font-size: 13px; font-weight: 600; color: #475569; line-height: 1.3; }
   .status-card-count {
-    font-size: 22px; font-weight: 700; color: #1e3d2a;
+    font-size: 24px; font-weight: 700; color: #0f172a;
     margin-top: auto; padding-top: 8px;
   }
 
@@ -133,11 +154,11 @@
   .status-card::after {
     content: ''; position: absolute; bottom: -16px; right: -16px;
     width: 60px; height: 60px; border-radius: 50%;
-    background: rgba(0,0,0,0.04);
+    background: rgba(0,0,0,0.02);
   }
 
   /* Card color themes */
-  .card-new    { --icon-bg:#fff5f5; --beacon:#ef4444; --icon-color:#dc2626; }
+  .card-new    { --icon-bg:#fef2f2; --beacon:#ef4444; --icon-color:#dc2626; }
   .card-queue  { --icon-bg:#eff6ff; --beacon:#93c5fd; --icon-color:#2563eb; }
   .card-print  { --icon-bg:#fffbeb; --beacon:#f59e0b; --icon-color:#d97706; }
   .card-ready  { --icon-bg:#f3e8ff; --beacon:#a78bfa; --icon-color:#7c3aed; }
@@ -149,45 +170,45 @@
 
   /* ===== CONTENT AREA ===== */
   .content-panel {
-    background: #fff; border-radius: 20px;
-    border: 1.5px solid #e8f0eb;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+    background: #ffffff; border-radius: 20px;
+    border: 1.5px solid #e5e7eb;
+    box-shadow: 0 2px 14px rgba(0,0,0,0.03);
     overflow: hidden;
   }
   .content-panel-header {
     padding: 20px 24px 16px;
-    border-bottom: 1.5px solid #f0f5f1;
+    border-bottom: 1px solid #f1f5f9;
     display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
   }
-  .content-panel-title { font-size: 17px; font-weight: 700; color: #1e3d2a; margin: 0; }
-  .content-panel-sub { font-size: 12px; color: #6c8072; margin: 3px 0 0; }
+  .content-panel-title { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0; }
+  .content-panel-sub { font-size: 12px; color: #64748b; margin: 3px 0 0; }
 
   /* Search & filter row */
   .filter-row {
     padding: 14px 24px;
-    border-bottom: 1.5px solid #f0f5f1;
+    border-bottom: 1px solid #f1f5f9;
     display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   }
   .search-box-wrap { position: relative; flex: 1; min-width: 200px; }
   .search-box-wrap .s-icon {
     position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-    font-size: 14px; color: #7d9183; pointer-events: none;
+    font-size: 14px; color: #94a3b8; pointer-events: none;
   }
   .search-box-input {
     width: 100%; padding: 9px 14px 9px 36px;
-    border: 1.5px solid #dce5dc; border-radius: 12px;
-    font-family: 'Poppins',sans-serif; font-size: 13px; color: #1e3d2a;
+    border: 1.5px solid #e2e8f0; border-radius: 12px;
+    font-family: 'Poppins',sans-serif; font-size: 13px; color: #1e293b;
     outline: none; box-sizing: border-box; transition: border 0.2s;
   }
-  .search-box-input:focus { border-color: #5cb85c; }
+  .search-box-input:focus { border-color: #2b59fe; box-shadow: 0 0 0 3px rgba(43,89,254,0.1); }
   .filter-pills { display: flex; gap: 6px; flex-wrap: wrap; }
   .fpill {
     padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
-    border: 1.5px solid #dce5dc; background: #f9fbf9; color: #556b5d;
+    border: 1.5px solid #e2e8f0; background: #ffffff; color: #475569;
     cursor: pointer; transition: all 0.15s; white-space: nowrap;
   }
-  .fpill:hover { border-color: #5cb85c; color: #2d6b2d; }
-  .fpill.active { background: #2d8f4e; color: #fff; border-color: #2d8f4e; }
+  .fpill:hover { border-color: #2b59fe; color: #2b59fe; }
+  .fpill.active { background: #2b59fe; color: #fff; border-color: #2b59fe; }
   .badge-pill {
     display: inline-flex; align-items: center; justify-content: center;
     background: rgba(255,255,255,0.25); color: #fff; font-size: 10px; font-weight: 700;
@@ -196,45 +217,46 @@
 
   /* Orders list */
   .orders-body { padding: 16px 24px; }
-  #orders-loading { padding: 40px; text-align: center; color: #7d9183; }
+  #orders-loading { padding: 40px; text-align: center; color: #64748b; }
   #orders-container .admin-order-card { margin-bottom: 14px; }
-  #orders-empty { padding: 48px; text-align: center; color: #8fa896; }
+  #orders-empty { padding: 48px; text-align: center; color: #94a3b8; }
   #orders-empty .empty-icon { font-size: 40px; margin-bottom: 10px; }
-  #orders-empty h3 { margin: 0 0 6px; font-size: 16px; color: #4a5e50; }
+  #orders-empty h3 { margin: 0 0 6px; font-size: 16px; color: #334155; }
   #orders-empty p { margin: 0; font-size: 13px; }
 
   /* ===== REFRESH BUTTON ===== */
   .refresh-btn {
-    background: #f0f5f1; border: 1.5px solid #dce5dc; border-radius: 10px;
+    background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px;
     padding: 8px 16px; font-family:'Poppins',sans-serif; font-size: 12px;
-    font-weight: 600; color: #2d6b2d; cursor: pointer; transition: all 0.15s;
+    font-weight: 600; color: #334155; cursor: pointer; transition: all 0.15s;
     display: flex; align-items: center; gap: 6px;
   }
-  .refresh-btn:hover { background: #e0ede0; }
+  .refresh-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
 
   /* ===== ASSIGNMENTS TAB ===== */
   .add-asgn-btn {
-    background: linear-gradient(135deg,#2d8f4e,#1e6b38);
+    background: #ff8344;
     color: #fff; border: none; border-radius: 12px;
-    padding: 10px 20px; font-family:'Poppins',sans-serif; font-size: 13px; font-weight: 600;
-    cursor: pointer; transition: opacity 0.15s; display: flex; align-items: center; gap: 8px;
+    padding: 10px 22px; font-family:'Poppins',sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 2px 8px rgba(255,131,68,0.25);
   }
-  .add-asgn-btn:hover { opacity: 0.9; }
+  .add-asgn-btn:hover { background: #e56f32; transform: translateY(-1px); }
 
   /* ===== TABS ===== */
   .portal-tabs {
-    display: flex; gap: 0; margin-bottom: 20px;
-    background: #fff; border-radius: 14px; padding: 4px;
-    border: 1.5px solid #e0eae1; width: fit-content;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    display: flex; gap: 0; margin-bottom: 24px;
+    background: #ffffff; border-radius: 14px; padding: 4px;
+    border: 1.5px solid #e5e7eb; width: fit-content;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
   }
   .ptab {
     background: transparent; border: none; padding: 9px 22px; border-radius: 10px;
     font-family: 'Poppins',sans-serif; font-size: 13px; font-weight: 600;
-    color: #556b5d; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;
+    color: #64748b; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;
   }
-  .ptab:hover { background: #f2f7f2; }
-  .ptab.active { background: linear-gradient(135deg,#2d8f4e,#1e6b38); color: #fff; }
+  .ptab:hover { background: #f8fafc; color: #1e293b; }
+  .ptab.active { background: #2b59fe; color: #fff; box-shadow: 0 2px 8px rgba(43,89,254,0.3); }
   .ptab-count { font-size:11px; font-weight:700; background:rgba(255,255,255,0.25); border-radius:999px; padding:1px 6px; }
 
   /* ===== MODAL ===== */
@@ -493,12 +515,16 @@
 <!-- ===== NOTIFICATION BANNER ===== -->
 <div id="admin-incoming-alert" class="admin-incoming-banner" style="display:none;">
   <div class="incoming-alert-content">
-    <span class="incoming-alert-icon">⚡🔔</span>
+    <span class="incoming-alert-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+    </span>
     <span id="incoming-alert-text">New Print Request Received!</span>
   </div>
   <div class="incoming-alert-actions">
     <button type="button" class="alert-view-btn" id="btn-view-incoming">View Request ↓</button>
-    <button type="button" class="alert-dismiss-btn" id="btn-dismiss-incoming">✕</button>
+    <button type="button" class="alert-dismiss-btn" id="btn-dismiss-incoming">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
   </div>
 </div>
 
@@ -507,11 +533,13 @@
   <!-- ===== TABS ===== -->
   <div class="portal-tabs">
     <button type="button" class="ptab active" id="tab-btn-requests">
-      📋 Print Requests
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+      Print Requests
       <span class="ptab-count" id="tab-req-count">0</span>
     </button>
     <button type="button" class="ptab" id="tab-btn-assignments">
-      📚 Assignments
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+      Assignments
       <span class="ptab-count" id="tab-asgn-count">0</span>
     </button>
   </div>
@@ -522,37 +550,49 @@
     <div class="status-cards-row" id="status-cards-row">
       <div class="status-card card-new active-filter" data-filter="New" id="scard-new">
         <span class="status-card-beacon" style="background:#ef4444;"></span>
-        <div class="status-card-icon">📄</div>
+        <div class="status-card-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        </div>
         <div class="status-card-label">New Request</div>
         <div class="status-card-count" id="scard-count-new">0</div>
       </div>
       <div class="status-card card-queue" data-filter="Accepted" id="scard-queue">
         <span class="status-card-beacon" style="background:#93c5fd;"></span>
-        <div class="status-card-icon">🕐</div>
+        <div class="status-card-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
         <div class="status-card-label">In Queue</div>
         <div class="status-card-count" id="scard-count-queue">0</div>
       </div>
       <div class="status-card card-print" data-filter="Printing" id="scard-print">
         <span class="status-card-beacon" style="background:#f59e0b;"></span>
-        <div class="status-card-icon">🖨️</div>
+        <div class="status-card-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+        </div>
         <div class="status-card-label">Printing</div>
         <div class="status-card-count" id="scard-count-print">0</div>
       </div>
       <div class="status-card card-collect" data-filter="Ready for Collection" id="scard-collect">
         <span class="status-card-beacon" style="background:#34d399;"></span>
-        <div class="status-card-icon">📍</div>
+        <div class="status-card-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+        </div>
         <div class="status-card-label">Ready for Pickup</div>
         <div class="status-card-count" id="scard-count-collect">0</div>
       </div>
       <div class="status-card card-done" data-filter="Collected" id="scard-done">
         <span class="status-card-beacon" style="background:#60a5fa;"></span>
-        <div class="status-card-icon">✨</div>
+        <div class="status-card-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
         <div class="status-card-label">Completed Tasks</div>
         <div class="status-card-count" id="scard-count-done">0</div>
       </div>
       <div class="status-card card-all" data-filter="all" id="scard-all" style="--icon-bg:#f0fdf4; --beacon:#22c55e; --icon-color:#15803d;">
         <span class="status-card-beacon" style="background:#22c55e;"></span>
-        <div class="status-card-icon">📊</div>
+        <div class="status-card-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        </div>
         <div class="status-card-label">All Print Requests</div>
         <div class="status-card-count" id="scard-count-all">0</div>
       </div>
@@ -563,20 +603,25 @@
       <div class="content-panel-header">
         <div>
           <h2 class="content-panel-title" id="orders-panel-title">All Print Requests</h2>
-          <p class="content-panel-sub" id="orders-panel-sub">📅 Monthly View: <strong id="admin-current-month-label">Active Month</strong> • Auto-refreshes</p>
+          <p class="content-panel-sub" id="orders-panel-sub">Monthly View: <strong id="admin-current-month-label">Active Month</strong> • Auto-refreshes</p>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
-          <select id="admin-month-select" style="padding:7px 12px; border:1.5px solid #dce5dc; border-radius:10px; font-family:'Poppins'; font-size:12px; font-weight:600; color:#2d6b2d; background:#fff; cursor:pointer;">
+          <select id="admin-month-select" style="padding:7px 12px; border:1.5px solid #e2e8f0; border-radius:10px; font-family:'Poppins'; font-size:12px; font-weight:600; color:#334155; background:#fff; cursor:pointer;">
             <option value="current">Current Month</option>
             <option value="all">All Time (Full History)</option>
           </select>
-          <button class="refresh-btn" id="refresh-orders-btn">🔄 Refresh</button>
+          <button class="refresh-btn" id="refresh-orders-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            Refresh
+          </button>
         </div>
       </div>
 
       <div class="filter-row">
         <div class="search-box-wrap">
-          <span class="s-icon">🔍</span>
+          <span class="s-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </span>
           <input type="text" class="search-box-input" id="admin-search-input" placeholder="Search by name, email or Order ID…">
         </div>
         <div class="filter-pills" id="status-filters">
@@ -597,7 +642,9 @@
         </div>
         <div id="orders-container" class="admin-orders-list" style="display:none;"></div>
         <div id="orders-empty" style="display:none;">
-          <div class="empty-icon">📭</div>
+          <div class="empty-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.6"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+          </div>
           <h3>No Requests Found</h3>
           <p>No print jobs match your search or filter.</p>
         </div>
@@ -613,12 +660,17 @@
           <h2 class="content-panel-title">Subject Assignments</h2>
           <p class="content-panel-sub">Publish lab assignments visible to all students</p>
         </div>
-        <button class="add-asgn-btn" id="btn-open-add-asgn">➕ Add Assignment</button>
+        <button class="add-asgn-btn" id="btn-open-add-asgn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle; margin-right:4px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Add Assignment
+        </button>
       </div>
 
       <div class="filter-row">
         <div class="search-box-wrap">
-          <span class="s-icon">🔍</span>
+          <span class="s-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </span>
           <input type="text" class="search-box-input" id="admin-asgn-search-input" placeholder="Search assignments…">
         </div>
         <div class="filter-pills" id="admin-asgn-subject-filters">
@@ -633,7 +685,9 @@
         </div>
         <div id="admin-asgn-grid" class="asgn-grid" style="display:none;"></div>
         <div id="admin-asgn-empty" style="display:none;">
-          <div class="empty-icon">📚</div>
+          <div class="empty-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          </div>
           <h3>No Assignments Yet</h3>
           <p>Click "Add Assignment" to post a lab assignment for students.</p>
         </div>
@@ -647,8 +701,13 @@
 <div id="admin-asgn-modal" class="modal-overlay" style="display:none;">
   <div class="modal-box">
     <div class="modal-head">
-      <h3>➕ Add Assignment</h3>
-      <button type="button" class="modal-x" id="modal-asgn-close">✕</button>
+      <h3 style="display:flex; align-items:center; gap:8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        Add Assignment
+      </h3>
+      <button type="button" class="modal-x" id="modal-asgn-close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
     </div>
     <form id="add-asgn-form">
       <div class="modal-body-pad">
@@ -737,24 +796,37 @@
         <div class="mfield">
           <label>Assignment Images & Attachments (Upload 1 or More)</label>
           <div class="file-drop" id="asgn-dropzone">
-            <p>📷 Click or Drop Documents / Images (Multiple Supported)</p>
+            <p style="display:flex; align-items:center; justify-content:center; gap:8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+              Click or Drop Documents / Images (Multiple Supported)
+            </p>
             <span id="asgn-file-status">Supports PDF, DOC, DOCX, PPT, JPG, PNG (Up to 50 MB each, direct cloud upload)</span>
             <input type="file" id="asgn-file-input" style="display:none;" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.ppt,.pptx,.txt,.rtf" multiple>
           </div>
           <!-- Staged Multi-Image Preview Window -->
           <div id="asgn-staged-container" class="staged-preview-box" style="display:none;">
             <div class="staged-preview-header">
-              <span id="asgn-staged-count">📷 0 Images Selected</span>
+              <span id="asgn-staged-count" style="display:flex; align-items:center; gap:6px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                0 Images Selected
+              </span>
               <div class="staged-header-actions">
-                <button type="button" class="staged-mini-btn" id="asgn-add-more-btn">➕ Add More</button>
+                <button type="button" class="staged-mini-btn" id="asgn-add-more-btn">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle; margin-right:3px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  Add More
+                </button>
                 <button type="button" class="staged-mini-btn danger" id="asgn-clear-all-btn">Clear All</button>
               </div>
             </div>
             <!-- Live Preview Window Pane -->
             <div class="staged-viewer-pane" id="asgn-viewer-pane">
-              <button type="button" class="staged-viewer-nav prev" id="asgn-prev-img-btn" title="Previous Image">◀</button>
+              <button type="button" class="staged-viewer-nav prev" id="asgn-prev-img-btn" title="Previous Image">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              </button>
               <div id="asgn-viewer-media" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;"></div>
-              <button type="button" class="staged-viewer-nav next" id="asgn-next-img-btn" title="Next Image">▶</button>
+              <button type="button" class="staged-viewer-nav next" id="asgn-next-img-btn" title="Next Image">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
               <div class="staged-viewer-caption" id="asgn-viewer-caption">Image 1 of 1</div>
             </div>
             <!-- Thumbnails Strip Tray -->
@@ -780,11 +852,17 @@
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
         <div id="admin-preview-nav" style="display:none; align-items:center; gap:6px;">
-          <button type="button" class="btn-cancel" id="admin-preview-prev" style="padding:4px 10px; font-size:12px;">◀ Prev</button>
+          <button type="button" class="btn-cancel" id="admin-preview-prev" style="padding:4px 10px; font-size:12px; display:inline-flex; align-items:center; gap:4px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg> Prev
+          </button>
           <span id="admin-preview-counter" style="font-size:12px; font-weight:600; color:#1e3d2a; min-width:80px; text-align:center;">1 / 1</span>
-          <button type="button" class="btn-cancel" id="admin-preview-next" style="padding:4px 10px; font-size:12px;">Next ▶</button>
+          <button type="button" class="btn-cancel" id="admin-preview-next" style="padding:4px 10px; font-size:12px; display:inline-flex; align-items:center; gap:4px;">
+            Next <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
         </div>
-        <button type="button" class="modal-x" id="admin-preview-close">✕</button>
+        <button type="button" class="modal-x" id="admin-preview-close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
       </div>
     </div>
     <!-- Multi-attachment Thumbnail Strip -->
@@ -792,7 +870,10 @@
     <div class="modal-body-pad" id="admin-preview-body" style="padding:0; max-height:72vh; overflow:auto; display:flex; align-items:center; justify-content:center; background:#0f1c14;"></div>
     <div class="modal-foot" style="justify-content:space-between; align-items:center;">
       <span id="admin-preview-meta" style="font-size:12px; color:#667e70;"></span>
-      <a href="#" id="admin-preview-dl-link" class="btn-submit" download>⬇ Download Current File</a>
+      <a href="#" id="admin-preview-dl-link" class="btn-submit" download style="display:inline-flex; align-items:center; gap:6px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Download Current File
+      </a>
     </div>
   </div>
 </div>
@@ -800,28 +881,55 @@
 <!-- ===== EXPRESS QR COLLECT MODAL ===== -->
 <div class="modal-overlay" id="modal-qr-collect" style="display:none; position:fixed; inset:0; background:rgba(15,28,20,0.65); backdrop-filter:blur(4px); z-index:3000; align-items:center; justify-content:center;">
   <div class="modal-box" style="background:#fff; border-radius:18px; width:92%; max-width:440px; box-shadow:0 12px 40px rgba(0,0,0,0.25); overflow:hidden;">
-    <div class="modal-head" style="background: linear-gradient(135deg,#059669,#047857); padding:16px 20px; display:flex; justify-content:space-between; align-items:center; color:#fff;">
+    <div class="modal-head" style="background: linear-gradient(135deg,#ff8344,#ff6519); padding:16px 20px; display:flex; justify-content:space-between; align-items:center; color:#fff;">
       <h3 style="margin:0; font-size:16px; display:flex; align-items:center; gap:8px;">
-        <span>⚡ Express Counter Pickup</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <span>Express Counter Pickup</span>
       </h3>
-      <button type="button" class="modal-x" id="btn-close-qr-modal" style="background:rgba(255,255,255,0.2); border:none; color:#fff; border-radius:8px; width:30px; height:30px; cursor:pointer;">✕</button>
+      <button type="button" class="modal-x" id="btn-close-qr-modal" style="background:rgba(255,255,255,0.2); border:none; color:#fff; border-radius:8px; width:30px; height:30px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
     </div>
     <div style="padding:22px; text-align:center;">
       <p style="font-size:13px; color:#4a5e50; margin:0 0 16px;">Scan student's QR code with a barcode scanner gun, or enter the memorable Order ID.</p>
       
       <div style="position:relative; margin-bottom:16px;">
-        <input type="text" id="input-scan-order-id" placeholder="e.g. sumit24001 or ali##24001" style="width:100%; padding:14px 16px; font-size:17px; font-weight:700; font-family:monospace; text-align:center; border:2px solid #059669; border-radius:12px; outline:none; text-transform:lowercase; letter-spacing:1px; box-sizing:border-box;" />
+        <input type="text" id="input-scan-order-id" placeholder="e.g. sumit24001 or ali##24001" style="width:100%; padding:14px 16px; font-size:17px; font-weight:700; font-family:monospace; text-align:center; border:2px solid #ff8344; border-radius:12px; outline:none; text-transform:lowercase; letter-spacing:1px; box-sizing:border-box;" />
       </div>
 
       <div style="display:flex; gap:10px; justify-content:center;">
-        <button type="button" id="btn-submit-quick-collect" style="background:linear-gradient(135deg,#059669,#047857); color:#fff; border:none; border-radius:10px; padding:12px 24px; font-family:'Poppins',sans-serif; font-size:14px; font-weight:700; cursor:pointer; width:100%; box-shadow:0 4px 14px rgba(5,150,105,0.3);">
-          ✓ Mark as Collected
+        <button type="button" id="btn-submit-quick-collect" style="background:linear-gradient(135deg,#ff8344,#ff6519); color:#fff; border:none; border-radius:10px; padding:12px 24px; font-family:'Poppins',sans-serif; font-size:14px; font-weight:700; cursor:pointer; width:100%; box-shadow:0 4px 14px rgba(255,131,68,0.3); display:flex; align-items:center; justify-content:center; gap:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          Mark as Collected
         </button>
       </div>
       <div id="quick-collect-status" style="margin-top:12px; font-size:13px; font-weight:600; min-height:20px;"></div>
     </div>
   </div>
 </div>
+
+<!-- Global Footer -->
+<footer class="app-global-footer">
+  <div class="footer-inner">
+    <div class="footer-left">
+      <div class="footer-brand">
+        <span class="footer-logo-text">Xerox Hub</span>
+        <span class="footer-badge">AIT Pune</span>
+      </div>
+      <p class="footer-desc">
+        Official High-Speed Print &amp; Document Infrastructure for Army Institute of Technology, Pune.
+      </p>
+    </div>
+    <div class="footer-right">
+      <div class="footer-credit">
+        Engineered &amp; Crafted with precision by <strong>Antigravity with Sumit</strong> for <strong>Army Institute of Technology (AIT), Pune</strong>
+      </div>
+      <div class="footer-meta">
+        <span>Smart Campus Xerox Hub v3.0.0</span> • <span>All rights reserved &copy; 2026</span>
+      </div>
+    </div>
+  </div>
+</footer>
 
 <!-- Toast -->
 <div id="admin-toast" class="admin-toast"></div>

@@ -636,11 +636,19 @@
       btnSignIn.disabled = true;
       btnSignIn.innerHTML = '<span>Signing In...</span>';
 
+      let submitRole = 'student';
+      const cleanEmail = email.toLowerCase();
+      if (cleanEmail.includes('superadmin')) {
+        submitRole = 'super_admin';
+      } else if (cleanEmail.startsWith('admin@') || cleanEmail.includes('admin')) {
+        submitRole = 'admin';
+      }
+
       try {
         const res = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, role: 'student' })
+          body: JSON.stringify({ email, password, role: submitRole })
         });
         const data = await res.json();
 
@@ -654,7 +662,15 @@
 
         // Success redirect
         btnSignIn.innerHTML = '<span>✓ Success!</span>';
-        window.location.href = data.redirect || '/';
+        const roleUpper = (data.role || '').toUpperCase();
+        let targetUrl = '/';
+        if (roleUpper === 'SUPER_ADMIN' || roleUpper === 'SUPERADMIN') targetUrl = '/super-admin';
+        else if (roleUpper === 'ADMIN') targetUrl = '/admin/dashboard';
+        else if (data.redirect && data.redirect.startsWith('/')) targetUrl = data.redirect;
+        
+        setTimeout(() => {
+          window.location.replace(targetUrl);
+        }, 150);
       } catch (err) {
         showError('Could not reach the server. Please check your internet connection.');
         btnSignIn.disabled = false;

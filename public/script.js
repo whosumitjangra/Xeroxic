@@ -174,7 +174,9 @@ function toggleFrontPasswordVisibility() {
 }
 
 async function handleFrontSubmit(e) {
-  e.preventDefault();
+  if (e && typeof e.preventDefault === 'function') {
+    e.preventDefault();
+  }
   if (frontStep === 1) {
     proceedFrontToPassword();
     return;
@@ -200,11 +202,20 @@ async function handleFrontSubmit(e) {
     btnSignIn.textContent = 'Signing In...';
   }
 
+  // Auto-detect admin / super admin role based on email or current mode
+  let submitRole = frontRole;
+  const cleanEmail = email.toLowerCase();
+  if (cleanEmail.includes('superadmin')) {
+    submitRole = 'super_admin';
+  } else if (cleanEmail.startsWith('admin@') || cleanEmail === 'admin@aitpune.edu.in') {
+    submitRole = 'admin';
+  }
+
   try {
     const res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, role: frontRole })
+      body: JSON.stringify({ email, password, role: submitRole })
     });
     const data = await res.json();
 
@@ -218,15 +229,21 @@ async function handleFrontSubmit(e) {
       return;
     }
 
-    if (btnSignIn) btnSignIn.textContent = '✓ Success!';
+    if (btnSignIn) {
+      btnSignIn.textContent = '✓ Success!';
+    }
 
     const roleUpper = (data.role || '').toUpperCase();
     if (roleUpper === 'SUPER_ADMIN' || roleUpper === 'SUPERADMIN') {
-      window.location.href = '/super-admin';
+      setTimeout(() => {
+        window.location.replace('/super-admin');
+      }, 150);
       return;
     }
     if (roleUpper === 'ADMIN') {
-      window.location.href = '/admin/dashboard';
+      setTimeout(() => {
+        window.location.replace('/admin/dashboard');
+      }, 150);
       return;
     }
 
@@ -569,7 +586,7 @@ async function uploadFiles(fileListToUpload) {
   }
 
   if (successfulUploads > 0) {
-    uploadStatus.textContent = `✅ ${successfulUploads} file(s) uploaded successfully to cloud storage.`;
+    uploadStatus.textContent = `${successfulUploads} file(s) uploaded successfully to cloud storage.`;
     await loadFiles();
     const proceedWrap = document.getElementById('proceed-wrap');
     if (proceedWrap) proceedWrap.style.display = 'block';
@@ -615,7 +632,7 @@ function renderFiles(files) {
   headerRow.innerHTML = `
     <span style="font-size:12.5px; font-weight:600; color:#1e3d2a;">Uploaded Documents (${files.length})</span>
     <button type="button" id="btn-clear-all-docs" style="background:#fff1f2; border:1.5px solid #fecdd3; color:#e11d48; font-size:11.5px; font-weight:600; border-radius:8px; padding:4px 10px; cursor:pointer; display:flex; align-items:center; gap:4px; transition:all 0.15s;">
-      🗑️ Clear All
+      Clear All
     </button>
   `;
   fileList.appendChild(headerRow);
@@ -731,7 +748,7 @@ async function loadOrderItems() {
     const isImage = /\.(png|jpg|jpeg|gif)$/i.test(f.originalName);
     const previewHTML = isImage
       ? `<img src="/api/download/${f.id}?inline=1" alt="preview">`
-      : `<div class="file-icon">📄</div>`;
+      : `<div class="file-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg></div>`;
 
     row.innerHTML = `
       <div class="file-preview">
@@ -942,7 +959,7 @@ async function verifyPayment(statusToSimulate = 'SUCCESS', utr = '') {
     if (res.ok && (statusToSimulate === 'SUCCESS' || statusToSimulate === 'PAID')) {
       if (msgBox) {
         msgBox.className = 'payment-alert-box alert-success';
-        msgBox.innerHTML = `<span>✅ Payment Verified Successfully! Redirecting to confirmation...</span>`;
+        msgBox.innerHTML = `<span>Payment Verified Successfully! Redirecting to confirmation...</span>`;
       }
       setTimeout(() => {
         renderConfirmation(data.orderId, data.amount || currentPendingOrder.amount, orderDraft, currentPaymentMethod);
@@ -957,7 +974,7 @@ async function verifyPayment(statusToSimulate = 'SUCCESS', utr = '') {
     if (statusToSimulate === 'CANCELLED') {
       const statusEl = document.getElementById('pay-active-status');
       if (statusEl) {
-        statusEl.textContent = '🚫 CANCELLED';
+        statusEl.textContent = 'CANCELLED';
         statusEl.style.background = '#f3f4f6';
         statusEl.style.color = '#4b5563';
       }
@@ -965,11 +982,11 @@ async function verifyPayment(statusToSimulate = 'SUCCESS', utr = '') {
         msgBox.className = 'payment-alert-box alert-cancel';
         msgBox.innerHTML = `
           <div style="display:flex; flex-direction:column; gap:8px;">
-            <strong>🚫 Payment Cancelled</strong>
+            <strong>Payment Cancelled</strong>
             <span>Payment simulation was cancelled. This order has NOT been submitted to the Xerox counter.</span>
             <div style="margin-top:6px;">
-              <button type="button" class="upload-btn" onclick="retryPayment()" style="padding:6px 14px; font-size:12.5px; display:inline-block; width:auto;">🔄 Retry Payment</button>
-              <button type="button" class="back-btn" onclick="showPage('printoptions')" style="font-size:12.5px; margin-left:10px;">← Back to Print Options</button>
+              <button type="button" class="upload-btn" onclick="retryPayment()" style="padding:6px 14px; font-size:12.5px; display:inline-block; width:auto;">Retry Payment</button>
+              <button type="button" class="back-btn" onclick="showPage('printoptions')" style="font-size:12.5px; margin-left:10px;">&larr; Back to Print Options</button>
             </div>
           </div>
         `;
@@ -980,7 +997,7 @@ async function verifyPayment(statusToSimulate = 'SUCCESS', utr = '') {
     // FAILED:
     const statusEl = document.getElementById('pay-active-status');
     if (statusEl) {
-      statusEl.textContent = '❌ PAYMENT FAILED';
+      statusEl.textContent = 'PAYMENT FAILED';
       statusEl.style.background = '#fee2e2';
       statusEl.style.color = '#991b1b';
     }
@@ -988,11 +1005,11 @@ async function verifyPayment(statusToSimulate = 'SUCCESS', utr = '') {
       msgBox.className = 'payment-alert-box alert-error';
       msgBox.innerHTML = `
         <div style="display:flex; flex-direction:column; gap:8px;">
-          <strong>❌ Payment Transaction Failed</strong>
+          <strong>Payment Transaction Failed</strong>
           <span>${data.error || 'Your payment was declined in test mode. The order was NOT sent to the printing queue.'}</span>
           <div style="margin-top:6px;">
-            <button type="button" class="upload-btn" onclick="retryPayment()" style="background:#dc2626; padding:6px 14px; font-size:12.5px; display:inline-block; width:auto;">🔄 Retry Payment</button>
-            <button type="button" class="back-btn" onclick="showPage('printoptions')" style="font-size:12.5px; margin-left:10px;">← Back to Print Options</button>
+            <button type="button" class="upload-btn" onclick="retryPayment()" style="background:#dc2626; padding:6px 14px; font-size:12.5px; display:inline-block; width:auto;">Retry Payment</button>
+            <button type="button" class="back-btn" onclick="showPage('printoptions')" style="font-size:12.5px; margin-left:10px;">&larr; Back to Print Options</button>
           </div>
         </div>
       `;
@@ -1086,7 +1103,7 @@ async function launchRazorpayCheckout() {
         try {
           if (rzpBtn) {
             rzpBtn.disabled = true;
-            rzpBtn.innerHTML = '<span>🔒 Verifying Payment Signature...</span>';
+            rzpBtn.innerHTML = '<span>Verifying Payment Signature...</span>';
           }
 
           const verifyRes = await fetch('/api/payments/verify', {
@@ -1160,7 +1177,7 @@ async function launchRazorpayCheckout() {
       const desc = failureResponse.error ? failureResponse.error.description : 'Payment transaction failed';
       if (errBox) {
         errBox.style.display = 'block';
-        errBox.textContent = `❌ Payment Failed: ${desc} (Code: ${failureResponse.error?.code || 'ERR'})`;
+        errBox.textContent = `Payment Failed: ${desc} (Code: ${failureResponse.error?.code || 'ERR'})`;
       }
       if (rzpBtn) {
         rzpBtn.disabled = false;
@@ -1204,7 +1221,7 @@ function renderConfirmation(orderId, total, items, method = 'Razorpay') {
   fetch('/api/files/clear', { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
 
   const itemsEl = document.getElementById('confirm-items');
-  const badgeText = method === 'Razorpay' ? '💳 Paid via Razorpay (Verified)' : (method === 'UPI' ? '⚡ Paid via UPI Instant' : '💳 Paid via Card');
+  const badgeText = method === 'Razorpay' ? 'Paid via Razorpay (Verified)' : (method === 'UPI' ? 'Paid via UPI Instant' : 'Paid via Card');
   itemsEl.innerHTML = `
     <div class="confirm-method-row">
       <span class="pay-method-badge ${method === 'Razorpay' ? 'card-badge' : (method === 'UPI' ? 'upi-badge' : 'card-badge')}" style="${method === 'Razorpay' ? 'background:#2563eb; color:#fff;' : ''}">
@@ -1240,42 +1257,42 @@ document.getElementById('track-btn')?.addEventListener('click', () => {
 function formatStudentStatus(status) {
   if (status === 'READY' || status === 'Ready for Collection' || status === 'Ready for Pickup') {
     return {
-      label: '🎉 Printed — Ready for Collection!',
+      label: 'Printed — Ready for Collection',
       sub: 'Your document has been printed and is ready at the Xerox counter! Please collect it at your convenience.',
       style: 'background:#e8f8f0; color:#059669; border:1.5px solid #a7f3d0;'
     };
   }
   if (status === 'COMPLETED' || status === 'Collected' || status === 'Completed') {
     return {
-      label: '✅ Collected',
+      label: 'Collected',
       sub: 'This order has been picked up from the Xerox counter. Thank you!',
       style: 'background:#f3f4f6; color:#4b5563; border:1.5px solid #e5e7eb;'
     };
   }
   if (status === 'CANCELLED' || status === 'Cancelled') {
     return {
-      label: '🚫 Cancelled',
+      label: 'Cancelled',
       sub: 'This order was cancelled or payment was not completed.',
       style: 'background:#fef2f2; color:#991b1b; border:1.5px solid #fecaca;'
     };
   }
   if (status === 'PRINTING' || status === 'Printing' || status === 'Printing in Progress') {
     return {
-      label: '🖨️ Printing in Progress',
+      label: 'Printing in Progress',
       sub: 'Your document is currently being printed by the Xerox operator. Please stand by.',
       style: 'background:#eff6ff; color:#2563eb; border:1.5px solid #bfdbfe;'
     };
   }
   if (status === 'ACCEPTED' || status === 'Accepted') {
     return {
-      label: '🔵 Order Accepted',
+      label: 'Order Accepted',
       sub: 'Your order was accepted by the Xerox operator and queued for printing.',
       style: 'background:#e0f2fe; color:#0284c7; border:1.5px solid #bae6fd;'
     };
   }
   // REQUEST_RECEIVED / New / Order Received
   return {
-    label: '⏳ Request Received',
+    label: 'Request Received',
     sub: 'Payment confirmed. Your print request is in the store queue waiting for operator pickup.',
     style: 'background:#fff8e7; color:#d97706; border:1.5px solid #fde68a;'
   };
@@ -1284,13 +1301,13 @@ function formatStudentStatus(status) {
 // Pulsing beacon config: status → beacon colour CSS class
 function getStatusBeacon(status) {
   const st = (status || '').toUpperCase();
-  if (st === 'CANCELLED') return { cls: 'beacon-grey',   label: '⚫', terminal: true };
-  if (st === 'COMPLETED') return { cls: 'beacon-green',  label: '🟢', terminal: true };
-  if (st === 'READY')     return { cls: 'beacon-green',  label: '🟢', terminal: false };
-  if (st === 'PRINTING')  return { cls: 'beacon-blue',   label: '🔵', terminal: false };
-  if (st === 'ACCEPTED')  return { cls: 'beacon-amber',  label: '🟡', terminal: false };
+  if (st === 'CANCELLED') return { cls: 'beacon-grey',   label: '', terminal: true };
+  if (st === 'COMPLETED') return { cls: 'beacon-green',  label: '', terminal: true };
+  if (st === 'READY')     return { cls: 'beacon-green',  label: '', terminal: false };
+  if (st === 'PRINTING')  return { cls: 'beacon-blue',   label: '', terminal: false };
+  if (st === 'ACCEPTED')  return { cls: 'beacon-amber',  label: '', terminal: false };
   // REQUEST_RECEIVED or unknown → red (in queue)
-                          return { cls: 'beacon-red',    label: '🔴', terminal: false };
+                          return { cls: 'beacon-red',    label: '', terminal: false };
 }
 
 let _trackingPoller = null;
@@ -1356,8 +1373,9 @@ async function trackOrder(orderId) {
       const isReadyForPickup = stUp === 'READY' || stUp === 'READY FOR COLLECTION' || stUp === 'READY FOR PICKUP';
       const pickupQRHTML = isReadyForPickup ? `
         <div style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 2px dashed #059669; border-radius: 16px; padding: 18px; text-align: center; margin: 16px 0 12px; box-shadow: 0 4px 14px rgba(5,150,105,0.08);">
-          <div style="font-size: 12px; font-weight: 700; color: #047857; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
-            ⚡ Express Counter Pickup Pass
+          <div style="font-size: 12px; font-weight: 700; color: #047857; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            Express Counter Pickup Pass
           </div>
           <div style="background: #ffffff; display: inline-block; padding: 10px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 10px;">
             <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(data.orderId)}" alt="Pickup QR Code" style="width: 140px; height: 140px; display: block;" onerror="this.style.display='none'; document.getElementById('qr-alt-${data.orderId}').style.display='block';" />
@@ -1467,12 +1485,13 @@ function renderPrintRequestCard(order, isActive = false) {
   let itemsHTML = '';
   (order.items || []).forEach(item => {
     const isPurged = item.filePurged || !isActive;
-    const purgeBadge = isPurged ? `<span class="tag-purged-shield" title="Binary data safely purged from database to reclaim storage">🔒 Purged</span>` : '';
-    const specs = `${item.color === 'color' ? '🎨 Color' : '📄 B&W'} • ${item.sides === 'double' ? 'Double-sided' : 'Single-sided'} • ${item.pages || 1} pgs`;
+    const purgeBadge = isPurged ? `<span class="tag-purged-shield" title="Binary data safely purged from database to reclaim storage">Purged</span>` : '';
+    const specs = `${item.color === 'color' ? 'Color' : 'B&W'} • ${item.sides === 'double' ? 'Double-sided' : 'Single-sided'} • ${item.pages || 1} pgs`;
     itemsHTML += `
       <div class="print-req-item-line">
         <div style="display:flex; align-items:center; gap:6px; overflow:hidden;">
-          <span class="print-req-item-name" title="${item.originalName || 'Document'}">📄 ${item.originalName || 'Document'}</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <span class="print-req-item-name" title="${item.originalName || 'Document'}">${item.originalName || 'Document'}</span>
           ${purgeBadge}
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
@@ -1493,7 +1512,7 @@ function renderPrintRequestCard(order, isActive = false) {
             ${liveBadge}
             <span>${order.orderId}</span>
           </div>
-          <div class="print-req-date">📅 ${placedDate}</div>
+          <div class="print-req-date">${placedDate}</div>
         </div>
         <div style="text-align:right;">
           <div class="print-req-price">₹${order.total}</div>
@@ -1513,10 +1532,10 @@ function renderPrintRequestCard(order, isActive = false) {
 
     <div class="print-req-footer">
       <div style="font-size:12px; color:#6c8072;">
-        ${isActive && stUp === 'READY' ? '<strong style="color:#059669;">📍 Ready for pickup at Xerox counter</strong>' : (isActive ? '⏱ Live processing in Xerox queue' : '✅ Finished &amp; collected')}
+        ${isActive && stUp === 'READY' ? '<strong style="color:#059669;">Ready for pickup at Xerox counter</strong>' : (isActive ? 'Live processing in Xerox queue' : 'Finished &amp; collected')}
       </div>
       <button type="button" class="btn-card-track" onclick="selectOrderToTrack('${order.orderId}')">
-        ${isActive ? '🔍 Track Live Progress →' : '📋 View Details →'}
+        ${isActive ? 'Track Live Progress &rarr;' : 'View Details &rarr;'}
       </button>
     </div>
   `;
@@ -1556,6 +1575,7 @@ async function loadMyOrders() {
     if (!res.ok) throw new Error('Failed to fetch orders');
     const data = await res.json();
     const orders = data.orders || [];
+    syncStudentNotifications(orders);
 
     if (inProcessLoading) inProcessLoading.style.display = 'none';
     if (completedLoading) completedLoading.style.display = 'none';
@@ -1669,7 +1689,7 @@ function setYearSelection(year) {
   }
 }
 
-function setBranchSelection(branch) {
+function setBranchSelection(branch, autoProceed = false) {
   selectedBranch = branch;
   const branchCards = document.querySelectorAll('#wizard-branch-cards .wizard-select-card');
   branchCards.forEach(c => {
@@ -1687,11 +1707,11 @@ function setBranchSelection(branch) {
 
   updateWizardSummary();
 
-  // Automatically proceed if year is already selected
-  if (selectedYear && selectedBranch) {
+  // Only auto-proceed if explicitly triggered by a user click and year is selected
+  if (autoProceed && selectedYear && selectedBranch) {
     setTimeout(() => {
       applyClassSelection(selectedYear, selectedBranch);
-    }, 250);
+    }, 200);
   }
 }
 
@@ -1714,11 +1734,12 @@ function updateWizardSummary() {
   }
 }
 
-function initWizardUI() {
+function initWizardUI(allowAutoProceed = false) {
   // Year Card Clicks
   const yearCards = document.querySelectorAll('#wizard-year-cards .wizard-select-card');
   yearCards.forEach(c => {
-    c.onclick = () => {
+    c.onclick = (e) => {
+      e.preventDefault();
       setYearSelection(c.dataset.year);
     };
   });
@@ -1726,28 +1747,29 @@ function initWizardUI() {
   // Branch Card Clicks
   const branchCards = document.querySelectorAll('#wizard-branch-cards .wizard-select-card');
   branchCards.forEach(c => {
-    c.onclick = () => {
-      setBranchSelection(c.dataset.branch);
+    c.onclick = (e) => {
+      e.preventDefault();
+      setBranchSelection(c.dataset.branch, true);
     };
   });
 
   // Wizard Confirmation Button
   const submitBtn = document.getElementById('wizard-btn-submit');
   if (submitBtn) {
-    submitBtn.onclick = () => {
+    submitBtn.onclick = (e) => {
+      e.preventDefault();
       if (selectedYear && selectedBranch) {
         applyClassSelection(selectedYear, selectedBranch);
       }
     };
   }
 
-  // Restore pre-selected values if present
+  // Restore pre-selected values without auto-proceeding
   if (activeClassFilter) {
     if (activeClassFilter.year) setYearSelection(activeClassFilter.year);
-    if (activeClassFilter.branch) setBranchSelection(activeClassFilter.branch);
-  } else {
-    updateWizardSummary();
+    if (activeClassFilter.branch) setBranchSelection(activeClassFilter.branch, false);
   }
+  updateWizardSummary();
 }
 
 function applyClassSelection(year, branch) {
@@ -1910,7 +1932,7 @@ function setupCategoryFilters(assignments) {
     btn.type = 'button';
     btn.className = `filter-pill ${currentCategoryFilter === cat ? 'active' : ''}`;
     btn.dataset.cat = cat;
-    btn.textContent = `📂 ${cat} (${count})`;
+    btn.textContent = `${cat} (${count})`;
     btn.onclick = () => {
       container.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -2043,7 +2065,7 @@ function renderAssignmentsList() {
     header.className = 'asgn-category-section-header';
     header.innerHTML = `
       <div style="display:flex; align-items:center; gap:10px;">
-        <span style="font-size:22px;">📂</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2b59fe" stroke-width="2.2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
         <h2 style="margin:0; font-size:18px; font-weight:700; color:var(--ink);">${categoryName}</h2>
       </div>
       <span class="asgn-pill-badge" style="background:#f3e8ff; color:#6b21a8; border-color:#e9d5ff;">
@@ -2071,7 +2093,7 @@ function renderAssignmentsList() {
         <div class="asgn-files-list">
           ${rawAtts.map((att, idx) => `
             <a href="/api/assignments/${a.id}/attachment?index=${idx}" class="asgn-file-pill" download="${escapeHtml(att.originalName || `page_${idx+1}`)}" title="Download ${escapeHtml(att.originalName || `Page ${idx+1}`)}">
-              ⬇ ${/\.(png|jpg|jpeg|webp)$/i.test(att.originalName || '') ? '📷' : '📄'} Page ${idx + 1}
+              Page ${idx + 1}
               <span style="opacity:0.75; font-size:10.5px;">(${formatAsgnBytes(att.size)})</span>
             </a>
           `).join('')}
@@ -2080,35 +2102,39 @@ function renderAssignmentsList() {
 
       const downloadActionHTML = isMulti ? `
         <button type="button" class="action-btn download-btn" onclick="downloadAllAssignmentFiles('${a.id}')" style="background:#1e6b38; color:#ffffff; font-weight:600;">
-          ⬇ Download All (${attCount} Photos)
+          Download All (${attCount} Photos)
         </button>
       ` : (hasAtt ? `
         <a href="/api/assignments/${a.id}/attachment" class="action-btn download-btn" download="${escapeHtml(a.attachmentName || 'demo_assignment')}">
-          ⬇ Download
+          Download
         </a>
       ` : '');
 
       const previewBtnHTML = hasAtt ? `
         <button type="button" class="action-btn preview-btn" onclick="openAttachmentPreview('${a.id}', '${encodeURIComponent(a.subject)}', '${encodeURIComponent(a.attachmentName || 'Demo Assignment')}')">
-          👁 Preview Demo ${isMulti ? `(${attCount})` : ''}
+          Preview Demo ${isMulti ? `(${attCount})` : ''}
         </button>
         ${downloadActionHTML}
         <button type="button" class="action-btn print-direct-btn" onclick="orderAssignmentPrint('${a.id}', '${encodeURIComponent(a.attachmentName || a.subject + '.pdf')}')">
-          🖨 Print This Report
+          Print This Report
         </button>
       ` : '';
 
       const attChipHTML = hasAtt ? `
         <div class="asgn-att-chip">
-          <span class="att-icon">${isMulti ? '📷' : '📎'}</span>
+          <span class="att-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+          </span>
           <div class="att-info">
-            <span class="att-name" title="${escapeHtml(a.attachmentName || 'Attachment')}">${isMulti ? `📷 ${attCount} Images / Files Attached` : escapeHtml(a.attachmentName || 'Attachment')}</span>
+            <span class="att-name" title="${escapeHtml(a.attachmentName || 'Attachment')}">${isMulti ? `${attCount} Images / Files Attached` : escapeHtml(a.attachmentName || 'Attachment')}</span>
             <span class="att-size">${formatAsgnBytes(a.attachmentSize)}</span>
           </div>
         </div>
       ` : `
         <div class="asgn-att-chip no-file">
-          <span class="att-icon">📄</span>
+          <span class="att-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          </span>
           <div class="att-info">
             <span class="att-name">No file attached</span>
           </div>
@@ -2118,11 +2144,11 @@ function renderAssignmentsList() {
       card.innerHTML = `
         <div>
           <div class="asgn-card-top" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:8px;">
-            <span class="asgn-subject-tag">📘 ${a.subject}</span>
-            <span class="asgn-batch-tag" style="background:#f3e8ff; color:#6b21a8; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #e9d5ff;">📂 ${a.category || 'Lab Experiments'}</span>
-            <span class="asgn-batch-tag" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #bae6fd;">🏫 ${a.targetClass || 'All Classes'}</span>
-            ${a.batch && a.batch !== 'All Batches' ? `<span class="asgn-batch-tag" style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #fde68a;">🏷️ ${a.batch}</span>` : ''}
-            ${a.deadline ? `<span class="asgn-deadline-pill">📅 Due: ${a.deadline}</span>` : '<span class="asgn-deadline-pill" style="background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;">No Deadline</span>'}
+            <span class="asgn-subject-tag">${a.subject}</span>
+            <span class="asgn-batch-tag" style="background:#f3e8ff; color:#6b21a8; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #e9d5ff;">${a.category || 'Lab Experiments'}</span>
+            <span class="asgn-batch-tag" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #bae6fd;">${a.targetClass || 'All Classes'}</span>
+            ${a.batch && a.batch !== 'All Batches' ? `<span class="asgn-batch-tag" style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #fde68a;">${a.batch}</span>` : ''}
+            ${a.deadline ? `<span class="asgn-deadline-pill">Due: ${a.deadline}</span>` : '<span class="asgn-deadline-pill" style="background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;">No Deadline</span>'}
           </div>
           <h3 class="asgn-title">${a.title || a.subject}</h3>
           ${attChipHTML}
@@ -2208,19 +2234,19 @@ function renderStudentPreviewSlide() {
   if (counterEl) counterEl.textContent = `${currentStudentPreviewIndex + 1} / ${total}`;
 
   if (metaEl) {
-    metaEl.textContent = `📄 ${currentAtt.originalName} ${currentAtt.size ? `(${formatAsgnBytes(currentAtt.size)})` : ''}`;
+    metaEl.textContent = `${currentAtt.originalName} ${currentAtt.size ? `(${formatAsgnBytes(currentAtt.size)})` : ''}`;
   }
 
   if (dlLink) {
     dlLink.href = `/api/assignments/${asgn.id}/attachment?index=${currentStudentPreviewIndex}`;
     dlLink.setAttribute('download', currentAtt.originalName || 'file');
-    dlLink.textContent = total > 1 ? `⬇ Download Current (Page ${currentStudentPreviewIndex + 1})` : '⬇ Download File';
+    dlLink.textContent = total > 1 ? `Download Current (Page ${currentStudentPreviewIndex + 1})` : 'Download File';
   }
 
   if (dlAllBtn) {
     if (total > 1) {
       dlAllBtn.style.display = 'inline-flex';
-      dlAllBtn.textContent = `⬇ Download All (${total} Photos)`;
+      dlAllBtn.textContent = `Download All (${total} Photos)`;
       dlAllBtn.onclick = () => downloadAllAssignmentFiles(asgn.id);
     } else {
       dlAllBtn.style.display = 'none';
@@ -2259,7 +2285,7 @@ function renderStudentPreviewSlide() {
           btn.style.color = '#fff';
           btn.style.borderColor = '#2d8f4e';
         }
-        btn.innerHTML = `${/\.(png|jpg|jpeg|webp)$/i.test(att.originalName) ? '🖼️' : '📄'} Page ${idx + 1}`;
+        btn.innerHTML = `Page ${idx + 1}`;
         btn.onclick = () => {
           currentStudentPreviewIndex = idx;
           renderStudentPreviewSlide();
@@ -2356,7 +2382,7 @@ document.getElementById('preview-modal')?.addEventListener('click', (e) => {
 // Interactive Notification System & Header Live Search
 // ===================================================================
 
-let unreadNotifCount = 3;
+let studentNotifications = [];
 
 function initNotificationSystem() {
   const toggleBtn = document.getElementById('notif-toggle-btn');
@@ -2381,31 +2407,192 @@ function initNotificationSystem() {
   }
 }
 
+function syncStudentNotifications(orders = []) {
+  const list = document.getElementById('notif-list');
+  const badge = document.getElementById('notif-badge');
+  const pill = document.getElementById('notif-counter-pill');
+  if (!list) return;
+
+  let readIds = new Set();
+  try {
+    const stored = JSON.parse(localStorage.getItem('xerox_read_notifs') || '[]');
+    if (Array.isArray(stored)) readIds = new Set(stored);
+  } catch (e) {}
+
+  if (!orders || orders.length === 0) {
+    if (badge) badge.classList.add('hidden');
+    if (pill) pill.textContent = '0 new';
+    list.innerHTML = `
+      <div style="padding: 32px 20px; text-align: center; color: #9ca3af; font-size: 13px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" style="margin-bottom:8px; display:inline-block;">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        <div style="font-weight:600; color:#4b5563; margin-bottom:2px;">No notifications yet</div>
+        <div>Place a print order to see real-time queue &amp; print progress here.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const notifs = [];
+  orders.slice(0, 10).forEach(o => {
+    const st = (o.status || '').toUpperCase();
+    const orderId = o.orderId || 'ORD';
+    const createdAt = o.createdAt ? new Date(o.createdAt) : new Date();
+    const timeFormatted = getTimeAgo(createdAt);
+
+    if (st === 'PRINTING' || st === 'PRINTING IN PROGRESS') {
+      notifs.push({
+        id: `${orderId}_PRINTING`,
+        orderId,
+        title: 'Printing Started',
+        desc: `Admin started printing Order #${orderId}. Collection ready shortly.`,
+        time: timeFormatted,
+        type: 'printing'
+      });
+    } else if (st === 'READY' || st === 'READY FOR PICKUP' || st === 'READY FOR COLLECTION') {
+      notifs.push({
+        id: `${orderId}_READY`,
+        orderId,
+        title: 'Ready for Pickup!',
+        desc: `Order #${orderId} is printed and ready at Ground Floor Xerox Counter.`,
+        time: timeFormatted,
+        type: 'ready'
+      });
+    } else if (st === 'ACCEPTED') {
+      notifs.push({
+        id: `${orderId}_ACCEPTED`,
+        orderId,
+        title: 'Order Accepted',
+        desc: `Order #${orderId} confirmed into campus queue. Next in print sequence.`,
+        time: timeFormatted,
+        type: 'accepted'
+      });
+    } else if (st === 'COMPLETED' || st === 'COLLECTED') {
+      notifs.push({
+        id: `${orderId}_COMPLETED`,
+        orderId,
+        title: 'Order Collected',
+        desc: `Order #${orderId} marked as collected. Thank you!`,
+        time: timeFormatted,
+        type: 'completed'
+      });
+    } else {
+      notifs.push({
+        id: `${orderId}_RECEIVED`,
+        orderId,
+        title: 'Order Placed',
+        desc: `Order #${orderId} placed successfully. Awaiting counter queue start.`,
+        time: timeFormatted,
+        type: 'received'
+      });
+    }
+  });
+
+  studentNotifications = notifs;
+  let unreadCount = 0;
+  list.innerHTML = '';
+
+  notifs.forEach(n => {
+    const isUnread = !readIds.has(n.id);
+    if (isUnread) unreadCount++;
+
+    const item = document.createElement('div');
+    item.className = `notif-item ${isUnread ? 'unread' : ''}`;
+    item.onclick = () => {
+      readIds.add(n.id);
+      try { localStorage.setItem('xerox_read_notifs', JSON.stringify(Array.from(readIds))); } catch(e){}
+      item.classList.remove('unread');
+      const dot = item.querySelector('.notif-dot');
+      if (dot) dot.remove();
+      handleNotifOrderClick(n.orderId);
+    };
+
+    let iconSvg = '';
+    if (n.type === 'printing') {
+      iconSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>`;
+    } else if (n.type === 'ready') {
+      iconSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+    } else {
+      iconSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff8344" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
+    }
+
+    item.innerHTML = `
+      <div class="notif-icon notif-icon-${n.type}">
+        ${iconSvg}
+      </div>
+      <div class="notif-text-wrap">
+        <div class="notif-title">${escapeHtml(n.title)}</div>
+        <div class="notif-desc">${escapeHtml(n.desc)}</div>
+        <div class="notif-time">${n.time}</div>
+      </div>
+      ${isUnread ? '<span class="notif-dot"></span>' : ''}
+    `;
+    list.appendChild(item);
+  });
+
+  if (badge) {
+    if (unreadCount > 0) {
+      badge.textContent = unreadCount;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+  if (pill) {
+    pill.textContent = unreadCount > 0 ? `${unreadCount} new` : 'All caught up';
+  }
+}
+
+function handleNotifOrderClick(orderId) {
+  const dropdown = document.getElementById('notif-dropdown');
+  if (dropdown) dropdown.classList.remove('active');
+  showPage('trackorder');
+  if (orderId && typeof selectOrderToTrack === 'function') {
+    selectOrderToTrack(orderId);
+  }
+}
+
+function getTimeAgo(date) {
+  const diffSec = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+  if (isNaN(diffSec) || diffSec < 60) return 'Just now';
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  return `${Math.floor(diffSec / 86400)}d ago`;
+}
+
 window.markAllNotifsRead = function() {
+  const readIds = new Set();
+  studentNotifications.forEach(n => readIds.add(n.id));
+  try { localStorage.setItem('xerox_read_notifs', JSON.stringify(Array.from(readIds))); } catch(e){}
   const items = document.querySelectorAll('.notif-item');
   items.forEach(it => it.classList.remove('unread'));
+  const dots = document.querySelectorAll('.notif-dot');
+  dots.forEach(d => d.remove());
   const badge = document.getElementById('notif-badge');
   const pill = document.getElementById('notif-counter-pill');
   if (badge) badge.classList.add('hidden');
   if (pill) pill.textContent = 'All caught up';
-  unreadNotifCount = 0;
 };
 
 window.clearAllNotifs = function() {
+  const readIds = new Set();
+  studentNotifications.forEach(n => readIds.add(n.id));
+  try { localStorage.setItem('xerox_read_notifs', JSON.stringify(Array.from(readIds))); } catch(e){}
   const list = document.getElementById('notif-list');
   const badge = document.getElementById('notif-badge');
   const pill = document.getElementById('notif-counter-pill');
   if (list) {
     list.innerHTML = `
       <div style="padding: 32px 20px; text-align: center; color: #9ca3af; font-size: 13px;">
-        <div style="font-size: 24px; margin-bottom: 6px;">✨</div>
-        No notifications right now
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" style="margin-bottom:6px; display:inline-block;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <div>No notifications right now</div>
       </div>
     `;
   }
   if (badge) badge.classList.add('hidden');
   if (pill) pill.textContent = '0 new';
-  unreadNotifCount = 0;
 };
 
 window.handleNotifAction = function(target) {
@@ -2414,35 +2601,8 @@ window.handleNotifAction = function(target) {
   if (target) showPage(target);
 };
 
-// Add dynamic notification helper
 window.pushCampusNotification = function(title, text, target = 'trackorder') {
-  const list = document.getElementById('notif-list');
-  const badge = document.getElementById('notif-badge');
-  const pill = document.getElementById('notif-counter-pill');
-  if (!list) return;
-
-  unreadNotifCount++;
-  if (badge) {
-    badge.textContent = unreadNotifCount;
-    badge.classList.remove('hidden');
-  }
-  if (pill) pill.textContent = `${unreadNotifCount} new`;
-
-  const item = document.createElement('div');
-  item.className = 'notif-item unread';
-  item.onclick = () => handleNotifAction(target);
-  item.innerHTML = `
-    <div class="notif-icon notif-icon-printer">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-    </div>
-    <div class="notif-text-wrap">
-      <div class="notif-title">${title}</div>
-      <div class="notif-desc">${text}</div>
-      <div class="notif-time">Just now</div>
-    </div>
-    <span class="notif-dot"></span>
-  `;
-  list.insertBefore(item, list.firstChild);
+  loadMyOrders();
 };
 
 // Header Live Search Feature
@@ -2452,16 +2612,16 @@ function initHeaderLiveSearch() {
   if (!searchInput || !dropdown) return;
 
   const searchableIndex = [
-    { title: 'Print Centre (Upload Document)', category: 'Quick Service', target: 'printcentre', icon: '⚡' },
-    { title: 'Duplex & Color Print Options', category: 'Pricing & Options', target: 'printoptions', icon: '📄' },
-    { title: 'Track Order & Live Print Queue', category: 'Express Tracking', target: 'trackorder', icon: '📍' },
-    { title: 'Subject Lab Assignments & Manuals', category: 'Academic Hub', target: 'assignments', icon: '📚' },
-    { title: 'Computer Engineering (FE/SE/TE/BE)', category: 'Assignments', target: 'assignments', icon: '💻' },
-    { title: 'Information Technology (IT)', category: 'Assignments', target: 'assignments', icon: '🌐' },
-    { title: 'Electronics & Telecommunication (E&TC)', category: 'Assignments', target: 'assignments', icon: '📡' },
-    { title: 'Mechanical Engineering (MECH)', category: 'Assignments', target: 'assignments', icon: '⚙️' },
-    { title: 'Campus Timings & Operating Schedule', category: 'About Centre', target: 'aboutus', icon: '🕒' },
-    { title: 'Express Counter #1 Pickup Information', category: 'About Centre', target: 'aboutus', icon: 'ℹ️' }
+    { title: 'Print Centre (Upload Document)', category: 'Quick Service', target: 'printcentre', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>' },
+    { title: 'Duplex & Color Print Options', category: 'Pricing & Options', target: 'printoptions', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>' },
+    { title: 'Track Order & Live Print Queue', category: 'Express Tracking', target: 'trackorder', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>' },
+    { title: 'Subject Lab Assignments & Manuals', category: 'Academic Hub', target: 'assignments', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>' },
+    { title: 'Computer Engineering (FE/SE/TE/BE)', category: 'Assignments', target: 'assignments', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>' },
+    { title: 'Information Technology (IT)', category: 'Assignments', target: 'assignments', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>' },
+    { title: 'Electronics & Telecommunication (E&TC)', category: 'Assignments', target: 'assignments', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>' },
+    { title: 'Mechanical Engineering (MECH)', category: 'Assignments', target: 'assignments', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>' },
+    { title: 'Campus Timings & Operating Schedule', category: 'About Centre', target: 'aboutus', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>' },
+    { title: 'Express Counter #1 Pickup Information', category: 'About Centre', target: 'aboutus', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>' }
   ];
 
   searchInput.addEventListener('input', () => {
@@ -2526,4 +2686,13 @@ window.selectSearchResult = function(target) {
 document.addEventListener('DOMContentLoaded', () => {
   initNotificationSystem();
   initHeaderLiveSearch();
+
+  // Periodic student orders poll (every 10s when active) to sync real order notifications
+  setInterval(() => {
+    if (document.hidden) return;
+    const loginPg = document.getElementById('login-page');
+    if (loginPg && !loginPg.classList.contains('active')) {
+      loadMyOrders();
+    }
+  }, 10000);
 });

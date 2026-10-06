@@ -166,15 +166,17 @@ function renderSuperAssignments() {
     const previewBtn = hasAtt
       ? `<button type="button" class="action-btn preview-btn"
            onclick="openPreview('${a.id}','${encodeURIComponent(a.attachmentName||'file')}')">
-           👁 Preview
+           Preview
          </button>
          <a href="/api/assignments/${a.id}/attachment" class="action-btn download-btn"
-            download="${a.attachmentName||'file'}">⬇ Download</a>`
+            download="${a.attachmentName||'file'}">Download</a>`
       : '';
 
     const attChipHTML = hasAtt ? `
       <div class="asgn-att-chip">
-        <span class="att-icon">📎</span>
+        <span class="att-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+        </span>
         <div class="att-info">
           <span class="att-name" title="${a.attachmentName || 'Attachment'}">${a.attachmentName || 'Attachment'}</span>
           <span class="att-size">${formatSuperBytes(a.attachmentSize)}</span>
@@ -182,7 +184,9 @@ function renderSuperAssignments() {
       </div>
     ` : `
       <div class="asgn-att-chip no-file">
-        <span class="att-icon">📄</span>
+        <span class="att-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        </span>
         <div class="att-info">
           <span class="att-name">No file attached</span>
         </div>
@@ -192,8 +196,8 @@ function renderSuperAssignments() {
     card.innerHTML = `
       <div>
         <div class="asgn-card-top">
-          <span class="asgn-subject-tag">📘 ${a.subject}</span>
-          ${a.deadline ? `<span class="asgn-deadline-pill">📅 Due: ${a.deadline}</span>` : '<span class="asgn-deadline-pill" style="background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;">No Deadline</span>'}
+          <span class="asgn-subject-tag">${a.subject}</span>
+          ${a.deadline ? `<span class="asgn-deadline-pill">Due: ${a.deadline}</span>` : '<span class="asgn-deadline-pill" style="background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;">No Deadline</span>'}
         </div>
         <h3 class="asgn-title">${a.title || a.subject}</h3>
         ${attChipHTML}
@@ -202,7 +206,7 @@ function renderSuperAssignments() {
         <div class="asgn-actions">
           ${previewBtn}
           <button type="button" class="action-btn delete-asgn-btn" style="margin-left:auto;"
-            onclick="deleteAssignment('${a.id}')">🗑 Delete</button>
+            onclick="deleteAssignment('${a.id}')">Delete</button>
         </div>
       </div>
     `;
@@ -236,9 +240,9 @@ window.openPreview = function(id, fnameEncoded) {
   const isImg = /\.(png|jpg|jpeg|gif|svg)$/i.test(fname);
   modal.innerHTML = `
     <div style="background:#fff;border-radius:20px;width:100%;max-width:700px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
-      <div style="background:linear-gradient(135deg,#2d8f4e,#1e6b38);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="background:linear-gradient(135deg,#ff8344,#ff6519);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
         <h3 style="color:#fff;margin:0;font-size:15px;">${fname}</h3>
-        <button onclick="this.closest('[style*=fixed]').remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:16px;">✕</button>
+        <button onclick="this.closest('[style*=fixed]').remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:16px;">&times;</button>
       </div>
       <div style="padding:0;max-height:70vh;overflow:auto;">
         ${isImg
@@ -247,8 +251,8 @@ window.openPreview = function(id, fnameEncoded) {
       </div>
       <div style="padding:14px 20px;border-top:1px solid #f0f5f1;">
         <a href="/api/assignments/${id}/attachment" download="${fname}"
-           style="background:linear-gradient(135deg,#2d8f4e,#1e6b38);color:#fff;padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;">
-          ⬇ Download
+           style="background:linear-gradient(135deg,#ff8344,#ff6519);color:#fff;padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;">
+          Download
         </a>
       </div>
     </div>`;
@@ -285,11 +289,11 @@ async function loadStaff() {
         : '<span class="sbadge-active">Active</span>';
       const sRole = (s.role || '').toUpperCase();
       const roleBadge = (sRole === 'SUPER_ADMIN' || sRole === 'SUPERADMIN')
-        ? '<span class="sbadge-role">👑 Super Admin</span>'
-        : '<span class="sbadge-role">🛡️ Staff</span>';
+        ? '<span class="sbadge-role">Super Admin</span>'
+        : '<span class="sbadge-role">Staff</span>';
       const dateStr = s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-IN') : 'N/A';
       tr.innerHTML = `
-        <td><strong>${s.name}</strong> ${isSelf ? '<span style="font-size:11px;color:#2d8f4e;">(You)</span>' : ''}</td>
+        <td><strong>${s.name}</strong> ${isSelf ? '<span style="font-size:11px;color:#ff8344;">(You)</span>' : ''}</td>
         <td><code>${s.email}</code></td>
         <td>${roleBadge}</td>
         <td>${dateStr}</td>
@@ -298,9 +302,9 @@ async function loadStaff() {
           <div class="staff-actions">
             ${!isSelf ? `<button type="button" class="btn-sm ${isDisabled?'btn-enable-sm':'btn-disable-sm'}"
                 onclick="toggleStaffStatus('${s.id}',${!isDisabled})">
-                ${isDisabled ? '✅ Enable' : '🚫 Disable'}</button>` : ''}
+                ${isDisabled ? 'Enable' : 'Disable'}</button>` : ''}
             <button type="button" class="btn-sm btn-reset-sm"
-              onclick="openResetPwdModal('${s.id}','${s.name}','${s.email}')">🔑 Reset Pwd</button>
+              onclick="openResetPwdModal('${s.id}','${s.name}','${s.email}')">Reset Password</button>
           </div>
         </td>`;
       tbodyEl.appendChild(tr);
@@ -418,11 +422,11 @@ function renderStudents() {
         <div class="staff-actions">
           <button type="button" class="btn-sm ${isDisabled ? 'btn-enable-sm' : 'btn-disable-sm'}"
             onclick="toggleStudentStatus('${s.id}', ${!isDisabled})">
-            ${isDisabled ? '✅ Enable' : '🚫 Disable'}
+            ${isDisabled ? 'Enable' : 'Disable'}
           </button>
           <button type="button" class="btn-sm btn-reset-sm"
             onclick="openResetPwdModal('${s.id}', '${s.name || 'Student'}', '${s.email}', 'student')">
-            🔑 Reset Pwd
+            Reset Password
           </button>
         </div>
       </td>`;
@@ -522,7 +526,7 @@ function wireEventListeners() {
       if (!res.ok) throw new Error(data.error || 'Could not save pricing');
       showToast('Pricing updated! Active for all future orders.', 'success');
     } catch (err) { showToast(err.message, 'error'); }
-    finally { if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '💾 Save Pricing'; } }
+    finally { if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Save Pricing'; } }
   });
 
   // Search listener for assignments
@@ -570,10 +574,10 @@ function wireEventListeners() {
     const totalSize = superStagedAttachments.reduce((sum, a) => sum + (a.size || 0), 0);
     const imgCount = superStagedAttachments.filter(a => a.isImg).length;
     if (countEl) {
-      countEl.textContent = `📷 ${superStagedAttachments.length} ${superStagedAttachments.length === 1 ? 'Attachment' : 'Attachments'} (${imgCount} ${imgCount === 1 ? 'Image' : 'Images'}) • ${formatBytes(totalSize)} staged`;
+      countEl.textContent = `${superStagedAttachments.length} ${superStagedAttachments.length === 1 ? 'Attachment' : 'Attachments'} (${imgCount} ${imgCount === 1 ? 'Image' : 'Images'}) • ${formatBytes(totalSize)} staged`;
     }
     if (fileStatus) {
-      fileStatus.textContent = `✅ Ready: ${superStagedAttachments.length} file(s) staged (${formatBytes(totalSize)} total)`;
+      fileStatus.textContent = `Ready: ${superStagedAttachments.length} file(s) staged (${formatBytes(totalSize)} total)`;
     }
 
     if (superActiveStagedIndex >= superStagedAttachments.length) {
@@ -588,7 +592,7 @@ function wireEventListeners() {
       } else {
         viewerMedia.innerHTML = `
           <div class="doc-preview-icon" style="text-align:center;">
-            <span style="font-size:42px; display:block; margin-bottom:4px;">📄</span>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" style="display:block;margin:0 auto 6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
             <span style="font-weight:600; font-size:13px; color:#fff; display:block;">${escapeHtml(activeItem.originalName)}</span>
             <span style="font-size:11px; opacity:0.8; color:#d1e7dd; display:block;">${formatBytes(activeItem.size)} • Document</span>
           </div>
@@ -597,7 +601,7 @@ function wireEventListeners() {
     }
 
     if (viewerCaption && activeItem) {
-      viewerCaption.textContent = `${activeItem.isImg ? '🖼️ Image' : '📄 File'} ${superActiveStagedIndex + 1} of ${superStagedAttachments.length}: ${activeItem.originalName} (${formatBytes(activeItem.size)})`;
+      viewerCaption.textContent = `${activeItem.isImg ? 'Image' : 'File'} ${superActiveStagedIndex + 1} of ${superStagedAttachments.length}: ${activeItem.originalName} (${formatBytes(activeItem.size)})`;
     }
 
     if (prevBtn) prevBtn.style.display = superStagedAttachments.length > 1 ? 'flex' : 'none';
@@ -613,7 +617,7 @@ function wireEventListeners() {
         const delBtn = document.createElement('button');
         delBtn.type = 'button';
         delBtn.className = 'staged-thumb-remove';
-        delBtn.innerHTML = '✕';
+        delBtn.innerHTML = '&times;';
         delBtn.title = 'Remove this file';
         delBtn.onclick = (e) => {
           e.stopPropagation();
@@ -636,7 +640,7 @@ function wireEventListeners() {
         } else {
           const fallback = document.createElement('div');
           fallback.className = 'staged-thumb-fallback';
-          fallback.innerHTML = `📄<span style="overflow:hidden; text-overflow:ellipsis; max-width:60px; white-space:nowrap;">${escapeHtml(att.originalName)}</span>`;
+          fallback.innerHTML = `<span style="overflow:hidden; text-overflow:ellipsis; max-width:60px; white-space:nowrap;">${escapeHtml(att.originalName)}</span>`;
           thumb.appendChild(fallback);
         }
 

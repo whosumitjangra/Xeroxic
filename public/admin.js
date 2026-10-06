@@ -106,7 +106,7 @@ function startTitleFlash(orderId) {
   if (titleFlashInterval) clearInterval(titleFlashInterval);
   let isAlertTitle = false;
   titleFlashInterval = setInterval(() => {
-    document.title = isAlertTitle ? originalDocTitle : `🔔 (NEW REQUEST!) ${orderId}`;
+    document.title = isAlertTitle ? originalDocTitle : `(NEW REQUEST) ${orderId}`;
     isAlertTitle = !isAlertTitle;
   }, 1000);
 }
@@ -127,7 +127,7 @@ window.addEventListener('focus', () => {
 function triggerDesktopNotification(notif) {
   if ('Notification' in window && Notification.permission === 'granted') {
     try {
-      new Notification('⚡ New Print Request Received!', {
+      new Notification('New Print Request Received!', {
         body: `Order #${notif.orderId} from ${notif.studentName} (${notif.fileCount} file(s) • ₹${notif.amount})`,
         icon: '/logo.gif'
       });
@@ -156,7 +156,7 @@ async function loadAdminNotifications(isPolling = false) {
       playNotificationChime();
       startTitleFlash(brandNew[0].orderId);
       triggerDesktopNotification(brandNew[0]);
-      showToast(`⚡ New print request arrived: ${brandNew[0].orderId}`, 'success');
+      showToast(`New print request arrived: ${brandNew[0].orderId}`, 'success');
     }
 
     activeUnreadNotifications = unread;
@@ -190,7 +190,7 @@ function renderNotificationBanner() {
     ? ` <span style="background:rgba(255,255,255,0.25); padding:2px 8px; border-radius:999px; font-size:12px; margin-left:6px;">${currentNotifIndex + 1} of ${activeUnreadNotifications.length}</span>`
     : '';
 
-  alertText.innerHTML = `<strong>⚡ NEW PRINT REQUEST!</strong>${countBadge} Order <code>#${notif.orderId}</code> from <strong>${notif.studentName}</strong> (${notif.fileCount} file(s) • ₹${notif.amount})`;
+  alertText.innerHTML = `<strong>NEW PRINT REQUEST</strong>${countBadge} Order <code>#${notif.orderId}</code> from <strong>${notif.studentName}</strong> (${notif.fileCount} file(s) • ₹${notif.amount})`;
   banner.style.display = 'flex';
 
   if (viewBtn) {
@@ -564,12 +564,14 @@ function renderOrders(force = false) {
     (order.items || []).forEach(item => {
       const sizeStr = item.size ? ` (${formatBytes(item.size)})` : '';
       const copiesStr = (item.copies && item.copies > 1) ? ` • <strong>${item.copies} copies</strong>` : '';
-      const printSpecs = `${item.color === 'color' ? '🎨 Color' : '⬛ Black & White'} • ${item.sides === 'double' ? 'Double-sided' : 'Single-sided'} • ${item.pages} page${item.pages > 1 ? 's' : ''}${copiesStr}`;
+      const printSpecs = `${item.color === 'color' ? 'Color' : 'Black & White'} • ${item.sides === 'double' ? 'Double-sided' : 'Single-sided'} • ${item.pages} page${item.pages > 1 ? 's' : ''}${copiesStr}`;
 
       itemsHtml += `
         <div class="admin-doc-item">
           <div class="admin-doc-info">
-            <div class="admin-doc-icon">📄</div>
+            <div class="admin-doc-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            </div>
             <div>
               <div class="admin-doc-name" title="${item.originalName}">${item.originalName}${sizeStr}</div>
               <div class="admin-doc-specs">${printSpecs} — <strong>₹${item.price}</strong></div>
@@ -578,10 +580,10 @@ function renderOrders(force = false) {
           <div class="admin-doc-actions">
             ${item.fileId ? `
               <a href="/api/download/${item.fileId}?inline=1" target="_blank" class="admin-btn-action admin-btn-preview" title="View document in new tab">
-                👁 Preview
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:middle;margin-right:3px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>Preview
               </a>
               <a href="/api/download/${item.fileId}" download="${item.originalName}" class="admin-btn-action admin-btn-download" title="Download exact file to print">
-                ⬇ Download to Print
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:middle;margin-right:3px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Download
               </a>
             ` : '<span class="admin-no-file">File ID Missing</span>'}
           </div>
@@ -594,37 +596,37 @@ function renderOrders(force = false) {
     if (isNew) {
       quickActionsHtml = `
         <button type="button" class="btn-action-sm" onclick="updateOrderStatusOnServer('${order.orderId}', 'ACCEPTED')" style="background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; border-radius:8px; padding:6px 14px; font-weight:600; font-size:12.5px; cursor:pointer;">
-          🔵 Accept Order
+          Accept Order
         </button>
         <button type="button" class="btn-action-sm" onclick="updateOrderStatusOnServer('${order.orderId}', 'CANCELLED')" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; border-radius:8px; padding:6px 14px; font-weight:600; font-size:12.5px; cursor:pointer;">
-          🚫 Reject
+          Reject
         </button>
       `;
     } else if (isAccepted) {
       quickActionsHtml = `
         <button type="button" class="btn-action-sm" onclick="updateOrderStatusOnServer('${order.orderId}', 'PRINTING')" style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; border-radius:8px; padding:6px 14px; font-weight:600; font-size:12.5px; cursor:pointer;">
-          🖨️ Start Printing
+          Start Printing
         </button>
         <button type="button" class="btn-action-sm" onclick="updateOrderStatusOnServer('${order.orderId}', 'CANCELLED')" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; border-radius:8px; padding:6px 14px; font-weight:600; font-size:12.5px; cursor:pointer;">
-          🚫 Reject
+          Reject
         </button>
       `;
     } else if (isPrinting) {
       quickActionsHtml = `
         <button type="button" class="btn-action-sm" onclick="updateOrderStatusOnServer('${order.orderId}', 'READY')" style="background:#e8f8f0; color:#059669; border:1px solid #a7f3d0; border-radius:8px; padding:6px 14px; font-weight:600; font-size:12.5px; cursor:pointer;">
-          🟢 Mark Ready for Collection
+          Mark Ready for Collection
         </button>
       `;
     } else if (isReady) {
       quickActionsHtml = `
         <button type="button" class="btn-action-sm" onclick="updateOrderStatusOnServer('${order.orderId}', 'COMPLETED')" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; border-radius:8px; padding:6px 14px; font-weight:600; font-size:12.5px; cursor:pointer;">
-          ✅ Mark Collected / Done
+          Mark Collected / Done
         </button>
       `;
     }
 
     const newBadgeHtml = isNew
-      ? `<span class="badge-new-pulse" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; margin-left:10px;">⚡ NEW REQUEST</span>`
+      ? `<span class="badge-new-pulse" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; margin-left:10px;">NEW REQUEST</span>`
       : '';
 
     card.innerHTML = `
@@ -632,8 +634,8 @@ function renderOrders(force = false) {
         <div class="admin-order-meta">
           <span class="admin-order-id">${order.orderId}</span>
           ${newBadgeHtml}
-          <span class="admin-order-date">📅 ${formattedDate}</span>
-          <span class="admin-customer-info">👤 <strong>${order.ownerName}</strong> (${order.ownerEmail})</span>
+          <span class="admin-order-date">${formattedDate}</span>
+          <span class="admin-customer-info"><strong>${order.ownerName}</strong> (${order.ownerEmail})</span>
         </div>
         <div class="admin-order-badge-wrap">
           <span class="admin-status-badge ${statusClass}" id="badge-${order.orderId}">
@@ -663,12 +665,12 @@ function renderOrders(force = false) {
         <div class="admin-status-controller">
           <label class="admin-control-label">Change Status:</label>
           <select class="admin-status-select" data-order-id="${order.orderId}">
-            <option value="REQUEST_RECEIVED" ${isNew ? 'selected' : ''}>🟡 Request Received</option>
-            <option value="ACCEPTED" ${isAccepted ? 'selected' : ''}>🔵 Accepted</option>
-            <option value="PRINTING" ${isPrinting ? 'selected' : ''}>🖨️ Printing</option>
-            <option value="READY" ${isReady ? 'selected' : ''}>🟢 Ready for Collection</option>
-            <option value="COMPLETED" ${isCollected ? 'selected' : ''}>✅ Collected / Done</option>
-            <option value="CANCELLED" ${isCancelled ? 'selected' : ''}>🚫 Cancelled</option>
+            <option value="REQUEST_RECEIVED" ${isNew ? 'selected' : ''}>Request Received</option>
+            <option value="ACCEPTED" ${isAccepted ? 'selected' : ''}>Accepted</option>
+            <option value="PRINTING" ${isPrinting ? 'selected' : ''}>Printing</option>
+            <option value="READY" ${isReady ? 'selected' : ''}>Ready for Collection</option>
+            <option value="COMPLETED" ${isCollected ? 'selected' : ''}>Collected / Done</option>
+            <option value="CANCELLED" ${isCancelled ? 'selected' : ''}>Cancelled</option>
           </select>
         </div>
       </div>
@@ -961,24 +963,28 @@ function renderAdminAssignments() {
     const isMulti = attCount > 1;
     const previewBtn = hasAtt ? `
       <button type="button" class="action-btn preview-btn" onclick="openAdminAttachmentPreview('${a.id}', '${encodeURIComponent(a.subject)}', '${encodeURIComponent(a.attachmentName || 'file')}')">
-        👁 Preview ${isMulti ? `(${attCount})` : ''}
+        Preview ${isMulti ? `(${attCount})` : ''}
       </button>
       <a href="/api/assignments/${a.id}/attachment" class="action-btn download-btn" download="${a.attachmentName || 'assignment_file'}">
-        ⬇ Download
+        Download
       </a>
     ` : '';
 
     const attChipHTML = hasAtt ? `
       <div class="asgn-att-chip">
-        <span class="att-icon">${isMulti ? '📷' : '📎'}</span>
+        <span class="att-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+        </span>
         <div class="att-info">
-          <span class="att-name" title="${escapeHtml(a.attachmentName || 'Attachment')}">${isMulti ? `📷 ${attCount} Images / Files Attached` : escapeHtml(a.attachmentName || 'Attachment')}</span>
+          <span class="att-name" title="${escapeHtml(a.attachmentName || 'Attachment')}">${isMulti ? `${attCount} Images / Files Attached` : escapeHtml(a.attachmentName || 'Attachment')}</span>
           <span class="att-size">${formatBytes(a.attachmentSize)}</span>
         </div>
       </div>
     ` : `
       <div class="asgn-att-chip no-file">
-        <span class="att-icon">📄</span>
+        <span class="att-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        </span>
         <div class="att-info">
           <span class="att-name">No file attached</span>
         </div>
@@ -988,11 +994,11 @@ function renderAdminAssignments() {
     card.innerHTML = `
       <div>
         <div class="asgn-card-top" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:8px;">
-          <span class="asgn-subject-tag">📘 ${a.subject}</span>
-          <span class="asgn-batch-tag" style="background:#f3e8ff; color:#6b21a8; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #e9d5ff;">📂 ${a.category || 'Lab Experiments'}</span>
-          <span class="asgn-batch-tag" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #bae6fd;">🏫 ${a.targetClass || 'All Classes'}</span>
-          <span class="asgn-batch-tag" style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #fde68a;">🏷️ ${a.batch || 'All Batches'}</span>
-          ${a.deadline ? `<span class="asgn-deadline-pill">📅 Due: ${a.deadline}</span>` : '<span class="asgn-deadline-pill" style="background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;">No Deadline</span>'}
+          <span class="asgn-subject-tag">${a.subject}</span>
+          <span class="asgn-batch-tag" style="background:#f3e8ff; color:#6b21a8; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #e9d5ff;">${a.category || 'Lab Experiments'}</span>
+          <span class="asgn-batch-tag" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #bae6fd;">${a.targetClass || 'All Classes'}</span>
+          <span class="asgn-batch-tag" style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #fde68a;">${a.batch || 'All Batches'}</span>
+          ${a.deadline ? `<span class="asgn-deadline-pill">Due: ${a.deadline}</span>` : '<span class="asgn-deadline-pill" style="background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;">No Deadline</span>'}
         </div>
         <h3 class="asgn-title">${a.title || a.subject}</h3>
         ${attChipHTML}
@@ -1001,7 +1007,7 @@ function renderAdminAssignments() {
         <div class="asgn-actions">
           ${previewBtn}
           <button type="button" class="action-btn delete-asgn-btn" style="margin-left:auto;" onclick="deleteAdminAssignment('${a.id}')">
-            🗑 Delete
+            Delete
           </button>
         </div>
       </div>
@@ -1061,10 +1067,10 @@ function updateStagedPreviewUI() {
   const totalSize = stagedAttachments.reduce((sum, a) => sum + (a.size || 0), 0);
   const imgCount = stagedAttachments.filter(a => a.isImg).length;
   if (countEl) {
-    countEl.textContent = `📷 ${stagedAttachments.length} ${stagedAttachments.length === 1 ? 'Attachment' : 'Attachments'} (${imgCount} ${imgCount === 1 ? 'Image' : 'Images'}) • ${formatBytes(totalSize)} staged`;
+    countEl.textContent = `${stagedAttachments.length} ${stagedAttachments.length === 1 ? 'Attachment' : 'Attachments'} (${imgCount} ${imgCount === 1 ? 'Image' : 'Images'}) • ${formatBytes(totalSize)} staged`;
   }
   if (fileStatus) {
-    fileStatus.textContent = `✅ Ready: ${stagedAttachments.length} file(s) staged (${formatBytes(totalSize)} total)`;
+    fileStatus.textContent = `Ready: ${stagedAttachments.length} file(s) staged (${formatBytes(totalSize)} total)`;
   }
 
   if (activeStagedIndex >= stagedAttachments.length) {
@@ -1079,7 +1085,7 @@ function updateStagedPreviewUI() {
     } else {
       viewerMedia.innerHTML = `
         <div class="doc-preview-icon" style="text-align:center;">
-          <span style="font-size:42px; display:block; margin-bottom:4px;">📄</span>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8" style="display:block;margin:0 auto 6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
           <span style="font-weight:600; font-size:13px; color:#fff; display:block;">${escapeHtml(activeItem.originalName)}</span>
           <span style="font-size:11px; opacity:0.8; color:#d1e7dd; display:block;">${formatBytes(activeItem.size)} • Document</span>
         </div>
@@ -1088,7 +1094,7 @@ function updateStagedPreviewUI() {
   }
 
   if (viewerCaption && activeItem) {
-    viewerCaption.textContent = `${activeItem.isImg ? '🖼️ Image' : '📄 File'} ${activeStagedIndex + 1} of ${stagedAttachments.length}: ${activeItem.originalName} (${formatBytes(activeItem.size)})`;
+    viewerCaption.textContent = `${activeItem.isImg ? 'Image' : 'File'} ${activeStagedIndex + 1} of ${stagedAttachments.length}: ${activeItem.originalName} (${formatBytes(activeItem.size)})`;
   }
 
   if (prevBtn) prevBtn.style.display = stagedAttachments.length > 1 ? 'flex' : 'none';
@@ -1104,7 +1110,7 @@ function updateStagedPreviewUI() {
       const delBtn = document.createElement('button');
       delBtn.type = 'button';
       delBtn.className = 'staged-thumb-remove';
-      delBtn.innerHTML = '✕';
+      delBtn.innerHTML = '&times;';
       delBtn.title = 'Remove this file';
       delBtn.onclick = (e) => {
         e.stopPropagation();
@@ -1123,7 +1129,7 @@ function updateStagedPreviewUI() {
       } else {
         const fallback = document.createElement('div');
         fallback.className = 'staged-thumb-fallback';
-        fallback.innerHTML = `📄<span style="overflow:hidden; text-overflow:ellipsis; max-width:60px; white-space:nowrap;">${escapeHtml(att.originalName)}</span>`;
+        fallback.innerHTML = `<span style="overflow:hidden; text-overflow:ellipsis; max-width:60px; white-space:nowrap;">${escapeHtml(att.originalName)}</span>`;
         thumb.appendChild(fallback);
       }
 
@@ -1578,7 +1584,7 @@ function renderAdminPreviewModalSlide() {
   if (counterEl) counterEl.textContent = `${currentPreviewIndex + 1} / ${total}`;
 
   if (metaEl) {
-    metaEl.textContent = `📄 ${currentAtt.originalName} ${currentAtt.size ? `(${formatBytes(currentAtt.size)})` : ''}`;
+    metaEl.textContent = `${currentAtt.originalName} ${currentAtt.size ? `(${formatBytes(currentAtt.size)})` : ''}`;
   }
 
   if (dlLink) {
@@ -1608,7 +1614,7 @@ function renderAdminPreviewModalSlide() {
           btn.style.color = '#fff';
           btn.style.borderColor = '#2d8f4e';
         }
-        btn.innerHTML = `${/\.(png|jpg|jpeg|webp)$/i.test(att.originalName) ? '🖼️' : '📄'} Page ${idx + 1}`;
+        btn.innerHTML = `Page ${idx + 1}`;
         btn.onclick = () => {
           currentPreviewIndex = idx;
           renderAdminPreviewModalSlide();
@@ -1689,7 +1695,7 @@ if (btnOpenScanner && modalQrCollect) {
     const rawVal = (inputScanOrderId?.value || '').trim();
     if (!rawVal) {
       if (quickCollectStatus) {
-        quickCollectStatus.textContent = '⚠️ Please scan or enter an Order ID.';
+        quickCollectStatus.textContent = 'Please scan or enter an Order ID.';
         quickCollectStatus.style.color = '#d97706';
       }
       return;
@@ -1703,14 +1709,14 @@ if (btnOpenScanner && modalQrCollect) {
     try {
       await updateOrderStatusOnServer(cleanOrderId, 'COMPLETED');
       if (quickCollectStatus) {
-        quickCollectStatus.textContent = `✅ Order #${cleanOrderId} collected successfully!`;
+        quickCollectStatus.textContent = `Order #${cleanOrderId} collected successfully!`;
         quickCollectStatus.style.color = '#059669';
       }
       if (inputScanOrderId) inputScanOrderId.value = '';
       setTimeout(() => closeQrModal(), 1200);
     } catch (e) {
       if (quickCollectStatus) {
-        quickCollectStatus.textContent = `❌ ${e.message}`;
+        quickCollectStatus.textContent = e.message;
         quickCollectStatus.style.color = '#dc2626';
       }
     }

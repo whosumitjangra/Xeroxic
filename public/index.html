@@ -185,7 +185,7 @@
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
         </svg>
-        <span class="notif-badge" id="notif-badge">3</span>
+        <span class="notif-badge hidden" id="notif-badge">0</span>
       </button>
 
       <!-- Notification Dropdown Panel -->
@@ -193,43 +193,14 @@
         <div class="notif-head">
           <div class="notif-head-title">
             <span>Notifications</span>
-            <span class="notif-counter-pill" id="notif-counter-pill">3 new</span>
+            <span class="notif-counter-pill" id="notif-counter-pill">0 new</span>
           </div>
           <button type="button" class="notif-action-btn" onclick="markAllNotifsRead()">Mark read</button>
         </div>
         <div class="notif-list" id="notif-list">
-          <div class="notif-item unread" onclick="handleNotifAction('trackorder')">
-            <div class="notif-icon notif-icon-printer">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-            </div>
-            <div class="notif-text-wrap">
-              <div class="notif-title">Laser Printers Ready</div>
-              <div class="notif-desc">Printers #1 &amp; #2 operating with zero waiting delay. Pickup in ~3 mins.</div>
-              <div class="notif-time">Just now</div>
-            </div>
-            <span class="notif-dot"></span>
-          </div>
-          <div class="notif-item unread" onclick="handleNotifAction('assignments')">
-            <div class="notif-icon notif-icon-book">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-            </div>
-            <div class="notif-text-wrap">
-              <div class="notif-title">Lab Manuals Updated</div>
-              <div class="notif-desc">New FE, SE &amp; TE practical experiment sheets are available for instant print.</div>
-              <div class="notif-time">15m ago</div>
-            </div>
-            <span class="notif-dot"></span>
-          </div>
-          <div class="notif-item unread" onclick="handleNotifAction('aboutus')">
-            <div class="notif-icon notif-icon-info">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-            </div>
-            <div class="notif-text-wrap">
-              <div class="notif-title">Express QR Pickup Active</div>
-              <div class="notif-desc">Show your order QR code at Counter #1 for express contact-free collection.</div>
-              <div class="notif-time">1h ago</div>
-            </div>
-            <span class="notif-dot"></span>
+          <div style="padding: 32px 20px; text-align: center; color: #9ca3af; font-size: 13px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" style="margin-bottom:6px; display:inline-block;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <div>Loading live notifications...</div>
           </div>
         </div>
         <div class="notif-footer">
@@ -303,9 +274,9 @@
         <h3 class="modern-card-title">Print Centre</h3>
         <p class="modern-card-desc">Upload PDF, Word, or presentation files. Select B&amp;W or color, single/double sided, and pick up in 5 minutes.</p>
         <div class="card-feature-chips">
-          <span class="feature-chip">⚡ Fast Queue</span>
-          <span class="feature-chip">📄 Auto-duplex</span>
-          <span class="feature-chip">💳 UPI &amp; Cards</span>
+          <span class="feature-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Fast Queue</span>
+          <span class="feature-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> Auto-duplex</span>
+          <span class="feature-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg> UPI &amp; Cards</span>
         </div>
       </div>
       <div class="card-action-bar">
@@ -331,9 +302,9 @@
         <h3 class="modern-card-title">Subject Assignments</h3>
         <p class="modern-card-desc">Browse pre-approved department lab experiment sheets, writeups, and demo assignments for FE, SE, TE &amp; BE.</p>
         <div class="card-feature-chips">
-          <span class="feature-chip">📚 Lab Manuals</span>
-          <span class="feature-chip">🎓 4 Branches</span>
-          <span class="feature-chip">✓ Verified</span>
+          <span class="feature-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg> Lab Manuals</span>
+          <span class="feature-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg> 4 Branches</span>
+          <span class="feature-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Verified</span>
         </div>
       </div>
       <div class="card-action-bar">
@@ -357,9 +328,9 @@
         <h3 class="modern-card-title">About Xerox Centre</h3>
         <p class="modern-card-desc">Operating schedule, location details, printer specifications, pricing structures, and student guidelines.</p>
         <div class="card-feature-chips">
-          <span class="feature-chip">🕒 8:30 AM – 6:30 PM</span>
-          <span class="feature-chip">📍 Ground Floor</span>
-          <span class="feature-chip">ℹ️ Info Guide</span>
+          <span class="feature-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 8:30 AM – 6:30 PM</span>
+          <span class="feature-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> Ground Floor</span>
+          <span class="feature-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Info Guide</span>
         </div>
       </div>
       <div class="card-action-bar">
@@ -406,19 +377,27 @@
   <!-- QUICK ACTION SHORTCUTS -->
   <div class="quick-links-bar">
     <div class="quick-link-item" onclick="showPage('printcentre')">
-      <span class="quick-link-icon">⚡</span>
+      <span class="quick-link-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+      </span>
       <span>Direct File Upload</span>
     </div>
     <div class="quick-link-item" onclick="showPage('trackorder')">
-      <span class="quick-link-icon">📍</span>
+      <span class="quick-link-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+      </span>
       <span>Check Live Order Token</span>
     </div>
     <div class="quick-link-item" onclick="showPage('assignments')">
-      <span class="quick-link-icon">📚</span>
+      <span class="quick-link-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+      </span>
       <span>Department Lab Sheets</span>
     </div>
     <div class="quick-link-item" onclick="showPage('aboutus')">
-      <span class="quick-link-icon">🕒</span>
+      <span class="quick-link-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      </span>
       <span>Pricing &amp; Timing</span>
     </div>
   </div>
@@ -580,7 +559,10 @@
   <div class="track-card">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
       <label class="auth-label" style="margin:0;">Look Up Order by ID</label>
-      <span class="sticker-chip" style="font-size:12px; padding:3px 10px; margin:0; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;">⚡ Live Status</span>
+      <span class="sticker-chip" style="font-size:12px; padding:3px 10px; margin:0; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; display:inline-flex; align-items:center; gap:5px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        Live Status
+      </span>
     </div>
     <div class="track-input-row">
       <input class="auth-input" type="text" id="track-input" placeholder="Enter Order ID (e.g. ORD-CAD59248)">
@@ -594,15 +576,16 @@
   <div class="track-orders-container" style="margin-top:28px;">
     <div class="orders-section-tabs">
       <button type="button" class="order-tab-btn active" id="tab-in-process">
-        <span>🟡 In Process Requests</span>
+        <span>In Process Requests</span>
         <span class="order-tab-badge active" id="badge-in-process-count">0</span>
       </button>
       <button type="button" class="order-tab-btn" id="tab-completed">
-        <span>🟢 Completed &amp; Collected</span>
+        <span>Completed &amp; Collected</span>
         <span class="order-tab-badge" id="badge-completed-count">0</span>
       </button>
-      <button type="button" class="btn-refresh-orders" id="btn-refresh-my-orders" title="Refresh Orders" style="margin-left:auto;">
-        🔄 Live Refresh
+      <button type="button" class="btn-refresh-orders" id="btn-refresh-my-orders" title="Refresh Orders" style="margin-left:auto; display:inline-flex; align-items:center; gap:6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        Live Refresh
       </button>
     </div>
 
@@ -611,10 +594,12 @@
       <div id="in-process-loading" class="orders-loading-box">Checking active print queue...</div>
       <div id="in-process-orders-list" class="orders-cards-grid"></div>
       <div id="in-process-empty" class="orders-empty-box" style="display:none;">
-        <div class="empty-icon-sticker">🎉</div>
+        <div class="empty-icon-sticker">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+        </div>
         <h4>No Pending Print Requests</h4>
         <p>You have no active orders in the printing queue. All your prints are completed, or you can start a new print request from the Print Centre.</p>
-        <button type="button" class="upload-btn" style="margin-top:12px;" data-target="printcentre">🖨️ Start New Print Job</button>
+        <button type="button" class="upload-btn" style="margin-top:12px;" data-target="printcentre">Start New Print Job</button>
       </div>
     </div>
 
@@ -623,7 +608,9 @@
       <div id="completed-loading" class="orders-loading-box">Loading past order history...</div>
       <div id="completed-orders-list" class="orders-cards-grid"></div>
       <div id="completed-empty" class="orders-empty-box" style="display:none;">
-        <div class="empty-icon-sticker">📦</div>
+        <div class="empty-icon-sticker">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+        </div>
         <h4>No Past Orders Yet</h4>
         <p>Once your documents are printed and collected from the Xerox centre, they will appear here in your permanent order history.</p>
       </div>
@@ -643,7 +630,10 @@
   <div id="asgn-wizard-view" class="asgn-container">
     <div class="asgn-header-card">
       <div>
-        <span class="card-sticker sticker-blue" style="position:static; margin-bottom:8px;">📚 Academic Lab Manuals</span>
+        <span class="card-sticker sticker-blue" style="position:static; margin-bottom:8px; display:inline-flex; align-items:center; gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          Academic Lab Manuals
+        </span>
         <h1 class="page-title" style="margin:8px 0 6px 0; font-size:26px;">Select Class &amp; Practical Batch</h1>
         <p class="admin-subtext">Follow the 3 quick steps below to load lab experiments, demo attachments, and guidelines tailored to your class and batch.</p>
       </div>
@@ -706,31 +696,41 @@
 
         <div class="wizard-grid-5" id="wizard-branch-cards">
           <div class="wizard-select-card" data-branch="CSE">
-            <span class="wizard-card-icon">💻</span>
+            <span class="wizard-card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+            </span>
             <span class="wizard-card-badge" style="font-size:20px;">CSE</span>
             <div class="wizard-card-title">Computer Engg</div>
             <div class="wizard-card-sub">DSA, DBMS, AI &amp; Networks</div>
           </div>
           <div class="wizard-select-card" data-branch="IT">
-            <span class="wizard-card-icon">🌐</span>
+            <span class="wizard-card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            </span>
             <span class="wizard-card-badge" style="font-size:20px;">IT</span>
             <div class="wizard-card-title">Information Tech</div>
             <div class="wizard-card-sub">Cloud, OS &amp; Software Dev</div>
           </div>
           <div class="wizard-select-card" data-branch="MECH">
-            <span class="wizard-card-icon">⚙️</span>
+            <span class="wizard-card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </span>
             <span class="wizard-card-badge" style="font-size:20px;">MECH</span>
             <div class="wizard-card-title">Mechanical Engg</div>
             <div class="wizard-card-sub">Thermal, CAD/CAM &amp; Mechatronics</div>
           </div>
           <div class="wizard-select-card" data-branch="ARE">
-            <span class="wizard-card-icon">🤖</span>
+            <span class="wizard-card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4M8 15h.01M16 15h.01"></path></svg>
+            </span>
             <span class="wizard-card-badge" style="font-size:20px;">ARE</span>
             <div class="wizard-card-title">Automation &amp; Robotics</div>
             <div class="wizard-card-sub">Control Systems &amp; Robotics</div>
           </div>
           <div class="wizard-select-card" data-branch="ENTC">
-            <span class="wizard-card-icon">📡</span>
+            <span class="wizard-card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.93 19.07A10 10 0 0 1 2 12a10 10 0 0 1 10-10 10 10 0 0 1 10 10c0 2.76-1.12 5.26-2.93 7.07"></path><path d="M7.76 16.24A6 6 0 0 1 6 12a6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-1.76 4.24"></path><circle cx="12" cy="12" r="2"></circle></svg>
+            </span>
             <span class="wizard-card-badge" style="font-size:20px;">ENTC</span>
             <div class="wizard-card-title">Electronics &amp; Telecom</div>
             <div class="wizard-card-sub">Signals, DSP &amp; Embedded Systems</div>
@@ -756,26 +756,30 @@
     <!-- Active Selection Banner -->
     <div class="asgn-active-banner">
       <div class="asgn-active-pills">
-        <span style="font-size:18px;">🎓</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
         <span>Showing assignments for:</span>
         <span class="asgn-pill-badge" id="asgn-active-year-pill">Year</span>
         <span class="asgn-pill-badge" id="asgn-active-branch-pill">Branch</span>
       </div>
-      <button type="button" id="btn-change-class" class="upload-btn secondary-btn" style="padding:8px 18px; font-size:13px; font-weight:600;">
-        🔄 Change Class / Branch
+      <button type="button" id="btn-change-class" class="upload-btn secondary-btn" style="padding:8px 18px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        Change Class / Branch
       </button>
     </div>
 
     <div class="asgn-controls-card">
       <div class="asgn-search-wrap">
-        <span class="search-icon">🔍</span>
+        <span class="search-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </span>
         <input type="text" id="asgn-search-input" class="admin-search-input" placeholder="Search by title, subject or experiment topic...">
       </div>
 
       <!-- Categories Filter Pills -->
       <div style="margin-top:14px;">
-        <div style="font-size:12px; font-weight:700; color:#5c7062; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
-          📂 Filter by Category:
+        <div style="font-size:12px; font-weight:700; color:#5c7062; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:5px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          Filter by Category:
         </div>
         <div class="asgn-filter-pills" id="asgn-category-filters">
           <button type="button" class="filter-pill active" data-cat="all">All Categories</button>
@@ -784,8 +788,9 @@
       
       <!-- Subjects Filter Pills -->
       <div style="margin-top:12px;">
-        <div style="font-size:12px; font-weight:700; color:#5c7062; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
-          📘 Filter by Subject:
+        <div style="font-size:12px; font-weight:700; color:#5c7062; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:5px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          Filter by Subject:
         </div>
         <div class="asgn-filter-pills" id="asgn-subject-filters">
           <button type="button" class="filter-pill active" data-subject="all">All Subjects</button>
@@ -804,12 +809,15 @@
     </div>
 
     <div id="asgn-empty" class="admin-empty-state" style="display:none;">
-      <div class="empty-icon">📖</div>
+      <div class="empty-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+      </div>
       <h3 id="asgn-empty-title">No Assignments Found</h3>
       <p id="asgn-empty-desc">No lab assignments match your selected class and filters.</p>
       <div style="margin-top:16px;">
-        <button type="button" class="upload-btn" id="btn-empty-change" style="padding:8px 20px; font-size:13px;">
-          🔄 Change Class / Branch
+        <button type="button" class="upload-btn" id="btn-empty-change" style="padding:8px 20px; font-size:13px; display:inline-flex; align-items:center; gap:6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          Change Class / Branch
         </button>
       </div>
     </div>
@@ -826,8 +834,14 @@
 
   <div class="about-hero-card">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-      <span class="card-sticker sticker-pink" style="position:static; margin-bottom:0;">🎓 Campus Technology</span>
-      <span class="tag-purged-shield" style="font-size:12px; padding:4px 10px;">⚡ High Performance Cloud Stack</span>
+      <span class="card-sticker sticker-pink" style="position:static; margin-bottom:0; display:inline-flex; align-items:center; gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+        Campus Technology
+      </span>
+      <span class="tag-purged-shield" style="font-size:12px; padding:4px 10px; display:inline-flex; align-items:center; gap:6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+        High Performance Cloud Stack
+      </span>
     </div>
 
     <h1 style="font-size:28px; font-weight:700; color:var(--ink); margin:16px 0 8px;">
@@ -909,7 +923,7 @@
       <div class="tech-card">
         <div class="tech-card-head">
           <div class="tech-card-icon icon-svg-wrap">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff8344" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff8344" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
           </div>
           <span>Node.js Serverless APIs</span>
         </div>
@@ -950,7 +964,7 @@
           <span>Express QR Pass &amp; Memorable IDs</span>
         </div>
         <p class="tech-card-desc">
-          Human-memorable Order IDs (e.g. <code>sumit24001</code>, <code>ali##24001</code>) with automatic hash padding, paired with a glowing ⚡ Express QR Pickup Pass for 5-second counter handoffs.
+          Human-memorable Order IDs (e.g. <code>sumit24001</code>, <code>ali##24001</code>) with automatic hash padding, paired with a high-contrast Express QR Pickup Pass for 5-second counter handoffs.
         </p>
         <div class="tech-chips-row">
           <span class="tech-pill">Memorable IDs</span>
@@ -999,7 +1013,7 @@
       <div class="tech-card">
         <div class="tech-card-head">
           <div class="tech-card-icon icon-svg-wrap">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
           </div>
           <span>Super Admin &amp; Monthly Archival</span>
         </div>
@@ -1068,7 +1082,9 @@
           <span id="student-preview-counter" style="font-size:12px; font-weight:600; color:#1e3d2a; min-width:70px; text-align:center;">1 / 1</span>
           <button type="button" class="upload-btn secondary-btn" id="student-preview-next" style="padding:4px 10px; font-size:12px;">Next ▶</button>
         </div>
-        <button type="button" class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+        <button type="button" class="modal-close" id="modal-close-btn" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
       </div>
     </div>
     <!-- Multi-attachment Thumbnail Strip -->
@@ -1079,12 +1095,23 @@
     <div class="modal-footer" style="justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
       <span id="student-preview-meta" style="font-size:12px; color:#667e70;"></span>
       <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <button type="button" class="upload-btn" id="modal-download-all-btn" style="display:none; background:#1e6b38; color:#ffffff;">⬇ Download All Photos</button>
-        <a href="#" id="modal-download-link" class="upload-btn secondary-btn" download>⬇ Download File</a>
-        <button type="button" class="upload-btn" id="modal-print-btn">🖨 Send to Print Centre</button>
+        <button type="button" class="upload-btn" id="modal-download-all-btn" style="display:none; background:#1e6b38; color:#ffffff;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Download All Photos
+        </button>
+        <a href="#" id="modal-download-link" class="upload-btn secondary-btn" download style="display:inline-flex; align-items:center; gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Download File
+        </a>
+        <button type="button" class="upload-btn" id="modal-print-btn" style="display:inline-flex; align-items:center; gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+          Send to Print Centre
+        </button>
       </div>
     </div>
   </div>
+</div>
+
 <!-- "Forgot your Email ?" Modal (Global overlay) -->
 <div class="info-modal-overlay" id="frontForgotEmailModal">
   <div class="info-modal-box">
@@ -1112,6 +1139,29 @@
     <button type="button" class="front-btn-submit" style="width:100%;" onclick="closeFrontForgotPasswordModal()">Understood</button>
   </div>
 </div>
+
+<!-- GLOBAL FOOTER (Engineered & Crafted by Antigravity with Sumit for AIT Pune) -->
+<footer class="app-global-footer">
+  <div class="footer-inner">
+    <div class="footer-brand-wrap">
+      <img src="/images/xeroxic-logo.png" alt="Xeroxic" class="footer-brand-logo">
+      <div class="footer-brand-info">
+        <span class="footer-brand-name">XEROXIC • SMART CAMPUS PRINT HUB</span>
+        <span class="footer-brand-campus">Army Institute of Technology (AIT), Dighi Hills, Pune — 411015</span>
+      </div>
+    </div>
+    <div class="footer-craft-block">
+      <p class="footer-craft-desc">
+        Engineered &amp; Crafted with precision by <strong>Antigravity</strong> with <strong>Sumit</strong> for Army Institute of Technology (AIT), Pune
+      </p>
+      <div class="footer-meta-pills">
+        <span class="footer-pill">Release v3.0.0</span>
+        <span class="footer-pill">Zero-Queue Campus Hub</span>
+        <span class="footer-pill">Enterprise Cloud Printing</span>
+      </div>
+    </div>
+  </div>
+</footer>
 
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

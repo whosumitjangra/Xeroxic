@@ -678,13 +678,12 @@
         }
 
         // Success redirect
-        btnSignIn.innerHTML = '<span>✓ Authenticated</span>';
+        btnSignIn.innerHTML = '<span>✓ Success!</span>';
         const roleUpper = (data.role || '').toUpperCase();
-        if (roleUpper === 'SUPER_ADMIN' || roleUpper === 'SUPERADMIN') {
-          window.location.href = '/super-admin';
-        } else {
-          window.location.href = '/admin/dashboard';
-        }
+        const targetUrl = (roleUpper === 'SUPER_ADMIN' || roleUpper === 'SUPERADMIN') ? '/super-admin' : '/admin/dashboard';
+        setTimeout(() => {
+          window.location.replace(targetUrl);
+        }, 150);
       } catch (err) {
         showError('Could not reach the server. Please check your internet connection.');
         btnSignIn.disabled = false;
