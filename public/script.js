@@ -8,6 +8,7 @@ async function checkAuth() {
     const res = await fetch('/api/me');
     if (!res.ok) {
       // Unauthenticated visitor -> Display Front Login Page (replacing old 3-card landing)
+      resetFrontLoginForm();
       showPage('login-page');
       return null;
     }
@@ -32,24 +33,90 @@ async function checkAuth() {
     if (nameEl) nameEl.textContent = 'Hi, ' + data.name;
     if (authBtn) {
       authBtn.textContent = 'Sign Out';
-      authBtn.onclick = async () => {
-        await fetch('/api/logout', { method: 'POST' });
-        showPage('login-page');
-        if (nameEl) nameEl.textContent = '';
-        authBtn.textContent = 'Student Sign In';
-        authBtn.onclick = () => showPage('login-page');
-      };
+      authBtn.onclick = handleStudentLogout;
     }
 
     fetchLivePricing();
     loadMyOrders();
     return data;
   } catch (err) {
+    resetFrontLoginForm();
     showPage('login-page');
     return null;
   }
 }
 checkAuth();
+
+// Reset front login form to clean Step 1 state
+function resetFrontLoginForm() {
+  frontStep = 1;
+  frontRole = 'student';
+  const slider = document.getElementById('frontStepsSlider');
+  if (slider) slider.style.transform = 'translateX(0%)';
+  const title = document.getElementById('frontPageTitle');
+  if (title) title.textContent = 'Sign in';
+  const emailInput = document.getElementById('frontEmailInput');
+  if (emailInput) {
+    emailInput.value = '';
+    emailInput.placeholder = 'Email';
+    emailInput.classList.remove('input-error');
+  }
+  const passInput = document.getElementById('frontPasswordInput');
+  if (passInput) {
+    passInput.value = '';
+    passInput.type = 'password';
+    passInput.classList.remove('input-error');
+  }
+  const btnNext = document.getElementById('frontBtnNext');
+  if (btnNext) {
+    btnNext.disabled = false;
+    btnNext.textContent = 'Next';
+  }
+  const btnSignIn = document.getElementById('frontBtnSignIn');
+  if (btnSignIn) {
+    btnSignIn.disabled = false;
+    btnSignIn.textContent = 'Next';
+  }
+  const roleToggleBtn = document.getElementById('frontRoleToggleBtn');
+  if (roleToggleBtn) roleToggleBtn.textContent = 'Admin account';
+  const bottomPrompt = document.getElementById('frontBottomPrompt');
+  if (bottomPrompt) {
+    bottomPrompt.innerHTML = 'New to Xeroxic? <a href="javascript:void(0)" class="front-accent-link" onclick="window.location.href=\'signup.html\'">Create a account</a>';
+  }
+  clearFrontError();
+}
+
+async function handleStudentLogout() {
+  try {
+    await fetch('/api/logout', { method: 'POST' });
+  } catch (e) {}
+
+  resetFrontLoginForm();
+
+  const nameEl = document.getElementById('welcome-name');
+  if (nameEl) nameEl.textContent = '';
+
+  const authBtn = document.getElementById('auth-btn');
+  if (authBtn) {
+    authBtn.textContent = 'Student Sign In';
+    authBtn.onclick = () => {
+      resetFrontLoginForm();
+      showPage('login-page');
+    };
+  }
+
+  // Clear student orders and notifications from in-memory state
+  if (typeof studentNotifications !== 'undefined') studentNotifications = [];
+  if (typeof myOrders !== 'undefined') myOrders = [];
+  const notifList = document.getElementById('notif-list');
+  if (notifList) notifList.innerHTML = '';
+  const notifBadge = document.getElementById('notif-badge');
+  if (notifBadge) notifBadge.classList.add('hidden');
+  const notifPill = document.getElementById('notif-counter-pill');
+  if (notifPill) notifPill.textContent = '0 new';
+
+  showPage('login-page');
+}
 
 // ===================================================================
 // Front Login Page Logic (Google-style Two-Step Auth)
@@ -207,17 +274,28 @@ async function handleFrontSubmit(e) {
   const cleanEmail = email.toLowerCase();
   if (cleanEmail.includes('superadmin')) {
     submitRole = 'super_admin';
-  } else if (cleanEmail.startsWith('admin@') || cleanEmail === 'admin@aitpune.edu.in') {
+  } else if (cleanEmail.includes('admin') || cleanEmail.includes('staff')) {
     submitRole = 'admin';
   }
 
   try {
-    const res = await fetch('/api/login', {
+    let res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, role: submitRole })
     });
-    const data = await res.json();
+    let data = await res.json();
+
+    // If initial attempt was sent as student but is actually an Admin/Staff account, automatically re-authenticate with admin role
+    if (!res.ok && res.status === 403 && data.error && (data.error.includes('Admin / Staff account') || data.error.includes('Admin access'))) {
+      const retryRole = cleanEmail.includes('superadmin') ? 'super_admin' : 'admin';
+      res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, role: retryRole })
+      });
+      data = await res.json();
+    }
 
     if (!res.ok) {
       showFrontError(data.error || 'Invalid credentials or login rejected.');
@@ -253,13 +331,7 @@ async function handleFrontSubmit(e) {
     if (nameEl) nameEl.textContent = 'Hi, ' + (data.name || 'Student');
     if (authBtn) {
       authBtn.textContent = 'Sign Out';
-      authBtn.onclick = async () => {
-        await fetch('/api/logout', { method: 'POST' });
-        showPage('login-page');
-        if (nameEl) nameEl.textContent = '';
-        authBtn.textContent = 'Student Sign In';
-        authBtn.onclick = () => showPage('login-page');
-      };
+      authBtn.onclick = handleStudentLogout;
     }
     showPage('dashboard');
     fetchLivePricing();
