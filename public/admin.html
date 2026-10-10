@@ -133,11 +133,7 @@
   .status-card:hover { border-color: #2b59fe; box-shadow: 0 8px 24px rgba(43,89,254,0.12); transform:translateY(-2px); }
   .status-card.active-filter { border-color: #ff8344; box-shadow: 0 6px 20px rgba(255,131,68,0.2); }
 
-  /* Coloured beacon dot top-right */
-  .status-card-beacon {
-    position: absolute; top: 14px; right: 14px;
-    width: 10px; height: 10px; border-radius: 50%;
-  }
+
 
   .status-card-icon {
     width: 48px; height: 48px; border-radius: 14px;
@@ -166,7 +162,7 @@
   .card-done   { --icon-bg:#eff6ff; --beacon:#60a5fa; --icon-color:#2563eb; }
 
   .status-card-icon { background: var(--icon-bg); color: var(--icon-color); }
-  .status-card-beacon { background: var(--beacon); animation: beacon-pulse-green 2s ease-in-out infinite; }
+
 
   /* ===== CONTENT AREA ===== */
   .content-panel {
@@ -549,7 +545,6 @@
     <!-- Status card row -->
     <div class="status-cards-row" id="status-cards-row">
       <div class="status-card card-new active-filter" data-filter="New" id="scard-new">
-        <span class="status-card-beacon" style="background:#ef4444;"></span>
         <div class="status-card-icon">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
         </div>
@@ -557,7 +552,6 @@
         <div class="status-card-count" id="scard-count-new">0</div>
       </div>
       <div class="status-card card-queue" data-filter="Accepted" id="scard-queue">
-        <span class="status-card-beacon" style="background:#93c5fd;"></span>
         <div class="status-card-icon">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
         </div>
@@ -565,7 +559,6 @@
         <div class="status-card-count" id="scard-count-queue">0</div>
       </div>
       <div class="status-card card-print" data-filter="Printing" id="scard-print">
-        <span class="status-card-beacon" style="background:#f59e0b;"></span>
         <div class="status-card-icon">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
         </div>
@@ -573,7 +566,6 @@
         <div class="status-card-count" id="scard-count-print">0</div>
       </div>
       <div class="status-card card-collect" data-filter="Ready for Collection" id="scard-collect">
-        <span class="status-card-beacon" style="background:#34d399;"></span>
         <div class="status-card-icon">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
         </div>
@@ -581,7 +573,6 @@
         <div class="status-card-count" id="scard-count-collect">0</div>
       </div>
       <div class="status-card card-done" data-filter="Collected" id="scard-done">
-        <span class="status-card-beacon" style="background:#60a5fa;"></span>
         <div class="status-card-icon">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
         </div>
@@ -589,7 +580,6 @@
         <div class="status-card-count" id="scard-count-done">0</div>
       </div>
       <div class="status-card card-all" data-filter="all" id="scard-all" style="--icon-bg:#f0fdf4; --beacon:#22c55e; --icon-color:#15803d;">
-        <span class="status-card-beacon" style="background:#22c55e;"></span>
         <div class="status-card-icon">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
         </div>

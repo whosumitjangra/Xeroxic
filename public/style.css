@@ -763,13 +763,7 @@ h1.centre-title{
   border-radius: 20px;
   margin-bottom: 12px;
 }
-.hero-beacon{
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
-}
+
 .hero-title{
   font-size: 28px;
   font-weight: 700;
@@ -2953,65 +2947,9 @@ h1.centre-title{
   }
 }
 
-/* ===== STATUS BEACON — pulsing dot for order tracking ===== */
+/* ===== STATUS BEACON (Removed live pulsing dots) ===== */
 .status-beacon {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  animation: beacon-pulse 1.8s ease-in-out infinite;
-}
-
-/* Red — in queue / REQUEST_RECEIVED */
-.beacon-red {
-  background: #ef4444;
-  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
-  animation-name: beacon-pulse-red;
-}
-@keyframes beacon-pulse-red {
-  0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
-  70%  { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-}
-
-/* Green — READY / COMPLETED */
-.beacon-green {
-  background: #10b981;
-  animation-name: beacon-pulse-green;
-}
-@keyframes beacon-pulse-green {
-  0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); }
-  70%  { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-}
-
-/* Blue — PRINTING */
-.beacon-blue {
-  background: #3b82f6;
-  animation-name: beacon-pulse-blue;
-}
-@keyframes beacon-pulse-blue {
-  0%   { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.55); }
-  70%  { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-}
-
-/* Amber — ACCEPTED */
-.beacon-amber {
-  background: #f59e0b;
-  animation-name: beacon-pulse-amber;
-}
-@keyframes beacon-pulse-amber {
-  0%   { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55); }
-  70%  { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-}
-
-/* Grey — CANCELLED (no pulse, static) */
-.beacon-grey {
-  background: #9ca3af;
-  animation: none;
+  display: none !important;
 }
 
 /* ===== 5-STEP PROGRESS BAR for order tracking ===== */
@@ -3062,10 +3000,8 @@ h1.centre-title{
 
 .track-step.step-active .track-step-dot {
   background: #ffffff;
-  border-color: #5cb85c;
+  border-color: #10b981;
   border-width: 3px;
-  box-shadow: 0 0 0 4px rgba(92, 184, 92, 0.25);
-  animation: beacon-pulse-green 1.8s ease-in-out infinite;
 }
 
 .track-step-label {

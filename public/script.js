@@ -1439,8 +1439,7 @@ async function trackOrder(orderId) {
           }).join('')}
         </div>`;
 
-      const liveTag = beacon.terminal ? '' :
-        `<span style="font-size:11px; color:#059669; background:#dcfce7; border-radius:20px; padding:2px 8px; font-weight:600; margin-left:8px; vertical-align:middle;">LIVE ↻</span>`;
+      const liveTag = '';
 
       const isReadyForPickup = stUp === 'READY' || stUp === 'READY FOR COLLECTION' || stUp === 'READY FOR PICKUP';
       const pickupQRHTML = isReadyForPickup ? `
@@ -1461,9 +1460,7 @@ async function trackOrder(orderId) {
 
       if (resultEl) resultEl.innerHTML = `
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-          <span class="status-beacon ${beacon.cls}"></span>
           <span style="${studentStatus.style}; font-size:14px; padding:6px 14px; border-radius:12px; font-weight:600;">${studentStatus.label}</span>
-          ${liveTag}
         </div>
         <p style="font-size:13px; color:#4a5e50; margin:0 0 10px 0;">${studentStatus.sub}</p>
         ${progressHTML}
@@ -1574,7 +1571,7 @@ function renderPrintRequestCard(order, isActive = false) {
     `;
   });
 
-  const liveBadge = isActive ? `<span class="status-beacon ${beacon.cls}"></span>` : '';
+  const liveBadge = '';
 
   card.innerHTML = `
     <div>
