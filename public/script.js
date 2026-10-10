@@ -167,6 +167,8 @@ function initFloatingLabels() {
 
 document.addEventListener('DOMContentLoaded', () => {
   initFloatingLabels();
+  const step2 = document.getElementById('frontStep2');
+  if (step2) step2.style.visibility = 'hidden';
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('role') === 'superadmin' || window.location.hash === '#superadmin') {
     setFrontSuperAdminMode();
@@ -182,6 +184,8 @@ function proceedFrontToPassword() {
   const title = document.getElementById('frontPageTitle');
   const passInput = document.getElementById('frontPasswordInput');
   const emailWrap = document.getElementById('frontEmailWrap');
+  const step1 = document.getElementById('frontStep1');
+  const step2 = document.getElementById('frontStep2');
 
   clearFrontError();
   const email = emailInput ? emailInput.value.trim() : '';
@@ -194,13 +198,15 @@ function proceedFrontToPassword() {
   }
 
   frontStep = 2;
+  if (step2) step2.style.visibility = 'visible';
   if (userChipText) userChipText.textContent = email;
   if (slider) slider.style.transform = 'translateX(-50%)';
   if (title) title.textContent = 'Enter your password';
   setTimeout(() => {
+    if (step1 && frontStep === 2) step1.style.visibility = 'hidden';
     passInput?.focus();
     document.getElementById('frontPasswordWrap')?.classList.add('is-focused');
-  }, 300);
+  }, 320);
 }
 
 function backFrontToEmail() {
@@ -208,6 +214,10 @@ function backFrontToEmail() {
   const slider = document.getElementById('frontStepsSlider');
   const title = document.getElementById('frontPageTitle');
   const emailInput = document.getElementById('frontEmailInput');
+  const step1 = document.getElementById('frontStep1');
+  const step2 = document.getElementById('frontStep2');
+
+  if (step1) step1.style.visibility = 'visible';
   if (slider) slider.style.transform = 'translateX(0%)';
   if (title) {
     if (frontRole === 'super_admin') title.textContent = 'Super Admin Sign in';
@@ -216,9 +226,10 @@ function backFrontToEmail() {
   }
   clearFrontError();
   setTimeout(() => {
+    if (step2 && frontStep === 1) step2.style.visibility = 'hidden';
     emailInput?.focus();
     document.getElementById('frontEmailWrap')?.classList.add('is-focused');
-  }, 300);
+  }, 320);
 }
 
 function setFrontSuperAdminMode() {
