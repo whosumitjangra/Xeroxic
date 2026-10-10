@@ -114,6 +114,9 @@ body{
   width: 100%;
   overflow: hidden;
   position: relative;
+  /* Generous vertical and horizontal padding prevents any clipping of floating label or focus rings */
+  padding: 12px 6px 8px 6px;
+  margin: -12px -6px -8px -6px;
 }
 
 .front-steps-slider {
@@ -127,48 +130,119 @@ body{
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  padding: 2px 4px;
+  box-sizing: border-box;
 }
 
-.front-input {
+/* ===== Google Sign-In Outlined Floating Label Container ===== */
+.front-field-wrap {
+  position: relative;
   width: 100%;
-  background: #f2f1f6;
-  border: 1.5px solid transparent;
-  border-radius: 10px;
-  padding: 14px 16px;
-  font-size: 0.98rem;
-  color: #111827;
-  outline: none;
-  transition: all 0.2s ease;
+  margin-top: 6px;
+  margin-bottom: 2px;
 }
 
+.front-input,
+.front-field-input {
+  width: 100%;
+  height: 52px;
+  background: #ffffff !important;
+  border: 1.5px solid #dadce0 !important;
+  border-radius: 8px !important;
+  padding: 14px 16px !important;
+  font-size: 1rem !important;
+  color: #111827 !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Hide native placeholder so the floating label acts as the visual placeholder */
+.front-field-input::placeholder,
 .front-input::placeholder {
-  color: #8e94a0;
-  font-weight: 400;
+  color: transparent !important;
+  opacity: 0 !important;
 }
 
-.front-input:focus {
+/* Focused input state: crisp border with subtle glow, NEVER clipped */
+.front-input:focus,
+.front-field-input:focus {
+  background: #ffffff !important;
+  border-color: #ff8344 !important;
+  box-shadow: 0 0 0 1px #ff8344 !important;
+}
+
+/* Floating Label: resting state in center of input */
+.front-field-label {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
   background: #ffffff;
-  border-color: #ff8344;
-  box-shadow: 0 0 0 3px rgba(255, 131, 68, 0.2);
+  padding: 0 6px;
+  font-size: 0.95rem;
+  color: #5f6368;
+  pointer-events: none;
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), 
+              top 0.18s cubic-bezier(0.4, 0, 0.2, 1), 
+              font-size 0.18s cubic-bezier(0.4, 0, 0.2, 1), 
+              color 0.18s ease;
+  transform-origin: left top;
+  line-height: 1;
+  z-index: 2;
+  user-select: none;
 }
 
-.front-input.input-error {
-  border-color: #ef4444;
-  background: #fef2f2;
+/* When focused or has value: animates up and aligns into the top border line like Google Sign In */
+.front-field-input:focus ~ .front-field-label,
+.front-field-input:not(:placeholder-shown) ~ .front-field-label,
+.front-field-wrap.is-focused .front-field-label,
+.front-field-wrap.has-value .front-field-label {
+  top: 0;
+  transform: translateY(-50%) scale(0.82);
+  font-weight: 500;
+  background: #ffffff;
 }
 
-.front-password-wrap {
+/* Focused label color */
+.front-field-input:focus ~ .front-field-label,
+.front-field-wrap.is-focused .front-field-label {
+  color: #ff8344 !important;
+}
+
+/* When has value but NOT focused: rests in the line with neutral color */
+.front-field-input:not(:focus):not(:placeholder-shown) ~ .front-field-label,
+.front-field-wrap.has-value:not(.is-focused) .front-field-label {
+  color: #5f6368 !important;
+}
+
+/* Error state (Material Red) */
+.front-input.input-error,
+.front-field-input.input-error,
+.front-field-wrap.has-error .front-field-input {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 1px #ef4444 !important;
+}
+
+.front-input.input-error ~ .front-field-label,
+.front-field-input.input-error ~ .front-field-label,
+.front-field-wrap.has-error .front-field-label {
+  color: #ef4444 !important;
+}
+
+/* Password wrapper with eye toggle button */
+.front-password-field-wrap {
   position: relative;
   width: 100%;
 }
 
-.front-password-wrap .front-input {
-  padding-right: 44px;
+.front-password-field-wrap .front-field-input {
+  padding-right: 48px !important;
 }
 
-.front-eye-btn {
+.front-password-field-wrap .front-eye-btn {
   position: absolute;
-  right: 12px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
   background: transparent;
@@ -178,7 +252,15 @@ body{
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  z-index: 3;
+}
+
+.front-password-field-wrap .front-eye-btn:hover {
+  background-color: #f3f4f6;
+  color: #111827;
 }
 
 .front-user-chip {
@@ -186,8 +268,8 @@ body{
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: #f1f3f7;
-  border: 1px solid #d1d5db;
+  background: #ffffff;
+  border: 1px solid #dadce0;
   border-radius: 20px;
   padding: 6px 16px;
   font-size: 0.88rem;
@@ -200,7 +282,7 @@ body{
 }
 
 .front-user-chip:hover {
-  background: #e2e8f0;
+  background: #f8fafc;
   border-color: #94a3b8;
   color: #1e293b;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);

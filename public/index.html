@@ -81,18 +81,21 @@
       <div class="front-steps-viewport">
         <div class="front-steps-slider" id="frontStepsSlider">
           
-          <!-- STEP 1: Email Input (Matches Screenshot 2 & 3) -->
+          <!-- STEP 1: Email Input (Google-style Outlined Floating Label) -->
           <div class="front-step-pane" id="frontStep1">
-            <input 
-              type="email" 
-              class="front-input" 
-              id="frontEmailInput" 
-              placeholder="Email" 
-              required 
-              autocomplete="email"
-              oninput="clearFrontError()"
-              autofocus
-            >
+            <div class="front-field-wrap" id="frontEmailWrap">
+              <input 
+                type="email" 
+                class="front-input front-field-input" 
+                id="frontEmailInput" 
+                placeholder=" " 
+                required 
+                autocomplete="email"
+                oninput="clearFrontError()"
+                autofocus
+              >
+              <label class="front-field-label" for="frontEmailInput" id="frontEmailLabel">Email or username</label>
+            </div>
 
             <!-- Links Row -->
             <div class="front-links-row">
@@ -106,7 +109,7 @@
             </button>
           </div>
 
-          <!-- STEP 2: Password Input (Matches Screenshot 1) -->
+          <!-- STEP 2: Password Input (Google-style Outlined Floating Label) -->
           <div class="front-step-pane" id="frontStep2">
             
             <!-- User Email Chip with Edit option (Centered) -->
@@ -115,16 +118,17 @@
               <a href="javascript:void(0)" class="front-link" onclick="backFrontToEmail(); event.stopPropagation();" style="font-size:0.82rem; font-weight:600;">Edit</a>
             </div>
 
-            <!-- Password Input with Toggle -->
-            <div class="front-password-wrap">
+            <!-- Password Input with Floating Label and Toggle -->
+            <div class="front-field-wrap front-password-field-wrap" id="frontPasswordWrap">
               <input 
                 type="password" 
-                class="front-input" 
+                class="front-input front-field-input" 
                 id="frontPasswordInput" 
-                placeholder="Password" 
+                placeholder=" " 
                 autocomplete="current-password"
                 oninput="clearFrontError()"
               >
+              <label class="front-field-label" for="frontPasswordInput" id="frontPasswordLabel">Enter your password</label>
               <button type="button" class="front-eye-btn" onclick="toggleFrontPasswordVisibility()" title="Show/Hide Password">
                 <svg id="frontEyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>

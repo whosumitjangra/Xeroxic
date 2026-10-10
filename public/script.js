@@ -124,7 +124,49 @@ async function handleStudentLogout() {
 let frontStep = 1;
 let frontRole = 'student'; // 'student', 'admin', or 'super_admin'
 
+function initFloatingLabels() {
+  const fields = [
+    { inputId: 'frontEmailInput', wrapId: 'frontEmailWrap' },
+    { inputId: 'frontPasswordInput', wrapId: 'frontPasswordWrap' }
+  ];
+
+  fields.forEach(({ inputId, wrapId }) => {
+    const input = document.getElementById(inputId);
+    const wrap = document.getElementById(wrapId);
+    if (!input || !wrap) return;
+
+    const syncState = () => {
+      if (input.value && input.value.trim().length > 0) {
+        wrap.classList.add('has-value');
+      } else {
+        wrap.classList.remove('has-value');
+      }
+    };
+
+    input.addEventListener('focus', () => {
+      wrap.classList.add('is-focused');
+      syncState();
+    });
+
+    input.addEventListener('blur', () => {
+      wrap.classList.remove('is-focused');
+      syncState();
+    });
+
+    input.addEventListener('input', () => {
+      syncState();
+      wrap.classList.remove('has-error');
+    });
+
+    input.addEventListener('change', syncState);
+
+    // Initial sync
+    syncState();
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  initFloatingLabels();
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('role') === 'superadmin' || window.location.hash === '#superadmin') {
     setFrontSuperAdminMode();
@@ -139,12 +181,14 @@ function proceedFrontToPassword() {
   const slider = document.getElementById('frontStepsSlider');
   const title = document.getElementById('frontPageTitle');
   const passInput = document.getElementById('frontPasswordInput');
+  const emailWrap = document.getElementById('frontEmailWrap');
 
   clearFrontError();
   const email = emailInput ? emailInput.value.trim() : '';
   if (!email) {
-    showFrontError(frontRole === 'super_admin' ? 'Please enter your superadmin email.' : (frontRole === 'admin' ? 'Please enter your staff email.' : 'Please enter your email address.'));
+    showFrontError(frontRole === 'super_admin' ? 'Please enter your superadmin email.' : (frontRole === 'admin' ? 'Please enter your staff email.' : 'Please enter your email or username.'));
     emailInput?.classList.add('input-error');
+    emailWrap?.classList.add('has-error');
     emailInput?.focus();
     return;
   }
@@ -153,7 +197,10 @@ function proceedFrontToPassword() {
   if (userChipText) userChipText.textContent = email;
   if (slider) slider.style.transform = 'translateX(-50%)';
   if (title) title.textContent = 'Enter your password';
-  setTimeout(() => passInput?.focus(), 300);
+  setTimeout(() => {
+    passInput?.focus();
+    document.getElementById('frontPasswordWrap')?.classList.add('is-focused');
+  }, 300);
 }
 
 function backFrontToEmail() {
@@ -168,7 +215,10 @@ function backFrontToEmail() {
     else title.textContent = 'Sign in';
   }
   clearFrontError();
-  setTimeout(() => emailInput?.focus(), 300);
+  setTimeout(() => {
+    emailInput?.focus();
+    document.getElementById('frontEmailWrap')?.classList.add('is-focused');
+  }, 300);
 }
 
 function setFrontSuperAdminMode() {
@@ -177,14 +227,14 @@ function setFrontSuperAdminMode() {
   const title = document.getElementById('frontPageTitle');
   const roleToggleBtn = document.getElementById('frontRoleToggleBtn');
   const bottomPrompt = document.getElementById('frontBottomPrompt');
-  const emailInput = document.getElementById('frontEmailInput');
+  const emailLabel = document.getElementById('frontEmailLabel');
 
   if (title) title.textContent = 'Super Admin Sign in';
   if (roleToggleBtn) roleToggleBtn.textContent = 'Student Portal →';
   if (bottomPrompt) {
     bottomPrompt.innerHTML = 'Switch to: <a href="javascript:void(0)" class="front-accent-link" onclick="setFrontAdminMode()">Staff Admin</a> | <a href="javascript:void(0)" class="front-accent-link" onclick="setFrontStudentMode()">Student</a>';
   }
-  if (emailInput) emailInput.placeholder = 'Superadmin Email';
+  if (emailLabel) emailLabel.textContent = 'Superadmin Email';
 }
 
 function setFrontAdminMode() {
@@ -193,14 +243,14 @@ function setFrontAdminMode() {
   const title = document.getElementById('frontPageTitle');
   const roleToggleBtn = document.getElementById('frontRoleToggleBtn');
   const bottomPrompt = document.getElementById('frontBottomPrompt');
-  const emailInput = document.getElementById('frontEmailInput');
+  const emailLabel = document.getElementById('frontEmailLabel');
 
   if (title) title.textContent = 'Admin Sign in';
   if (roleToggleBtn) roleToggleBtn.textContent = 'Student Portal →';
   if (bottomPrompt) {
     bottomPrompt.innerHTML = 'Login as Superadmin. <a href="javascript:void(0)" class="front-accent-link" onclick="setFrontSuperAdminMode()">Click here</a>';
   }
-  if (emailInput) emailInput.placeholder = 'Staff Email';
+  if (emailLabel) emailLabel.textContent = 'Staff Email';
 }
 
 function setFrontStudentMode() {
@@ -209,14 +259,14 @@ function setFrontStudentMode() {
   const title = document.getElementById('frontPageTitle');
   const roleToggleBtn = document.getElementById('frontRoleToggleBtn');
   const bottomPrompt = document.getElementById('frontBottomPrompt');
-  const emailInput = document.getElementById('frontEmailInput');
+  const emailLabel = document.getElementById('frontEmailLabel');
 
   if (title) title.textContent = 'Sign in';
   if (roleToggleBtn) roleToggleBtn.textContent = 'Admin account';
   if (bottomPrompt) {
     bottomPrompt.innerHTML = 'New to Xeroxic? <a href="javascript:void(0)" class="front-accent-link" onclick="window.location.href=\'signup.html\'">Create a account</a>';
   }
-  if (emailInput) emailInput.placeholder = 'Email';
+  if (emailLabel) emailLabel.textContent = 'Email or username';
 }
 
 function toggleFrontRole() {
@@ -260,6 +310,7 @@ async function handleFrontSubmit(e) {
   if (!password) {
     showFrontError('Please enter your password.');
     passInput?.classList.add('input-error');
+    document.getElementById('frontPasswordWrap')?.classList.add('has-error');
     passInput?.focus();
     return;
   }
@@ -361,6 +412,8 @@ function clearFrontError() {
   }
   document.getElementById('frontEmailInput')?.classList.remove('input-error');
   document.getElementById('frontPasswordInput')?.classList.remove('input-error');
+  document.getElementById('frontEmailWrap')?.classList.remove('has-error');
+  document.getElementById('frontPasswordWrap')?.classList.remove('has-error');
 }
 
 function openFrontForgotEmailModal() {
