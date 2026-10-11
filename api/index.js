@@ -2147,7 +2147,9 @@ async function handler(req, res) {
       }
 
       // If stored in Supabase Storage, generate a secure time-limited signed URL and redirect
-      if (record.filePath) {
+      // When ?stream=1 is requested, skip redirect and stream buffer directly on the same origin (ideal for iframes)
+      const wantsStream = parsed.searchParams.get('stream') === '1' || parsed.searchParams.get('stream') === 'true';
+      if (record.filePath && !wantsStream) {
         try {
           const wantsInline = parsed.searchParams.get('inline') === '1' || parsed.searchParams.get('inline') === 'true';
           const downloadName = wantsInline ? null : record.originalName;

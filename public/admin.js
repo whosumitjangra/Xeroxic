@@ -1894,6 +1894,7 @@ async function renderOrderPrintModal() {
     return;
   }
 
+  const streamUrl = `/api/download/${encodeURIComponent(currentItem.fileId)}?inline=1&stream=1`;
   const inlineUrl = `/api/download/${encodeURIComponent(currentItem.fileId)}?inline=1`;
   const downloadUrl = `/api/download/${encodeURIComponent(currentItem.fileId)}`;
 
@@ -1950,6 +1951,11 @@ async function renderOrderPrintModal() {
         if (errContainer) errContainer.style.display = 'none';
       };
       imgEl.onerror = () => {
+        if (imgEl.src !== streamUrl) {
+          // Retry using same-origin streaming fallback
+          imgEl.src = streamUrl;
+          return;
+        }
         if (loadingEl) loadingEl.style.display = 'none';
         imgEl.style.display = 'none';
         if (errContainer) {
@@ -1957,7 +1963,7 @@ async function renderOrderPrintModal() {
           errContainer.innerHTML = `<div style="color:#ef4444; padding:50px 20px; text-align:center; font-weight:600;"><span style="font-size:28px; display:block; margin-bottom:8px;">⚠️</span> Could not display image preview.<br><span style="font-size:12px; color:#6b7280; margin-top:6px; display:inline-block;">You can use the "Open in New Tab" or "Download Backup" link above.</span></div>`;
         }
       };
-      imgEl.src = displayUrl;
+      imgEl.src = displayUrl || streamUrl;
     }
   } else {
     if (imgContainer) imgContainer.style.display = 'none';
@@ -1979,7 +1985,7 @@ async function renderOrderPrintModal() {
             }
           }
         } catch (e) {
-          // Cross-origin redirect to Supabase CDN throws SecurityError when accessing contentDocument, which confirms document loaded successfully!
+          // Cross-origin redirect throws SecurityError, confirming document loaded successfully!
         }
       };
       iframe.onerror = () => {
@@ -1990,7 +1996,8 @@ async function renderOrderPrintModal() {
           errContainer.innerHTML = `<div style="color:#ef4444; padding:50px 20px; text-align:center; font-weight:600;"><span style="font-size:28px; display:block; margin-bottom:8px;">⚠️</span> Document preview unavailable.<br><span style="font-size:12px; color:#6b7280; margin-top:6px; display:inline-block;">You can use the "Open in New Tab" or "Download Backup" link above.</span></div>`;
         }
       };
-      iframe.src = displayUrl;
+      // For PDFs, use same-origin streamUrl so the browser PDF viewer and iframe.print() work without CORS/CSP blocking
+      iframe.src = streamUrl;
     }
   }
 }
