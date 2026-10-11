@@ -1192,7 +1192,7 @@ async function launchRazorpayCheckout() {
   const originalText = rzpBtn ? rzpBtn.innerHTML : '';
   if (rzpBtn) {
     rzpBtn.disabled = true;
-    rzpBtn.innerHTML = '<span>⏳ Opening Razorpay Gateway...</span>';
+    rzpBtn.innerHTML = '<span>⏳ Opening Payment Options...</span>';
   }
 
   try {
