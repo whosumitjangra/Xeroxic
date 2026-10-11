@@ -1776,12 +1776,22 @@ window.closeOrderPrintModal = function() {
   const iframe = document.getElementById('order-print-iframe');
   if (iframe) iframe.src = '';
   const imgEl = document.getElementById('order-print-image');
-  if (imgEl) imgEl.src = '';
+  if (imgEl) {
+    imgEl.src = '';
+    imgEl.style.display = 'inline-block';
+  }
+  const imgContainer = document.getElementById('order-print-image-container');
+  if (imgContainer) imgContainer.style.display = 'none';
+  const errContainer = document.getElementById('order-print-error-container');
+  if (errContainer) {
+    errContainer.style.display = 'none';
+    errContainer.innerHTML = '';
+  }
 
   currentPrintOrder = null;
 };
 
-function renderOrderPrintModal() {
+async function renderOrderPrintModal() {
   if (!currentPrintOrder) return;
   const order = currentPrintOrder;
   const items = Array.isArray(order.items) ? order.items : [];
@@ -1854,18 +1864,29 @@ function renderOrderPrintModal() {
   const iframe = document.getElementById('order-print-iframe');
   const imgContainer = document.getElementById('order-print-image-container');
   const imgEl = document.getElementById('order-print-image');
+  const errContainer = document.getElementById('order-print-error-container');
   const loadingEl = document.getElementById('order-print-loading');
   const dlLink = document.getElementById('order-print-download-link');
   const tabLink = document.getElementById('order-print-tab-link');
   const metaEl = document.getElementById('order-print-file-meta');
 
+  // Clear previous errors
+  if (errContainer) {
+    errContainer.style.display = 'none';
+    errContainer.innerHTML = '';
+  }
+
   const isOrderPurged = currentItem.filePurged || (currentPrintOrder && ['COMPLETED', 'COLLECTED', 'CANCELLED'].includes((currentPrintOrder.status || '').toUpperCase()));
   if (!currentItem || !currentItem.fileId || isOrderPurged) {
     if (loadingEl) loadingEl.style.display = 'none';
-    if (iframe) iframe.style.display = 'none';
-    if (imgContainer) {
-      imgContainer.style.display = 'block';
-      imgContainer.innerHTML = `<div style="color:#6b7280; padding:50px 20px; text-align:center; font-weight:600;"><span style="font-size:28px; display:block; margin-bottom:8px;">🔒</span> Document was permanently deleted after printing in accordance with campus privacy policies.</div>`;
+    if (iframe) {
+      iframe.style.display = 'none';
+      iframe.src = '';
+    }
+    if (imgContainer) imgContainer.style.display = 'none';
+    if (errContainer) {
+      errContainer.style.display = 'block';
+      errContainer.innerHTML = `<div style="color:#6b7280; padding:50px 20px; text-align:center; font-weight:600;"><span style="font-size:28px; display:block; margin-bottom:8px;">🔒</span> Document was permanently deleted after printing in accordance with campus privacy policies.</div>`;
     }
     if (metaEl) metaEl.textContent = 'Document purged (privacy protected)';
     if (dlLink) dlLink.style.display = 'none';
@@ -1892,9 +1913,29 @@ function renderOrderPrintModal() {
     tabLink.href = inlineUrl;
   }
 
-  const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(currentItem.originalName || '');
-
   if (loadingEl) loadingEl.style.display = 'flex';
+
+  // Request direct signed URL if cloud storage is used
+  let displayUrl = inlineUrl;
+  try {
+    const sRes = await fetch(`/api/files/${encodeURIComponent(currentItem.fileId)}/signed-url?inline=1`);
+    if (sRes.ok) {
+      const sData = await sRes.json();
+      if (sData && sData.signedUrl) {
+        displayUrl = sData.signedUrl;
+        if (tabLink) tabLink.href = displayUrl;
+      }
+    }
+  } catch (err) {
+    console.warn('[Print Modal] Signed URL fetch fallback:', err);
+  }
+
+  // Guard against race conditions if modal or doc selection changed during fetch
+  if (!currentPrintOrder || currentPrintOrder.orderId !== order.orderId || currentPrintItemIndex !== items.indexOf(currentItem)) {
+    return;
+  }
+
+  const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(currentItem.originalName || '');
 
   if (isImg) {
     if (iframe) {
@@ -1903,12 +1944,20 @@ function renderOrderPrintModal() {
     }
     if (imgContainer && imgEl) {
       imgContainer.style.display = 'block';
-      imgEl.src = inlineUrl;
-      imgEl.onload = () => { if (loadingEl) loadingEl.style.display = 'none'; };
+      imgEl.style.display = 'inline-block';
+      imgEl.onload = () => {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (errContainer) errContainer.style.display = 'none';
+      };
       imgEl.onerror = () => {
         if (loadingEl) loadingEl.style.display = 'none';
-        imgContainer.innerHTML = `<div style="color:#ef4444; padding:50px 20px; text-align:center; font-weight:600;"><span style="font-size:28px; display:block; margin-bottom:8px;">⚠️</span> Could not display image preview. You can use the "Open in New Tab" or "Download" link above.</div>`;
+        imgEl.style.display = 'none';
+        if (errContainer) {
+          errContainer.style.display = 'block';
+          errContainer.innerHTML = `<div style="color:#ef4444; padding:50px 20px; text-align:center; font-weight:600;"><span style="font-size:28px; display:block; margin-bottom:8px;">⚠️</span> Could not display image preview.<br><span style="font-size:12px; color:#6b7280; margin-top:6px; display:inline-block;">You can use the "Open in New Tab" or "Download Backup" link above.</span></div>`;
+        }
       };
+      imgEl.src = displayUrl;
     }
   } else {
     if (imgContainer) imgContainer.style.display = 'none';
@@ -1917,16 +1966,15 @@ function renderOrderPrintModal() {
       iframe.onload = () => {
         if (loadingEl) loadingEl.style.display = 'none';
         try {
-          // If the server returned a JSON error response (e.g. 404), catch and display friendly error
           const iframeDoc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
           if (iframeDoc && iframeDoc.body && iframeDoc.body.innerText) {
             const bodyText = iframeDoc.body.innerText.trim();
             if (bodyText.startsWith('{"error":') || bodyText.startsWith('{"message":')) {
               const parsed = JSON.parse(bodyText);
               iframe.style.display = 'none';
-              if (imgContainer) {
-                imgContainer.style.display = 'block';
-                imgContainer.innerHTML = `<div style="color:#ef4444; padding:50px 20px; text-align:center; font-weight:600;"><span style="font-size:28px; display:block; margin-bottom:8px;">⚠️</span> ${parsed.error || 'Document preview unavailable.'}<br><span style="font-size:12px; color:#6b7280; margin-top:6px; display:inline-block;">The file could not be retrieved from cloud storage.</span></div>`;
+              if (errContainer) {
+                errContainer.style.display = 'block';
+                errContainer.innerHTML = `<div style="color:#ef4444; padding:50px 20px; text-align:center; font-weight:600;"><span style="font-size:28px; display:block; margin-bottom:8px;">⚠️</span> ${escapeHtml(parsed.error || 'Document preview unavailable.')}<br><span style="font-size:12px; color:#6b7280; margin-top:6px; display:inline-block;">The file could not be retrieved from cloud storage.</span></div>`;
               }
             }
           }
@@ -1934,8 +1982,15 @@ function renderOrderPrintModal() {
           // Cross-origin redirect to Supabase CDN throws SecurityError when accessing contentDocument, which confirms document loaded successfully!
         }
       };
-      iframe.onerror = () => { if (loadingEl) loadingEl.style.display = 'none'; };
-      iframe.src = inlineUrl;
+      iframe.onerror = () => {
+        if (loadingEl) loadingEl.style.display = 'none';
+        iframe.style.display = 'none';
+        if (errContainer) {
+          errContainer.style.display = 'block';
+          errContainer.innerHTML = `<div style="color:#ef4444; padding:50px 20px; text-align:center; font-weight:600;"><span style="font-size:28px; display:block; margin-bottom:8px;">⚠️</span> Document preview unavailable.<br><span style="font-size:12px; color:#6b7280; margin-top:6px; display:inline-block;">You can use the "Open in New Tab" or "Download Backup" link above.</span></div>`;
+        }
+      };
+      iframe.src = displayUrl;
     }
   }
 }

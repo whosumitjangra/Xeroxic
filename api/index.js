@@ -813,7 +813,9 @@ async function handler(req, res) {
 
       if (record.filePath) {
         try {
-          const signedUrl = await createSignedDownloadUrl(record.filePath, 3600, record.originalName);
+          const wantsInline = parsed.searchParams.get('inline') === '1' || parsed.searchParams.get('inline') === 'true';
+          const downloadName = wantsInline ? null : record.originalName;
+          const signedUrl = await createSignedDownloadUrl(record.filePath, 3600, downloadName);
           return sendJSON(res, 200, { success: true, signedUrl, file: record });
         } catch (err) {
           return sendJSON(res, 500, { error: err.message });
