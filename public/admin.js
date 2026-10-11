@@ -578,13 +578,17 @@ function renderOrders(force = false) {
             </div>
           </div>
           <div class="admin-doc-actions">
-            ${item.fileId ? `
+            ${(isCollected || isCancelled || item.filePurged) ? `
+              <span class="admin-no-file" style="color:#6b7280; background:#f3f4f6; padding:3px 8px; border-radius:6px; border:1px solid #e5e7eb; font-size:11.5px; font-weight:500;">
+                🔒 File Purged
+              </span>
+            ` : item.fileId ? `
               <button type="button" class="admin-btn-action admin-btn-print" onclick="openOrderPrintModal('${order.orderId}', ${itemIdx})" title="Direct Print to connected printer" style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; border-radius:6px; padding:4px 9px; font-weight:600; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>Print
               </button>
-              <a href="/api/download/${item.fileId}?inline=1" target="_blank" class="admin-btn-action admin-btn-preview" title="View document in new tab">
+              <button type="button" class="admin-btn-action admin-btn-preview" onclick="openOrderPrintModal('${order.orderId}', ${itemIdx})" title="Preview student document inline" style="background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; border-radius:6px; padding:4px 9px; font-weight:600; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:middle;margin-right:3px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>Preview
-              </a>
+              </button>
               <a href="/api/download/${item.fileId}" download="${item.originalName}" class="admin-btn-action admin-btn-download" title="Download exact file to print">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:middle;margin-right:3px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Download
               </a>
@@ -1852,17 +1856,19 @@ function renderOrderPrintModal() {
   const imgEl = document.getElementById('order-print-image');
   const loadingEl = document.getElementById('order-print-loading');
   const dlLink = document.getElementById('order-print-download-link');
+  const tabLink = document.getElementById('order-print-tab-link');
   const metaEl = document.getElementById('order-print-file-meta');
 
-  if (!currentItem || !currentItem.fileId) {
+  if (!currentItem || !currentItem.fileId || currentItem.filePurged) {
     if (loadingEl) loadingEl.style.display = 'none';
     if (iframe) iframe.style.display = 'none';
     if (imgContainer) {
       imgContainer.style.display = 'block';
-      imgContainer.innerHTML = `<div style="color:#f87171; padding:40px; font-weight:600;">No uploaded file attachment found for this item.</div>`;
+      imgContainer.innerHTML = `<div style="color:#6b7280; padding:50px 20px; text-align:center; font-weight:600;"><span style="font-size:28px; display:block; margin-bottom:8px;">🔒</span> Document was permanently deleted after printing in accordance with campus privacy policies.</div>`;
     }
-    if (metaEl) metaEl.textContent = 'File not available';
+    if (metaEl) metaEl.textContent = 'Document purged (privacy protected)';
     if (dlLink) dlLink.style.display = 'none';
+    if (tabLink) tabLink.style.display = 'none';
     return;
   }
 
@@ -1878,6 +1884,11 @@ function renderOrderPrintModal() {
     dlLink.style.display = 'inline-flex';
     dlLink.href = downloadUrl;
     dlLink.setAttribute('download', currentItem.originalName || 'print_document');
+  }
+
+  if (tabLink) {
+    tabLink.style.display = 'inline-flex';
+    tabLink.href = inlineUrl;
   }
 
   const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(currentItem.originalName || '');

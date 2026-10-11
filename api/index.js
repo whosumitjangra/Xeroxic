@@ -79,6 +79,7 @@ const {
   getUploadedFileBuffer,
   deleteUploadedFile,
   purgeStaleUnpaidOrders,
+  purgeStaleUploadedFiles,
   REPO_ROOT
 } = require('../lib/storage');
 
@@ -186,6 +187,98 @@ function getOrCreateStudentSession(req, res, isSecure) {
     role: 'STUDENT',
     isGuest: true
   };
+}
+
+function isStaffSession(session) {
+  if (!session) return false;
+  const userRole = normalizeRole(session.role);
+  if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') return true;
+  if (session.email) {
+    const emailLower = session.email.toLowerCase();
+    if (emailLower === 'admin@aitpune.edu.in' || emailLower === 'superadmin@aitpune.edu.in') return true;
+  }
+  return false;
+}
+
+async function findFileRecord(fileId) {
+  if (!fileId) return null;
+  const cleanId = String(fileId).trim();
+  const filesDb = await getFiles();
+  let record = filesDb.find(f => f.id === cleanId || f.storedName === cleanId);
+  if (record) return record;
+
+  // Search ordersDb (only active orders; completed/cancelled orders have their files purged)
+  try {
+    const orders = await getOrders();
+    for (const o of orders) {
+      const st = (o.status || '').toUpperCase();
+      if (st === 'COMPLETED' || st === 'CANCELLED' || st === 'COLLECTED') {
+        continue;
+      }
+      const item = (o.items || []).find(it => it.fileId === cleanId);
+      if (item && !item.filePurged) {
+        return {
+          id: item.fileId,
+          ownerId: o.ownerId,
+          originalName: item.originalName,
+          storedName: item.storedName || `${item.fileId}${path.extname(item.originalName || '')}`,
+          filePath: item.filePath || null,
+          size: item.size || 0,
+          storageProvider: item.filePath ? 'supabase' : 'local'
+        };
+      }
+    }
+  } catch (e) {}
+
+  // Search print_requests (only active requests)
+  try {
+    const printReqs = await getPrintRequests();
+    for (const pr of printReqs) {
+      const st = (pr.requestStatus || pr.status || '').toUpperCase();
+      if (st === 'COMPLETED' || st === 'CANCELLED' || st === 'COLLECTED') {
+        continue;
+      }
+      const item = (pr.items || []).find(it => it.fileId === cleanId);
+      if (item && !item.filePurged) {
+        return {
+          id: item.fileId,
+          ownerId: pr.ownerId || pr.userId,
+          originalName: item.originalName,
+          storedName: item.storedName || `${item.fileId}${path.extname(item.originalName || '')}`,
+          filePath: item.filePath || null,
+          size: item.size || 0,
+          storageProvider: item.filePath ? 'supabase' : 'local'
+        };
+      }
+    }
+  } catch (e) {}
+
+  // Search disk uploads directory
+  try {
+    const cfg = getStorageConfig();
+    if (fs.existsSync(cfg.uploadsDir)) {
+      const uDirs = fs.readdirSync(cfg.uploadsDir);
+      for (const ud of uDirs) {
+        const uPath = path.join(cfg.uploadsDir, ud);
+        if (fs.statSync(uPath).isDirectory()) {
+          const matches = fs.readdirSync(uPath).filter(f => f.startsWith(cleanId));
+          if (matches.length > 0) {
+            const mName = matches[0];
+            return {
+              id: cleanId,
+              ownerId: ud,
+              originalName: mName,
+              storedName: mName,
+              size: fs.statSync(path.join(uPath, mName)).size,
+              storageProvider: 'local'
+            };
+          }
+        }
+      }
+    }
+  } catch (e) {}
+
+  return null;
 }
 
 // Order status helper (supports 5-stage workflow: REQUEST_RECEIVED → ACCEPTED → PRINTING → READY → COMPLETED)
@@ -694,13 +787,11 @@ async function handler(req, res) {
 
       const parts = pathname.split('/');
       const id = parts[3];
-      const filesDb = await getFiles();
-      const record = filesDb.find(f => f.id === id);
+      const record = await findFileRecord(id);
       if (!record) return sendJSON(res, 404, { error: 'File not found.' });
 
-      const isOwner = record.ownerId === session.userId;
-      const userRole = normalizeRole(session.role);
-      const isStaff = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+      const isOwner = record.ownerId && session && record.ownerId === session.userId;
+      const isStaff = isStaffSession(session);
       if (!isOwner && !isStaff) {
         return sendJSON(res, 403, { error: 'Forbidden: You do not have permission to access this file.' });
       }
@@ -767,13 +858,22 @@ async function handler(req, res) {
 
     // ---------------- FILES: LIST (STUDENTS) ----------------
     if (pathname === '/api/files' && req.method === 'GET') {
-      const session = getOrCreateStudentSession(req, res, isSecure);
-      if (!session) return;
+      const studentSession = getOrCreateStudentSession(req, res, isSecure);
+      if (!studentSession) return;
       const filesDb = await getFiles();
       const mine = filesDb
-        .filter(f => f.ownerId === session.userId)
+        .filter(f => f.ownerId === studentSession.userId)
         .map(({ dataBase64, ...rest }) => rest);
       return sendJSON(res, 200, { files: mine });
+    }
+
+    // ---------------- ADMIN: GET ALL FILES ----------------
+    if (pathname === '/api/admin/files' && req.method === 'GET') {
+      const session = getSessionFromReq(req);
+      if (!checkRoleAccess(session, ['ADMIN', 'SUPER_ADMIN'], res)) return;
+      const filesDb = await getFiles();
+      const all = filesDb.map(({ dataBase64, ...rest }) => rest);
+      return sendJSON(res, 200, { success: true, files: all });
     }
 
     // ---------------- FILES: CLEAR ALL (STUDENTS) ----------------
@@ -1556,9 +1656,10 @@ async function handler(req, res) {
       const currentMonth = `${nowIST.yearStr}-${nowIST.monthStr}`;
       const activeMonth = filterMonth && filterMonth.toLowerCase() === 'all' ? null : (filterMonth || currentMonth);
 
-      // Auto-purge stale unpaid drafts older than 24h to keep database lean
+      // Auto-purge stale unpaid drafts and processed uploads older than 24h to keep database and disk lean
       try {
         await purgeStaleUnpaidOrders(24);
+        await purgeStaleUploadedFiles(24);
       } catch (e) {}
 
       const allOrders = await getOrders();
@@ -1985,21 +2086,19 @@ async function handler(req, res) {
     if (pathname.startsWith('/api/download/') && req.method === 'GET') {
       const session = getSessionFromReq(req);
       if (!session) return sendJSON(res, 401, { error: 'Not logged in.' });
-      const id = pathname.split('/').pop();
-      const filesDb = await getFiles();
-      const record = filesDb.find(f => f.id === id);
+      const id = pathname.split('/').filter(Boolean).pop();
+      const record = await findFileRecord(id);
       if (!record) return sendJSON(res, 404, { error: 'File not found.' });
 
       // Permission check: owner, admin, or superadmin can download/preview
-      const isOwner = record.ownerId === session.userId;
-      const userRole = normalizeRole(session.role);
-      const isStaff = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+      const isOwner = record.ownerId && session && record.ownerId === session.userId;
+      const isStaff = isStaffSession(session);
       if (!isOwner && !isStaff) {
         return sendJSON(res, 403, { error: 'Forbidden: You do not have permission to access this file.' });
       }
 
       // If stored in Supabase Storage, generate a secure time-limited signed URL and redirect
-      if (record.filePath || record.storageProvider === 'supabase') {
+      if (record.filePath) {
         try {
           const wantsInline = parsed.searchParams.get('inline') === '1' || parsed.searchParams.get('inline') === 'true';
           const downloadName = wantsInline ? null : record.originalName;

@@ -10,12 +10,14 @@
         "pages": 69,
         "sides": "single",
         "color": "color",
-        "price": 345
+        "price": 345,
+        "filePurged": true
       }
     ],
     "total": 345,
     "paymentStatus": "PAID",
-    "status": "REQUEST_RECEIVED",
-    "createdAt": "2026-09-08T10:01:01.167Z"
+    "status": "COMPLETED",
+    "createdAt": "2026-09-08T10:01:01.167Z",
+    "updatedAt": "2026-09-08T10:30:00.000Z"
   }
 ]
