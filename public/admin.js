@@ -561,7 +561,7 @@ function renderOrders(force = false) {
     const isCancelled = order.status === 'Cancelled' || order.status === 'CANCELLED';
 
     let itemsHtml = '';
-    (order.items || []).forEach(item => {
+    (order.items || []).forEach((item, itemIdx) => {
       const sizeStr = item.size ? ` (${formatBytes(item.size)})` : '';
       const copiesStr = (item.copies && item.copies > 1) ? ` • <strong>${item.copies} copies</strong>` : '';
       const printSpecs = `${item.color === 'color' ? 'Color' : 'Black & White'} • ${item.sides === 'double' ? 'Double-sided' : 'Single-sided'} • ${item.pages} page${item.pages > 1 ? 's' : ''}${copiesStr}`;
@@ -579,6 +579,9 @@ function renderOrders(force = false) {
           </div>
           <div class="admin-doc-actions">
             ${item.fileId ? `
+              <button type="button" class="admin-btn-action admin-btn-print" onclick="openOrderPrintModal('${order.orderId}', ${itemIdx})" title="Direct Print to connected printer" style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; border-radius:6px; padding:4px 9px; font-weight:600; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>Print
+              </button>
               <a href="/api/download/${item.fileId}?inline=1" target="_blank" class="admin-btn-action admin-btn-preview" title="View document in new tab">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:middle;margin-right:3px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>Preview
               </a>
@@ -613,6 +616,10 @@ function renderOrders(force = false) {
       `;
     } else if (isPrinting) {
       quickActionsHtml = `
+        <button type="button" class="btn-action-sm" onclick="openOrderPrintModal('${order.orderId}')" style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; border-radius:8px; padding:6px 14px; font-weight:600; font-size:12.5px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+          Print Preview
+        </button>
         <button type="button" class="btn-action-sm" onclick="updateOrderStatusOnServer('${order.orderId}', 'READY')" style="background:#e8f8f0; color:#059669; border:1px solid #a7f3d0; border-radius:8px; padding:6px 14px; font-weight:600; font-size:12.5px; cursor:pointer;">
           Mark Ready for Collection
         </button>
@@ -709,6 +716,11 @@ async function updateOrderStatusOnServer(orderId, newStatus) {
   }
   computeStatsFromOrders(allOrders);
   renderOrders(true);
+
+  // Auto-open Direct Print Portal when admin moves order to PRINTING
+  if (newStatus === 'PRINTING' || newStatus === 'Printing') {
+    openOrderPrintModal(orderId, 0);
+  }
 
   try {
     const res = await fetch(`/api/admin/orders/${encodeURIComponent(orderId)}/status`, {
@@ -1730,6 +1742,261 @@ if (btnOpenScanner && modalQrCollect) {
     }
   });
 }
+
+// ===== DIRECT PRINT PREVIEW PORTAL =====
+let currentPrintOrder = null;
+let currentPrintItemIndex = 0;
+
+window.openOrderPrintModal = function(orderId, itemIndex = 0) {
+  const order = allOrders.find(o => o.orderId === orderId);
+  if (!order) {
+    showToast(`Order #${orderId} not found`, 'error');
+    return;
+  }
+
+  currentPrintOrder = order;
+  currentPrintItemIndex = (typeof itemIndex === 'number' && itemIndex >= 0) ? itemIndex : 0;
+
+  const modal = document.getElementById('modal-order-print');
+  if (modal) {
+    modal.style.display = 'flex';
+  }
+
+  renderOrderPrintModal();
+};
+
+window.closeOrderPrintModal = function() {
+  const modal = document.getElementById('modal-order-print');
+  if (modal) modal.style.display = 'none';
+
+  const iframe = document.getElementById('order-print-iframe');
+  if (iframe) iframe.src = '';
+  const imgEl = document.getElementById('order-print-image');
+  if (imgEl) imgEl.src = '';
+
+  currentPrintOrder = null;
+};
+
+function renderOrderPrintModal() {
+  if (!currentPrintOrder) return;
+  const order = currentPrintOrder;
+  const items = Array.isArray(order.items) ? order.items : [];
+
+  if (currentPrintItemIndex >= items.length) currentPrintItemIndex = 0;
+  if (currentPrintItemIndex < 0) currentPrintItemIndex = 0;
+
+  const currentItem = items[currentPrintItemIndex] || null;
+
+  // Header badges & text
+  const idBadge = document.getElementById('order-print-id-badge');
+  const subTitle = document.getElementById('order-print-subtitle');
+  if (idBadge) idBadge.textContent = `#${order.orderId}`;
+  if (subTitle) {
+    const timeStr = order.createdAt ? new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    subTitle.textContent = `${order.ownerName || 'Student'} (${order.ownerEmail || 'No email'}) • Placed at ${timeStr} • Total ₹${order.total}`;
+  }
+
+  // Document switcher tabs
+  const tabsContainer = document.getElementById('order-print-docs-tabs');
+  if (tabsContainer) {
+    if (items.length > 1) {
+      tabsContainer.style.display = 'flex';
+      tabsContainer.innerHTML = items.map((it, idx) => {
+        const isActive = idx === currentPrintItemIndex;
+        const namePreview = (it.originalName || `Document ${idx + 1}`).length > 20
+          ? (it.originalName || `Document ${idx + 1}`).substring(0, 18) + '…'
+          : (it.originalName || `Document ${idx + 1}`);
+        return `
+          <button type="button" class="print-doc-tab ${isActive ? 'active' : ''}" onclick="switchOrderPrintDoc(${idx})" title="${it.originalName}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            ${namePreview}
+          </button>
+        `;
+      }).join('');
+    } else {
+      tabsContainer.style.display = 'none';
+      tabsContainer.innerHTML = '';
+    }
+  }
+
+  // Print Specifications Badges
+  const specsContainer = document.getElementById('order-print-specs-pills');
+  if (specsContainer && currentItem) {
+    const isColor = currentItem.color === 'color';
+    const isDouble = currentItem.sides === 'double';
+    const copies = currentItem.copies || 1;
+    const pages = currentItem.pages || 1;
+
+    specsContainer.innerHTML = `
+      <span class="print-spec-pill" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:12px; padding:4px 10px;">
+        <strong>📑 ${copies} Cop${copies > 1 ? 'ies' : 'y'}</strong>
+      </span>
+      <span class="print-spec-pill" style="${isColor ? 'background:#fdf2f8; color:#be185d; border:1px solid #fbcfe8;' : 'background:#f3f4f6; color:#374151; border:1px solid #e5e7eb;'}">
+        ${isColor ? '🎨 Color Print' : '⬛ Black & White'}
+      </span>
+      <span class="print-spec-pill" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0;">
+        ${isDouble ? '📄 Double-Sided (Duplex)' : '📄 Single-Sided'}
+      </span>
+      <span class="print-spec-pill" style="background:#fefce8; color:#a16207; border:1px solid #fef08a;">
+        📖 ${pages} Page${pages > 1 ? 's' : ''}${currentItem.pageRange ? ` (${currentItem.pageRange})` : ''}
+      </span>
+      <span class="print-spec-pill" style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; font-weight:700;">
+        ₹${currentItem.price || 0}
+      </span>
+    `;
+  }
+
+  // Preview elements
+  const iframe = document.getElementById('order-print-iframe');
+  const imgContainer = document.getElementById('order-print-image-container');
+  const imgEl = document.getElementById('order-print-image');
+  const loadingEl = document.getElementById('order-print-loading');
+  const dlLink = document.getElementById('order-print-download-link');
+  const metaEl = document.getElementById('order-print-file-meta');
+
+  if (!currentItem || !currentItem.fileId) {
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (iframe) iframe.style.display = 'none';
+    if (imgContainer) {
+      imgContainer.style.display = 'block';
+      imgContainer.innerHTML = `<div style="color:#f87171; padding:40px; font-weight:600;">No uploaded file attachment found for this item.</div>`;
+    }
+    if (metaEl) metaEl.textContent = 'File not available';
+    if (dlLink) dlLink.style.display = 'none';
+    return;
+  }
+
+  const inlineUrl = `/api/download/${encodeURIComponent(currentItem.fileId)}?inline=1`;
+  const downloadUrl = `/api/download/${encodeURIComponent(currentItem.fileId)}`;
+
+  if (metaEl) {
+    const sizeStr = currentItem.size ? ` (${formatBytes(currentItem.size)})` : '';
+    metaEl.textContent = `${currentItem.originalName || 'Document'}${sizeStr}`;
+  }
+
+  if (dlLink) {
+    dlLink.style.display = 'inline-flex';
+    dlLink.href = downloadUrl;
+    dlLink.setAttribute('download', currentItem.originalName || 'print_document');
+  }
+
+  const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(currentItem.originalName || '');
+
+  if (loadingEl) loadingEl.style.display = 'flex';
+
+  if (isImg) {
+    if (iframe) {
+      iframe.style.display = 'none';
+      iframe.src = '';
+    }
+    if (imgContainer && imgEl) {
+      imgContainer.style.display = 'block';
+      imgEl.src = inlineUrl;
+      imgEl.onload = () => { if (loadingEl) loadingEl.style.display = 'none'; };
+      imgEl.onerror = () => { if (loadingEl) loadingEl.style.display = 'none'; };
+    }
+  } else {
+    if (imgContainer) imgContainer.style.display = 'none';
+    if (iframe) {
+      iframe.style.display = 'block';
+      iframe.onload = () => { if (loadingEl) loadingEl.style.display = 'none'; };
+      iframe.onerror = () => { if (loadingEl) loadingEl.style.display = 'none'; };
+      iframe.src = inlineUrl;
+    }
+  }
+}
+
+window.switchOrderPrintDoc = function(itemIdx) {
+  currentPrintItemIndex = itemIdx;
+  renderOrderPrintModal();
+};
+
+window.triggerDirectPrintNow = function() {
+  const iframe = document.getElementById('order-print-iframe');
+  const imgEl = document.getElementById('order-print-image');
+  const isImgVisible = imgEl && imgEl.parentElement && imgEl.parentElement.style.display !== 'none';
+
+  if (isImgVisible && imgEl.src) {
+    const pwin = window.open('', '_blank');
+    if (pwin) {
+      pwin.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>Print Document</title><style>@page{size:auto;margin:0;} body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;} img{max-width:100%;max-height:100vh;object-fit:contain;}</style></head>
+        <body><img src="${imgEl.src}" onload="setTimeout(()=>{window.print();}, 300);" /></body>
+        </html>
+      `);
+      pwin.document.close();
+      showToast('Document sent to print dialog!', 'info');
+      return;
+    }
+  }
+
+  if (iframe && iframe.contentWindow) {
+    try {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      showToast('Document sent to connected printer!', 'info');
+    } catch (err) {
+      console.warn('[Direct Print] Iframe print exception, falling back to popup window:', err);
+      if (iframe.src) {
+        const pwin = window.open(iframe.src, '_blank');
+        if (pwin) {
+          pwin.focus();
+          pwin.onload = () => {
+            setTimeout(() => pwin.print(), 300);
+          };
+        }
+      }
+    }
+  } else {
+    showToast('Print preview is not ready yet.', 'error');
+  }
+};
+
+window.markOrderReadyFromPrintModal = async function() {
+  if (!currentPrintOrder) return;
+  const orderId = currentPrintOrder.orderId;
+  const btn = document.getElementById('btn-order-print-ready');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span style="display:inline-block;animation:adminSpin 0.8s linear infinite;">⏳</span> Updating...`;
+  }
+
+  try {
+    await updateOrderStatusOnServer(orderId, 'READY');
+    showToast(`Order #${orderId} marked as Ready for Collection!`, 'success');
+    closeOrderPrintModal();
+  } catch (err) {
+    showToast(`Failed to update order: ${err.message}`, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Mark as Ready`;
+    }
+  }
+};
+
+// Wire event listeners for direct print modal
+document.getElementById('btn-close-print-modal')?.addEventListener('click', closeOrderPrintModal);
+document.getElementById('btn-order-print-close')?.addEventListener('click', closeOrderPrintModal);
+document.getElementById('btn-order-print-now')?.addEventListener('click', triggerDirectPrintNow);
+document.getElementById('btn-order-print-ready')?.addEventListener('click', markOrderReadyFromPrintModal);
+
+document.getElementById('modal-order-print')?.addEventListener('click', (e) => {
+  if (e.target.id === 'modal-order-print') {
+    closeOrderPrintModal();
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const modal = document.getElementById('modal-order-print');
+    if (modal && modal.style.display !== 'none') {
+      closeOrderPrintModal();
+    }
+  }
+});
 
 // Run auth check on initialization
 checkAdminAuth();

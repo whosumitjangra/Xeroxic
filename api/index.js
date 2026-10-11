@@ -2018,10 +2018,12 @@ async function handler(req, res) {
       if (!fileBuffer) return sendJSON(res, 404, { error: 'File data unavailable.' });
 
       const ext = path.extname(record.originalName).toLowerCase();
-      const isPreviewable = ['.png', '.jpg', '.jpeg', '.gif', '.svg'].includes(ext);
+      const isPreviewable = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.pdf'].includes(ext);
       const wantsInline = parsed.searchParams.get('inline') === '1' || parsed.searchParams.get('inline') === 'true';
 
-      if (!(isPreviewable && wantsInline)) {
+      if (isPreviewable && wantsInline) {
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(record.originalName)}"`);
+      } else {
         res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(record.originalName)}"`);
       }
       const contentType = MIME[ext] || 'application/octet-stream';
