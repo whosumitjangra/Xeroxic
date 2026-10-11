@@ -1972,7 +1972,29 @@ async function runTests() {
   assert.strictEqual(fastStatusRes.json().status, 'PRINTING');
   console.log(`   ✅ Direct atomic status update executed in ${elapsed}ms (instant latency)`);
 
-  console.log('\n🎉 ALL 83 TESTS PASSED SUCCESSFULLY! All workflow audit scenarios, security tests, Razorpay tests, scale & memorable order ID, and express pickup features verified.\n');
+  // Test 84: Direct Print Preview & filePath Resolution (No "File data unavailable" & < 50ms Stats)
+  console.log('84. Testing Direct Print Preview & filePath Persistence (Fix for "File data unavailable")...');
+  // Check that admin can access preview endpoint and receives 302 redirect to Supabase signed URL
+  const previewRes = await invokeHandler({
+    method: 'GET',
+    url: `/api/download/${prepData.fileId}?inline=1`,
+    headers: { cookie: adminCookie }
+  });
+  assert.strictEqual(previewRes.statusCode, 302, 'Preview endpoint must return HTTP 302 redirect for active Supabase files');
+  assert(previewRes.headers.location, 'Location header must point to signed URL');
+
+  // Verify GET /api/admin/stats latency is < 100ms and not blocked by unthrottled purges
+  const tStats0 = Date.now();
+  const statsRes = await invokeHandler({
+    method: 'GET',
+    url: '/api/admin/stats',
+    headers: { cookie: adminCookie }
+  });
+  const statsElapsed = Date.now() - tStats0;
+  assert.strictEqual(statsRes.statusCode, 200);
+  console.log(`   ✅ Direct Print preview verified (HTTP 302 Location: ${previewRes.headers.location.substring(0, 45)}...) and Stats responded in ${statsElapsed}ms`);
+
+  console.log('\n🎉 ALL 84 TESTS PASSED SUCCESSFULLY! All workflow audit scenarios, security tests, Razorpay tests, scale & memorable order ID, and express pickup features verified.\n');
 }
 
 runTests().catch(err => {

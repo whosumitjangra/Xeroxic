@@ -1859,7 +1859,8 @@ function renderOrderPrintModal() {
   const tabLink = document.getElementById('order-print-tab-link');
   const metaEl = document.getElementById('order-print-file-meta');
 
-  if (!currentItem || !currentItem.fileId || currentItem.filePurged) {
+  const isOrderPurged = currentItem.filePurged || (currentPrintOrder && ['COMPLETED', 'COLLECTED', 'CANCELLED'].includes((currentPrintOrder.status || '').toUpperCase()));
+  if (!currentItem || !currentItem.fileId || isOrderPurged) {
     if (loadingEl) loadingEl.style.display = 'none';
     if (iframe) iframe.style.display = 'none';
     if (imgContainer) {
@@ -1904,13 +1905,35 @@ function renderOrderPrintModal() {
       imgContainer.style.display = 'block';
       imgEl.src = inlineUrl;
       imgEl.onload = () => { if (loadingEl) loadingEl.style.display = 'none'; };
-      imgEl.onerror = () => { if (loadingEl) loadingEl.style.display = 'none'; };
+      imgEl.onerror = () => {
+        if (loadingEl) loadingEl.style.display = 'none';
+        imgContainer.innerHTML = `<div style="color:#ef4444; padding:50px 20px; text-align:center; font-weight:600;"><span style="font-size:28px; display:block; margin-bottom:8px;">⚠️</span> Could not display image preview. You can use the "Open in New Tab" or "Download" link above.</div>`;
+      };
     }
   } else {
     if (imgContainer) imgContainer.style.display = 'none';
     if (iframe) {
       iframe.style.display = 'block';
-      iframe.onload = () => { if (loadingEl) loadingEl.style.display = 'none'; };
+      iframe.onload = () => {
+        if (loadingEl) loadingEl.style.display = 'none';
+        try {
+          // If the server returned a JSON error response (e.g. 404), catch and display friendly error
+          const iframeDoc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+          if (iframeDoc && iframeDoc.body && iframeDoc.body.innerText) {
+            const bodyText = iframeDoc.body.innerText.trim();
+            if (bodyText.startsWith('{"error":') || bodyText.startsWith('{"message":')) {
+              const parsed = JSON.parse(bodyText);
+              iframe.style.display = 'none';
+              if (imgContainer) {
+                imgContainer.style.display = 'block';
+                imgContainer.innerHTML = `<div style="color:#ef4444; padding:50px 20px; text-align:center; font-weight:600;"><span style="font-size:28px; display:block; margin-bottom:8px;">⚠️</span> ${parsed.error || 'Document preview unavailable.'}<br><span style="font-size:12px; color:#6b7280; margin-top:6px; display:inline-block;">The file could not be retrieved from cloud storage.</span></div>`;
+              }
+            }
+          }
+        } catch (e) {
+          // Cross-origin redirect to Supabase CDN throws SecurityError when accessing contentDocument, which confirms document loaded successfully!
+        }
+      };
       iframe.onerror = () => { if (loadingEl) loadingEl.style.display = 'none'; };
       iframe.src = inlineUrl;
     }

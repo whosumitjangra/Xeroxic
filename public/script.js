@@ -880,6 +880,8 @@ async function loadOrderItems() {
     const row = document.createElement('div');
     row.className = 'order-item';
     row.dataset.fileId = f.id;
+    row.dataset.filePath = f.filePath || '';
+    row.dataset.size = f.size || 0;
 
     const isImage = /\.(png|jpg|jpeg|gif)$/i.test(f.originalName);
     const previewHTML = isImage
@@ -961,7 +963,9 @@ function updateOrderTotal() {
 
     row.querySelector(`[data-price="${fileId}"]`).textContent = '₹' + linePrice;
 
-    orderDraft.push({ fileId, originalName: fname, pages, sides, color, copies, pageRange, price: linePrice });
+    const filePath = row.dataset.filePath || null;
+    const size = parseInt(row.dataset.size, 10) || 0;
+    orderDraft.push({ fileId, originalName: fname, filePath, size, pages, sides, color, copies, pageRange, price: linePrice });
   });
 
   document.getElementById('order-total').textContent = '₹' + total;

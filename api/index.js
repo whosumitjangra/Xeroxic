@@ -103,6 +103,10 @@ const PRICE_TABLE = {
   'color-double': 8
 };
 
+// Periodic background purge throttle (at most once every 60 minutes)
+let lastStatsPurgeTime = 0;
+const STATS_PURGE_INTERVAL_MS = 60 * 60 * 1000;
+
 // Razorpay SDK Configuration (secrets loaded strictly from environment)
 function getRazorpayConfig() {
   const keyId = process.env.RAZORPAY_KEY_ID || '';
@@ -212,19 +216,24 @@ async function findFileRecord(fileId) {
     const orders = await getOrders();
     for (const o of orders) {
       const st = (o.status || '').toUpperCase();
-      if (st === 'COMPLETED' || st === 'CANCELLED' || st === 'COLLECTED') {
+      if (st === 'COMPLETED' || st === 'CANCELLED' || st === 'COLLECTED' || o.filesPurged) {
         continue;
       }
       const item = (o.items || []).find(it => it.fileId === cleanId);
       if (item && !item.filePurged) {
+        const rawBaseName = path.basename(item.originalName || 'document');
+        const safeOriginalName = rawBaseName.replace(/[^\w\s.-]/gi, '_').replace(/\s+/g, ' ').trim() || 'document';
+        const safeOwnerId = String(o.ownerId || '').replace(/[^a-zA-Z0-9_-]/g, '');
+        const fallbackPath = safeOwnerId ? `students/${safeOwnerId}/${item.fileId}-${safeOriginalName}` : null;
+        const resolvedPath = item.filePath || fallbackPath;
         return {
           id: item.fileId,
           ownerId: o.ownerId,
           originalName: item.originalName,
           storedName: item.storedName || `${item.fileId}${path.extname(item.originalName || '')}`,
-          filePath: item.filePath || null,
+          filePath: resolvedPath,
           size: item.size || 0,
-          storageProvider: item.filePath ? 'supabase' : 'local'
+          storageProvider: resolvedPath ? 'supabase' : 'local'
         };
       }
     }
@@ -235,19 +244,25 @@ async function findFileRecord(fileId) {
     const printReqs = await getPrintRequests();
     for (const pr of printReqs) {
       const st = (pr.requestStatus || pr.status || '').toUpperCase();
-      if (st === 'COMPLETED' || st === 'CANCELLED' || st === 'COLLECTED') {
+      if (st === 'COMPLETED' || st === 'CANCELLED' || st === 'COLLECTED' || pr.filesPurged) {
         continue;
       }
       const item = (pr.items || []).find(it => it.fileId === cleanId);
       if (item && !item.filePurged) {
+        const rawOwner = pr.ownerId || pr.userId || pr.studentId || '';
+        const safeOwnerId = String(rawOwner).replace(/[^a-zA-Z0-9_-]/g, '');
+        const rawBaseName = path.basename(item.originalName || 'document');
+        const safeOriginalName = rawBaseName.replace(/[^\w\s.-]/gi, '_').replace(/\s+/g, ' ').trim() || 'document';
+        const fallbackPath = safeOwnerId ? `students/${safeOwnerId}/${item.fileId}-${safeOriginalName}` : null;
+        const resolvedPath = item.filePath || fallbackPath;
         return {
           id: item.fileId,
-          ownerId: pr.ownerId || pr.userId,
+          ownerId: rawOwner,
           originalName: item.originalName,
           storedName: item.storedName || `${item.fileId}${path.extname(item.originalName || '')}`,
-          filePath: item.filePath || null,
+          filePath: resolvedPath,
           size: item.size || 0,
-          storageProvider: item.filePath ? 'supabase' : 'local'
+          storageProvider: resolvedPath ? 'supabase' : 'local'
         };
       }
     }
@@ -923,6 +938,7 @@ async function handler(req, res) {
 
       const numCopies = Math.max(1, parseInt(copies, 10) || 1);
       const pricing = await getPricing();
+      const filesDb = await getFiles();
       let total = 0;
       const cleanItems = [];
 
@@ -938,9 +954,22 @@ async function handler(req, res) {
         const rate = (pricing && pricing[`${color}-${sides}`]) ? Number(pricing[`${color}-${sides}`]) : (PRICE_TABLE[`${color}-${sides}`] || 2);
         const linePrice = rate * pages * itemCopies;
         total += linePrice;
+
+        const matchedFile = filesDb.find(f => f.id === item.fileId);
+        const rawBaseName = path.basename(item.originalName || (matchedFile ? matchedFile.originalName : 'document'));
+        const safeOriginalName = rawBaseName.replace(/[^\w\s.-]/gi, '_').replace(/\s+/g, ' ').trim() || 'document';
+        const safeUserId = String(session.userId || '').replace(/[^a-zA-Z0-9_-]/g, '');
+        const fallbackPath = safeUserId ? `students/${safeUserId}/${item.fileId}-${safeOriginalName}` : null;
+        const resolvedPath = item.filePath || (matchedFile ? matchedFile.filePath : null) || fallbackPath;
+        const resolvedStoredName = (matchedFile && matchedFile.storedName) || item.storedName || `${item.fileId}${path.extname(item.originalName || '')}`;
+        const resolvedSize = (matchedFile && matchedFile.size) || Number(item.size) || 0;
+
         cleanItems.push({
           fileId: item.fileId,
           originalName: item.originalName,
+          filePath: resolvedPath,
+          storedName: resolvedStoredName,
+          size: resolvedSize,
           pages,
           sides,
           color,
@@ -1359,12 +1388,19 @@ async function handler(req, res) {
       const canonicalName = (owner && owner.name) ? owner.name : (order.ownerName || 'Student');
       const canonicalEmail = (owner && owner.email) ? owner.email : (order.ownerEmail || 'N/A');
 
+      const isPurged = order.filesPurged || ['COMPLETED', 'COLLECTED', 'CANCELLED'].includes((order.status || '').toUpperCase());
       const enrichedItems = (order.items || []).map(item => {
         const fileRecord = filesDb.find(f => f.id === item.fileId);
+        const rawBase = path.basename(item.originalName || (fileRecord ? fileRecord.originalName : 'document'));
+        const safeOrig = rawBase.replace(/[^\w\s.-]/gi, '_').replace(/\s+/g, ' ').trim() || 'document';
+        const safeOwner = order.ownerId ? String(order.ownerId).replace(/[^a-zA-Z0-9_-]/g, '') : null;
+        const fallbackPath = safeOwner ? `students/${safeOwner}/${item.fileId}-${safeOrig}` : null;
         return {
           ...item,
-          storedName: fileRecord ? fileRecord.storedName : null,
-          size: fileRecord ? fileRecord.size : null
+          filePath: item.filePath || (fileRecord ? fileRecord.filePath : null) || fallbackPath,
+          storedName: (fileRecord && fileRecord.storedName) || item.storedName || `${item.fileId}${path.extname(item.originalName || '')}`,
+          size: (fileRecord && fileRecord.size) || item.size || null,
+          filePurged: item.filePurged || isPurged
         };
       });
 
@@ -1521,12 +1557,19 @@ async function handler(req, res) {
 
       const enriched = orders.map(o => {
         const owner = userMap.get(o.ownerId) || {};
+        const isPurged = o.filesPurged || ['COMPLETED', 'COLLECTED', 'CANCELLED'].includes((o.status || '').toUpperCase());
         const items = (o.items || []).map(item => {
           const fileRecord = filesDb.find(f => f.id === item.fileId);
+          const rawBase = path.basename(item.originalName || (fileRecord ? fileRecord.originalName : 'document'));
+          const safeOrig = rawBase.replace(/[^\w\s.-]/gi, '_').replace(/\s+/g, ' ').trim() || 'document';
+          const safeOwner = o.ownerId ? String(o.ownerId).replace(/[^a-zA-Z0-9_-]/g, '') : null;
+          const fallbackPath = safeOwner ? `students/${safeOwner}/${item.fileId}-${safeOrig}` : null;
           return {
             ...item,
-            storedName: fileRecord ? fileRecord.storedName : null,
-            size: fileRecord ? fileRecord.size : null
+            filePath: item.filePath || (fileRecord ? fileRecord.filePath : null) || fallbackPath,
+            storedName: (fileRecord && fileRecord.storedName) || item.storedName || `${item.fileId}${path.extname(item.originalName || '')}`,
+            size: (fileRecord && fileRecord.size) || item.size || null,
+            filePurged: item.filePurged || isPurged
           };
         });
         const canonicalOwnerName = (owner && owner.name) ? owner.name : (o.ownerName || 'Student');
@@ -1656,11 +1699,15 @@ async function handler(req, res) {
       const currentMonth = `${nowIST.yearStr}-${nowIST.monthStr}`;
       const activeMonth = filterMonth && filterMonth.toLowerCase() === 'all' ? null : (filterMonth || currentMonth);
 
-      // Auto-purge stale unpaid drafts and processed uploads older than 24h to keep database and disk lean
-      try {
-        await purgeStaleUnpaidOrders(24);
-        await purgeStaleUploadedFiles(24);
-      } catch (e) {}
+      // Throttled background purge: run at most once per hour, asynchronously (non-blocking)
+      const nowMs = Date.now();
+      if (nowMs - lastStatsPurgeTime > STATS_PURGE_INTERVAL_MS) {
+        lastStatsPurgeTime = nowMs;
+        Promise.allSettled([
+          purgeStaleUnpaidOrders(24),
+          purgeStaleUploadedFiles(24)
+        ]).catch(() => {});
+      }
 
       const allOrders = await getOrders();
       const printRequests = await getPrintRequests();
