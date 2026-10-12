@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Sign in — Xeroxic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <style>
     :root {
@@ -14,13 +17,10 @@
       --link-blue: #2b59fe;
       --link-blue-hover: #1a42db;
       --text-main: #111827;
-      --text-muted: #8e94a0;
-      --input-bg: #f2f1f6;
-      --input-focus-border: #ff8344;
+      --text-muted: #5f6368;
       --border-radius-card: 16px;
-      --border-radius-input: 10px;
       --border-radius-btn: 10px;
-      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 'Inter', Helvetica, Arial, sans-serif;
+      --font-sans: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     *, *::before, *::after {
@@ -78,9 +78,9 @@
 
     /* Title */
     .signin-title {
-      font-family: var(--font-serif);
-      font-size: 1.95rem;
-      font-weight: 700;
+      font-family: var(--font-sans);
+      font-size: 1.85rem;
+      font-weight: 600;
       color: #111827;
       margin-bottom: 24px;
       letter-spacing: -0.01em;
@@ -96,11 +96,13 @@
       flex-direction: column;
     }
 
-    /* Sliding Multi-Step Wrapper */
+    /* Sliding Multi-Step Wrapper with Safe Clearance to Prevent Any Box Clipping */
     .steps-viewport {
       width: 100%;
       overflow: hidden;
       position: relative;
+      padding: 12px 6px 8px 6px;
+      margin: -12px -6px -8px -6px;
     }
 
     .steps-slider {
@@ -114,68 +116,134 @@
       flex-shrink: 0;
       display: flex;
       flex-direction: column;
+      padding: 0 4px;
+      box-sizing: border-box;
     }
 
-    /* Input Field */
-    .input-field {
+    /* ===== Google Sign-In Outlined Floating Label Container ===== */
+    .field-wrap {
+      position: relative;
       width: 100%;
-      background: var(--input-bg);
-      border: 1.5px solid transparent;
-      border-radius: var(--border-radius-input);
-      padding: 14px 16px;
-      font-family: var(--font-serif);
-      font-size: 1rem;
-      color: #111827;
-      outline: none;
-      transition: all 0.2s ease;
+      margin-top: 8px;
+      margin-bottom: 2px;
     }
 
-    .input-field::placeholder {
-      color: #8c939d;
-      font-weight: 400;
-      font-family: var(--font-serif);
+    .field-input {
+      width: 100%;
+      height: 52px;
+      background: #ffffff !important;
+      border: 1.5px solid #dadce0 !important;
+      border-radius: 8px !important;
+      padding: 14px 16px !important;
+      font-family: var(--font-sans);
+      font-size: 1rem !important;
+      color: #111827 !important;
+      outline: none !important;
+      box-sizing: border-box !important;
+      transition: border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
 
-    .input-field:focus {
+    /* Hide native placeholder so the floating label acts as the visual placeholder */
+    .field-input::placeholder {
+      color: transparent !important;
+      opacity: 0 !important;
+    }
+
+    /* Focused input state: crisp border with subtle glow, NEVER clipped */
+    .field-input:focus {
+      background: #ffffff !important;
+      border-color: #ff8344 !important;
+      box-shadow: 0 0 0 1px #ff8344 !important;
+    }
+
+    /* Floating Label: resting state in center of input */
+    .field-label {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
       background: #ffffff;
-      border-color: var(--input-focus-border);
-      box-shadow: 0 0 0 3px rgba(40, 186, 93, 0.15);
+      padding: 0 4px;
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      color: #5f6368;
+      pointer-events: none;
+      transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), 
+                  top 0.18s cubic-bezier(0.4, 0, 0.2, 1), 
+                  font-size 0.18s cubic-bezier(0.4, 0, 0.2, 1), 
+                  color 0.18s ease;
+      transform-origin: left top;
+      line-height: 1;
+      z-index: 2;
+      user-select: none;
     }
 
-    .input-field.input-error {
-      border-color: #ef4444;
-      background: #fef2f2;
+    /* When focused or has value: animates up and aligns into the top border notch like Google Sign In */
+    .field-input:focus ~ .field-label,
+    .field-input:not(:placeholder-shown) ~ .field-label,
+    .field-wrap.is-focused .field-label,
+    .field-wrap.has-value .field-label {
+      top: 0;
+      transform: translateY(-50%) scale(0.82);
+      font-weight: 500;
+      background: #ffffff;
     }
 
-    /* Password Input Wrapper with Eye Toggle */
-    .password-input-group {
+    /* Focused label color */
+    .field-input:focus ~ .field-label,
+    .field-wrap.is-focused .field-label {
+      color: #ff8344 !important;
+    }
+
+    /* When has value but NOT focused: rests in the line with neutral color */
+    .field-input:not(:focus):not(:placeholder-shown) ~ .field-label,
+    .field-wrap.has-value:not(.is-focused) .field-label {
+      color: #5f6368 !important;
+    }
+
+    /* Error state (Material Red) */
+    .field-input.input-error,
+    .field-wrap.has-error .field-input {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 0 1px #ef4444 !important;
+    }
+
+    .field-input.input-error ~ .field-label,
+    .field-wrap.has-error .field-label {
+      color: #ef4444 !important;
+    }
+
+    /* Password wrapper with eye toggle button */
+    .password-field-wrap {
       position: relative;
       width: 100%;
     }
 
-    .password-input-group .input-field {
-      padding-right: 44px;
+    .password-field-wrap .field-input {
+      padding-right: 48px !important;
     }
 
-    .password-toggle-btn {
+    .eye-btn {
       position: absolute;
-      right: 12px;
+      right: 8px;
       top: 50%;
       transform: translateY(-50%);
       background: transparent;
       border: none;
       cursor: pointer;
-      color: #6b7280;
+      color: #5f6368;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 6px;
-      border-radius: 6px;
-      transition: color 0.15s ease;
+      padding: 8px;
+      border-radius: 50%;
+      transition: background-color 0.15s ease, color 0.15s ease;
+      z-index: 3;
     }
 
-    .password-toggle-btn:hover {
-      color: #111827;
+    .eye-btn:hover {
+      background-color: rgba(60, 64, 67, 0.08);
+      color: #202124;
     }
 
     /* Active User Email Pill (Step 2) */
@@ -189,7 +257,7 @@
       border-radius: 20px;
       padding: 6px 16px;
       font-size: 0.88rem;
-      font-family: var(--font-serif);
+      font-family: var(--font-sans);
       color: #374151;
       margin: 0 auto 16px auto;
       max-width: 100%;
@@ -221,7 +289,7 @@
       font-weight: 600;
       text-decoration: none;
       font-size: 0.82rem;
-      font-family: var(--font-serif);
+      font-family: var(--font-sans);
     }
 
     .user-chip-edit:hover {
@@ -240,7 +308,7 @@
 
     .text-link {
       font-size: 0.9rem;
-      font-family: var(--font-serif);
+      font-family: var(--font-sans);
       color: var(--link-blue);
       text-decoration: none;
       font-weight: 500;
@@ -429,18 +497,21 @@
       <div class="steps-viewport">
         <div class="steps-slider" id="stepsSlider">
           
-          <!-- STEP 1: Email Input (Matches Screenshot 3) -->
+          <!-- STEP 1: Email Input (Google-style Outlined Floating Label) -->
           <div class="step-pane" id="step1">
-            <input 
-              type="email" 
-              class="input-field" 
-              id="emailInput" 
-              placeholder="Email" 
-              required 
-              autocomplete="email"
-              oninput="clearError()"
-              autofocus
-            >
+            <div class="field-wrap" id="emailWrap">
+              <input 
+                type="email" 
+                class="field-input" 
+                id="emailInput" 
+                placeholder=" " 
+                required 
+                autocomplete="email"
+                oninput="clearError()"
+                autofocus
+              >
+              <label class="field-label" for="emailInput" id="emailLabel">Staff Email</label>
+            </div>
 
             <!-- Links Row -->
             <div class="links-row">
@@ -454,7 +525,7 @@
             </button>
           </div>
 
-          <!-- STEP 2: Password Input (Matches Screenshot 1) -->
+          <!-- STEP 2: Password Input (Google-style Outlined Floating Label) -->
           <div class="step-pane" id="step2">
             
             <!-- User Email Chip with Edit option (Centered) -->
@@ -463,17 +534,18 @@
               <a href="javascript:void(0)" class="user-chip-edit" onclick="backToEmail(); event.stopPropagation();">Edit</a>
             </div>
 
-            <!-- Password Input with Toggle -->
-            <div class="password-input-group">
+            <!-- Password Input with Floating Label and Toggle -->
+            <div class="field-wrap password-field-wrap" id="passwordWrap">
               <input 
                 type="password" 
-                class="input-field" 
+                class="field-input" 
                 id="passwordInput" 
-                placeholder="Password" 
+                placeholder=" " 
                 autocomplete="current-password"
                 oninput="clearError()"
               >
-              <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility()" title="Show/Hide Password">
+              <label class="field-label" for="passwordInput" id="passwordLabel">Enter your password</label>
+              <button type="button" class="eye-btn" onclick="togglePasswordVisibility()" title="Show/Hide Password">
                 <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
                   <circle cx="12" cy="12" r="3"></circle>
@@ -539,17 +611,60 @@
     const pageTitle = document.getElementById('pageTitle');
     const stepsSlider = document.getElementById('stepsSlider');
     const emailInput = document.getElementById('emailInput');
+    const emailWrap = document.getElementById('emailWrap');
+    const emailLabel = document.getElementById('emailLabel');
     const passwordInput = document.getElementById('passwordInput');
+    const passwordWrap = document.getElementById('passwordWrap');
     const userEmailChipText = document.getElementById('userEmailChipText');
     const errorBanner = document.getElementById('errorBanner');
     const btnSignIn = document.getElementById('btnSignIn');
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+
+    // Initialize floating labels
+    function initFloatingLabels() {
+      const fields = [
+        { input: emailInput, wrap: emailWrap },
+        { input: passwordInput, wrap: passwordWrap }
+      ];
+
+      fields.forEach(({ input, wrap }) => {
+        if (!input || !wrap) return;
+
+        const syncState = () => {
+          if (input.value && input.value.trim().length > 0) {
+            wrap.classList.add('has-value');
+          } else {
+            wrap.classList.remove('has-value');
+          }
+        };
+
+        input.addEventListener('focus', () => {
+          wrap.classList.add('is-focused');
+          syncState();
+        });
+
+        input.addEventListener('blur', () => {
+          wrap.classList.remove('is-focused');
+          syncState();
+        });
+
+        input.addEventListener('input', () => {
+          syncState();
+          wrap.classList.remove('has-error');
+        });
+
+        input.addEventListener('change', syncState);
+        syncState();
+      });
+    }
 
     // Switch between Staff Admin and Super Admin modes
     function setSuperAdminMode() {
       currentRole = 'super_admin';
       backToEmail();
       pageTitle.textContent = 'Super Admin Sign in';
-      emailInput.placeholder = 'Superadmin Email';
+      if (emailLabel) emailLabel.textContent = 'Superadmin Email';
       const prompt = document.getElementById('bottomPromptText');
       if (prompt) {
         prompt.innerHTML = 'Staff account? <a href="javascript:void(0)" class="accent-link" onclick="setAdminMode()">Switch to Staff Admin</a>';
@@ -562,7 +677,7 @@
       currentRole = 'admin';
       backToEmail();
       pageTitle.textContent = 'Admin Sign in';
-      emailInput.placeholder = 'Staff Email';
+      if (emailLabel) emailLabel.textContent = 'Staff Email';
       const prompt = document.getElementById('bottomPromptText');
       if (prompt) {
         prompt.innerHTML = 'Login as Superadmin. <a href="javascript:void(0)" class="accent-link" onclick="setSuperAdminMode()">Click here</a>';
@@ -573,6 +688,8 @@
 
     // Check URL parameters on load for direct Super Admin access
     document.addEventListener('DOMContentLoaded', () => {
+      initFloatingLabels();
+      if (step2) step2.style.visibility = 'hidden';
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('role') === 'superadmin' || window.location.hash === '#superadmin') {
         setSuperAdminMode();
@@ -595,30 +712,37 @@
       if (!email) {
         showError(currentRole === 'super_admin' ? 'Please enter your superadmin email address.' : 'Please enter your staff email address.');
         emailInput.classList.add('input-error');
+        emailWrap?.classList.add('has-error');
         emailInput.focus();
         return;
       }
 
       // Transition to Step 2
       currentStep = 2;
+      if (step2) step2.style.visibility = 'visible';
       userEmailChipText.textContent = email;
       stepsSlider.style.transform = 'translateX(-50%)';
       pageTitle.textContent = 'Enter your password';
       
       setTimeout(() => {
+        if (step1 && currentStep === 2) step1.style.visibility = 'hidden';
         passwordInput.focus();
-      }, 300);
+        passwordWrap?.classList.add('is-focused');
+      }, 320);
     }
 
     // Step 2 -> Step 1
     function backToEmail() {
       currentStep = 1;
+      if (step1) step1.style.visibility = 'visible';
       stepsSlider.style.transform = 'translateX(0%)';
       pageTitle.textContent = currentRole === 'super_admin' ? 'Super Admin Sign in' : 'Admin Sign in';
       clearError();
       setTimeout(() => {
+        if (step2 && currentStep === 1) step2.style.visibility = 'hidden';
         emailInput.focus();
-      }, 300);
+        emailWrap?.classList.add('is-focused');
+      }, 320);
     }
 
     // Toggle password eye
@@ -654,6 +778,7 @@
       if (!password) {
         showError('Please enter your password.');
         passwordInput.classList.add('input-error');
+        passwordWrap?.classList.add('has-error');
         passwordInput.focus();
         return;
       }
@@ -672,6 +797,7 @@
         if (!res.ok) {
           showError(data.error || 'Login failed. Please check credentials.');
           passwordInput.classList.add('input-error');
+          passwordWrap?.classList.add('has-error');
           btnSignIn.disabled = false;
           btnSignIn.innerHTML = '<span>Next</span>';
           return;
@@ -701,6 +827,8 @@
       errorBanner.classList.remove('visible');
       emailInput.classList.remove('input-error');
       passwordInput.classList.remove('input-error');
+      emailWrap?.classList.remove('has-error');
+      passwordWrap?.classList.remove('has-error');
     }
 
     // Modals

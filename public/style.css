@@ -114,9 +114,8 @@ body{
   width: 100%;
   overflow: hidden;
   position: relative;
-  /* Pure vertical breathing room for floating labels, ZERO horizontal bleed to prevent step peaking */
-  padding: 10px 0 6px 0;
-  margin: -10px 0 -6px 0;
+  padding: 12px 6px 8px 6px;
+  margin: -12px -6px -8px -6px;
 }
 
 .front-steps-slider {
@@ -130,7 +129,7 @@ body{
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  padding: 0;
+  padding: 0 4px;
   box-sizing: border-box;
 }
 

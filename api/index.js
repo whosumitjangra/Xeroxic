@@ -2185,6 +2185,12 @@ async function handler(req, res) {
     }
 
     // ---------------- ROUTE SHORTCUTS FOR CLEAN URLS ----------------
+    if (pathname === '/login' || pathname === '/login/') {
+      return sendFile(res, path.join(PUBLIC_DIR, 'login.html'), MIME['.html']);
+    }
+    if (pathname === '/signup' || pathname === '/signup/') {
+      return sendFile(res, path.join(PUBLIC_DIR, 'signup.html'), MIME['.html']);
+    }
     if (pathname === '/admin' || pathname === '/admin/') {
       return sendFile(res, path.join(PUBLIC_DIR, 'admin-login.html'), MIME['.html']);
     }
