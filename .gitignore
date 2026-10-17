@@ -24,3 +24,6 @@ yarn-error.log*
 # Python
 __pycache__/
 *.pyc
+
+# Local runtime uploads
+uploads/

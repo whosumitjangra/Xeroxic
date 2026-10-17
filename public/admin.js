@@ -1922,7 +1922,7 @@ async function renderOrderPrintModal() {
     const sRes = await fetch(`/api/files/${encodeURIComponent(currentItem.fileId)}/signed-url?inline=1`);
     if (sRes.ok) {
       const sData = await sRes.json();
-      if (sData && sData.signedUrl) {
+      if (sData && sData.signedUrl && !sData.signedUrl.includes('simulated_token')) {
         displayUrl = sData.signedUrl;
         if (tabLink) tabLink.href = displayUrl;
       }
@@ -1946,13 +1946,14 @@ async function renderOrderPrintModal() {
     if (imgContainer && imgEl) {
       imgContainer.style.display = 'block';
       imgEl.style.display = 'inline-block';
+      let retriedStream = false;
       imgEl.onload = () => {
         if (loadingEl) loadingEl.style.display = 'none';
         if (errContainer) errContainer.style.display = 'none';
       };
       imgEl.onerror = () => {
-        if (imgEl.src !== streamUrl) {
-          // Retry using same-origin streaming fallback
+        if (!retriedStream && displayUrl !== streamUrl) {
+          retriedStream = true;
           imgEl.src = streamUrl;
           return;
         }

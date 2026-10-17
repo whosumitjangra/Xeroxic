@@ -816,13 +816,22 @@ async function handler(req, res) {
           const wantsInline = parsed.searchParams.get('inline') === '1' || parsed.searchParams.get('inline') === 'true';
           const downloadName = wantsInline ? null : record.originalName;
           const signedUrl = await createSignedDownloadUrl(record.filePath, 3600, downloadName);
-          return sendJSON(res, 200, { success: true, signedUrl, file: record });
+          if (signedUrl && !signedUrl.includes('simulated_token')) {
+            return sendJSON(res, 200, { success: true, signedUrl, file: record });
+          }
         } catch (err) {
-          return sendJSON(res, 500, { error: err.message });
+          console.warn('[Signed URL generation failed]:', err.message);
         }
       }
 
-      return sendJSON(res, 200, { success: true, downloadUrl: `/api/download/${record.id}` });
+      const streamParam = parsed.searchParams.get('stream') === '1' ? '?stream=1' : '';
+      const inlineParam = parsed.searchParams.get('inline') === '1' ? (streamParam ? '&inline=1' : '?inline=1') : '';
+      return sendJSON(res, 200, {
+        success: true,
+        downloadUrl: `/api/download/${record.id}${streamParam}${inlineParam}`,
+        signedUrl: null,
+        file: record
+      });
     }
 
     // ---------------- FILES: UPLOAD (STUDENTS - FALLBACK & ASSIGNMENT PRINT) ----------------
@@ -2102,14 +2111,15 @@ async function handler(req, res) {
           const wantsInline = parsed.searchParams.get('inline') === '1' || parsed.searchParams.get('inline') === 'true';
           const downloadName = wantsInline ? null : (att.originalName || 'assignment_file');
           const signedUrl = await createSignedDownloadUrl(att.filePath, 3600, downloadName);
-          res.writeHead(302, {
-            'Location': signedUrl,
-            'Cache-Control': 'no-cache, no-store, must-revalidate'
-          });
-          return res.end();
+          if (signedUrl) {
+            res.writeHead(302, {
+              'Location': signedUrl,
+              'Cache-Control': 'no-cache, no-store, must-revalidate'
+            });
+            return res.end();
+          }
         } catch (err) {
           console.error('[Supabase assignment signed URL error]', err);
-          return sendJSON(res, 500, { error: 'Failed to generate secure download URL.' });
         }
       }
 
@@ -2154,18 +2164,23 @@ async function handler(req, res) {
           const wantsInline = parsed.searchParams.get('inline') === '1' || parsed.searchParams.get('inline') === 'true';
           const downloadName = wantsInline ? null : record.originalName;
           const signedUrl = await createSignedDownloadUrl(record.filePath, 3600, downloadName);
-          res.writeHead(302, {
-            'Location': signedUrl,
-            'Cache-Control': 'private, no-cache, no-store'
-          });
-          return res.end();
+          const isValidSignedUrl = signedUrl && (!signedUrl.includes('simulated_token') || process.env.VERCEL === '1');
+          if (isValidSignedUrl) {
+            res.writeHead(302, {
+              'Location': signedUrl,
+              'Cache-Control': 'private, no-cache, no-store'
+            });
+            return res.end();
+          }
         } catch (signErr) {
           console.warn('[Supabase Storage] Signed URL redirect failed, falling back to buffer:', signErr.message);
         }
       }
 
       const fileBuffer = await getUploadedFileBuffer(record);
-      if (!fileBuffer) return sendJSON(res, 404, { error: 'File data unavailable.' });
+      if (!fileBuffer) {
+        return sendJSON(res, 404, { error: 'File data unavailable: The document is missing or was removed after printing.' });
+      }
 
       const ext = path.extname(record.originalName).toLowerCase();
       const isPreviewable = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.pdf'].includes(ext);
