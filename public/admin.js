@@ -1800,6 +1800,7 @@ async function renderOrderPrintModal() {
   if (currentPrintItemIndex < 0) currentPrintItemIndex = 0;
 
   const currentItem = items[currentPrintItemIndex] || null;
+  const pages = (currentItem && currentItem.pages) || 1;
 
   // Header badges & text
   const idBadge = document.getElementById('order-print-id-badge');
@@ -1936,7 +1937,10 @@ async function renderOrderPrintModal() {
     return;
   }
 
-  const isImg = /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(currentItem.originalName || '');
+  const fileName = currentItem.originalName || '';
+  const fileExt = fileName.split('.').pop().toLowerCase();
+  const isImg = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(fileExt);
+  const isDoc = ['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls', 'odt', 'rtf'].includes(fileExt);
 
   if (isImg) {
     if (iframe) {
@@ -1965,6 +1969,44 @@ async function renderOrderPrintModal() {
         }
       };
       imgEl.src = displayUrl || streamUrl;
+    }
+  } else if (isDoc) {
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (iframe) {
+      iframe.style.display = 'none';
+      iframe.src = '';
+    }
+    if (imgContainer) imgContainer.style.display = 'none';
+    if (errContainer) {
+      errContainer.style.display = 'block';
+      errContainer.style.padding = '16px';
+      const docIcon = fileExt.startsWith('doc') ? '📝' : (fileExt.startsWith('ppt') ? '📊' : '📄');
+      errContainer.innerHTML = `
+        <div style="max-width:500px; margin:10px auto; background:#ffffff; border:1px solid #dbeafe; border-radius:16px; padding:22px 20px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1); text-align:center;">
+          <div style="width:60px; height:60px; margin:0 auto 12px; background:#eff6ff; border:2px solid #bfdbfe; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:28px; box-shadow:0 4px 12px rgba(37,99,235,0.15);">
+            ${docIcon}
+          </div>
+          <h3 style="margin:0 0 6px; font-size:17px; font-weight:700; color:#1e293b; word-break:break-all;">
+            ${escapeHtml(fileName)}
+          </h3>
+          <p style="margin:0 0 20px; font-size:13px; color:#64748b;">
+            ${fileExt.toUpperCase()} Document &bull; ${formatBytes(currentItem.size)} &bull; ${pages} Page(s)
+          </p>
+          <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-bottom:18px;">
+            <a href="${downloadUrl}" download="${escapeHtml(fileName)}" style="background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; border:none; border-radius:10px; padding:11px 22px; font-weight:600; font-size:13.5px; text-decoration:none; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 14px rgba(37,99,235,0.3);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Download Document to Print
+            </a>
+            <a href="${displayUrl || inlineUrl}" target="_blank" style="background:#f8fafc; color:#334155; border:1px solid #cbd5e1; border-radius:10px; padding:11px 18px; font-weight:600; font-size:13.5px; text-decoration:none; display:inline-flex; align-items:center; gap:8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              Direct Link
+            </a>
+          </div>
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 16px; text-align:left; font-size:12.5px; color:#166534; line-height:1.5;">
+            <strong>💡 Operator Guidance:</strong> Office documents preserve student margins, equations, and fonts best when opened and printed directly via Microsoft Word or LibreOffice. Click <b>"Download Document to Print"</b> or the blue <b>"Print Document"</b> button below.
+          </div>
+        </div>
+      `;
     }
   } else {
     if (imgContainer) imgContainer.style.display = 'none';
@@ -2012,6 +2054,25 @@ window.triggerDirectPrintNow = function() {
   const iframe = document.getElementById('order-print-iframe');
   const imgEl = document.getElementById('order-print-image');
   const isImgVisible = imgEl && imgEl.parentElement && imgEl.parentElement.style.display !== 'none';
+
+  const order = currentPrintOrder;
+  const items = (order && order.items) || [];
+  const currentItem = items[currentPrintItemIndex] || items[0] || {};
+  const fileName = currentItem.originalName || '';
+  const fileExt = fileName.split('.').pop().toLowerCase();
+  const isDoc = ['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls', 'odt', 'rtf'].includes(fileExt);
+
+  if (isDoc && currentItem.fileId) {
+    const downloadUrl = `/api/download/${encodeURIComponent(currentItem.fileId)}`;
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = currentItem.originalName || 'document';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Document downloaded! Opening print dialog via system handler...', 'info');
+    return;
+  }
 
   if (isImgVisible && imgEl.src) {
     const pwin = window.open('', '_blank');

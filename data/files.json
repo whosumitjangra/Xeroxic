@@ -1,1 +1,74 @@
-[]
+[
+  {
+    "id": "572bef0aba8612b9d48ca19f24ad0020",
+    "ownerId": "guest_27f4c6f944058a0c",
+    "originalName": "WhatsApp Image 2026-09-22 at 09.59.48.jpeg",
+    "storedName": "572bef0aba8612b9d48ca19f24ad0020.jpeg",
+    "filePath": "students/guest_27f4c6f944058a0c/572bef0aba8612b9d48ca19f24ad0020-WhatsApp Image 2026-09-22 at 09.59.48.jpeg",
+    "bucket": "pdfs and images",
+    "size": 746839,
+    "mimeType": "image/jpeg",
+    "uploadedAt": "2026-10-26T16:13:09.455Z",
+    "storageProvider": "supabase"
+  },
+  {
+    "id": "693e0b20f0f7d0a0897cf335c1b48e58",
+    "ownerId": "345a131e227c7b3d",
+    "originalName": "polymer composites final full edited and the final.docx",
+    "storedName": "693e0b20f0f7d0a0897cf335c1b48e58.docx",
+    "filePath": "students/345a131e227c7b3d/693e0b20f0f7d0a0897cf335c1b48e58-polymer composites final full edited and the final.docx",
+    "bucket": "pdfs and images",
+    "size": 122409,
+    "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "uploadedAt": "2026-10-26T16:13:09.703Z",
+    "storageProvider": "supabase"
+  },
+  {
+    "id": "851de2ff3cc75675ebb8707c971b9a3a",
+    "ownerId": "321929a7722cb3b9",
+    "originalName": "IMXvRMXNxqn3Q.png",
+    "storedName": "851de2ff3cc75675ebb8707c971b9a3a.png",
+    "filePath": "students/321929a7722cb3b9/851de2ff3cc75675ebb8707c971b9a3a-IMXvRMXNxqn3Q.png",
+    "bucket": "pdfs and images",
+    "size": 777204,
+    "mimeType": "image/png",
+    "uploadedAt": "2026-10-26T16:13:10.262Z",
+    "storageProvider": "supabase"
+  },
+  {
+    "id": "08184c93b481c761039fcc11412f7c19",
+    "ownerId": "321929a7722cb3b9",
+    "originalName": "Converted_Document.pdf",
+    "storedName": "08184c93b481c761039fcc11412f7c19.pdf",
+    "filePath": "students/321929a7722cb3b9/08184c93b481c761039fcc11412f7c19-Converted_Document.pdf",
+    "bucket": "pdfs and images",
+    "size": 534984,
+    "mimeType": "application/pdf",
+    "uploadedAt": "2026-10-26T16:13:10.648Z",
+    "storageProvider": "supabase"
+  },
+  {
+    "id": "494bde338a863af2f744cd353c22b6c2",
+    "ownerId": "321929a7722cb3b9",
+    "originalName": "Converted_Document.pdf",
+    "storedName": "494bde338a863af2f744cd353c22b6c2.pdf",
+    "filePath": "students/321929a7722cb3b9/494bde338a863af2f744cd353c22b6c2-Converted_Document.pdf",
+    "bucket": "pdfs and images",
+    "size": 534984,
+    "mimeType": "application/pdf",
+    "uploadedAt": "2026-10-26T16:13:10.972Z",
+    "storageProvider": "supabase"
+  },
+  {
+    "id": "8aaf3f0d5b0c92ae3ae224890ad68ae9",
+    "ownerId": "321929a7722cb3b9",
+    "originalName": "IMXvRMXNxqn3Q.png",
+    "storedName": "8aaf3f0d5b0c92ae3ae224890ad68ae9.png",
+    "filePath": "students/321929a7722cb3b9/8aaf3f0d5b0c92ae3ae224890ad68ae9-IMXvRMXNxqn3Q.png",
+    "bucket": "pdfs and images",
+    "size": 777204,
+    "mimeType": "image/png",
+    "uploadedAt": "2026-10-26T16:13:11.467Z",
+    "storageProvider": "supabase"
+  }
+]

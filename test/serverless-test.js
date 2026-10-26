@@ -396,7 +396,7 @@ async function runTests() {
       title: 'A* Search Algorithm Implementation',
       info: 'Implement A* search algorithm for 8-puzzle problem with Manhattan heuristic.',
       submissionGuidelines: 'Submit printed spiral report before end of week.',
-      deadline: '2026-10-15',
+      deadline: '2026-12-31',
       attachment: {
         originalName: 'AI_Exp1_Demo.txt',
         mimeType: 'text/plain',
