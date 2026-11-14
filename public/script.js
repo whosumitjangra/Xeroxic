@@ -466,6 +466,13 @@ function showPage(pageId) {
   } else if (pageId === 'payment') {
     initPaymentPage();
   } else if (pageId === 'trackorder') {
+    const trackIn = document.getElementById('track-input');
+    if (trackIn && !trackIn.value.trim()) {
+      try {
+        const saved = JSON.parse(localStorage.getItem('xerox_student_orders') || '[]');
+        if (saved.length > 0) trackIn.value = saved[0];
+      } catch (e) {}
+    }
     loadMyOrders();
   }
 }
@@ -1205,18 +1212,6 @@ async function launchRazorpayCheckout() {
     const amountInPaise = Math.max(100, Math.round(amountInRupees * 100));
 
     // 2. Call backend to create Razorpay Order
-    const createRes = await fetch('/api/create-order', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: amountInPaise,
-        currency: 'INR',
-        receipt: currentPendingOrder.orderId,
-        orderId: currentPendingOrder.orderId
-      })
-    });
-
     let createData = null;
     try {
       const createRes = await fetch('/api/create-order', {
@@ -1382,7 +1377,20 @@ document.getElementById('btn-sim-success')?.addEventListener('click', () => veri
 document.getElementById('btn-sim-fail')?.addEventListener('click', () => verifyPayment('FAILED'));
 document.getElementById('btn-sim-cancel')?.addEventListener('click', () => verifyPayment('CANCELLED'));
 
+function rememberStudentOrder(orderId) {
+  if (!orderId) return;
+  try {
+    const list = JSON.parse(localStorage.getItem('xerox_student_orders') || '[]');
+    const cleanId = String(orderId).trim();
+    if (!list.includes(cleanId)) {
+      list.unshift(cleanId);
+      localStorage.setItem('xerox_student_orders', JSON.stringify(list.slice(0, 30)));
+    }
+  } catch (e) {}
+}
+
 function renderConfirmation(orderId, total, items, method = 'Razorpay') {
+  rememberStudentOrder(orderId);
   document.getElementById('confirm-token').textContent = orderId;
   document.getElementById('confirm-total').textContent = '₹' + total;
 
@@ -1421,6 +1429,14 @@ document.getElementById('track-btn')?.addEventListener('click', () => {
   const id = document.getElementById('track-input').value.trim();
   if (!id) return;
   trackOrder(id);
+});
+
+document.getElementById('track-input')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const id = document.getElementById('track-input').value.trim();
+    if (id) trackOrder(id);
+  }
 });
 
 function formatStudentStatus(status) {
@@ -1490,6 +1506,7 @@ function stopTrackingPoller() {
 
 async function trackOrder(orderId) {
   stopTrackingPoller();
+  rememberStudentOrder(orderId);
 
   const errorEl = document.getElementById('track-error');
   const resultEl = document.getElementById('track-result');
@@ -1737,7 +1754,14 @@ async function loadMyOrders() {
   if (completedEmpty) completedEmpty.style.display = 'none';
 
   try {
-    const res = await fetch('/api/orders');
+    let fetchUrl = '/api/orders';
+    try {
+      const saved = JSON.parse(localStorage.getItem('xerox_student_orders') || '[]');
+      if (saved.length > 0) {
+        fetchUrl += '?ids=' + encodeURIComponent(saved.join(','));
+      }
+    } catch (e) {}
+    const res = await fetch(fetchUrl);
     if (!res.ok) throw new Error('Failed to fetch orders');
     const data = await res.json();
     const orders = data.orders || [];
