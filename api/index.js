@@ -108,8 +108,8 @@ let lastStatsPurgeTime = 0;
 const STATS_PURGE_INTERVAL_MS = 60 * 60 * 1000;
 
 // Razorpay SDK Configuration (secrets loaded from environment with test fallback)
-const DEFAULT_TEST_RAZORPAY_KEY_ID = 'rzp_test_TeOn3Cq5Vfubfu';
-const DEFAULT_TEST_RAZORPAY_KEY_SECRET = '3W4eNJDXVqgUCLMoyKBKDG8k';
+const DEFAULT_TEST_RAZORPAY_KEY_ID = 'rzp_test_Tzzsw766inwFeB';
+const DEFAULT_TEST_RAZORPAY_KEY_SECRET = 'jzNIcv2ND06L6glbnZNDKlCt';
 
 function getRazorpayConfig() {
   const keyId = process.env.RAZORPAY_KEY_ID || DEFAULT_TEST_RAZORPAY_KEY_ID;
@@ -129,15 +129,11 @@ function getRazorpayInstance() {
 }
 
 function verifyRazorpaySignature(orderId, paymentId, signature) {
-  if (!orderId || !paymentId) {
+  if (!orderId || !paymentId || !signature) {
     return false;
   }
-  // Allow test / simulated payments
-  if (orderId.startsWith('order_sim_') || paymentId.startsWith('pay_sim_')) {
-    return true;
-  }
   const { keySecret } = getRazorpayConfig();
-  if (!keySecret || !signature) {
+  if (!keySecret) {
     return false;
   }
   const generatedSignature = crypto
@@ -147,10 +143,14 @@ function verifyRazorpaySignature(orderId, paymentId, signature) {
 
   const genBuf = Buffer.from(generatedSignature, 'utf8');
   const sigBuf = Buffer.from(signature, 'utf8');
-  if (genBuf.length !== sigBuf.length) {
-    return false;
+  if (genBuf.length === sigBuf.length && crypto.timingSafeEqual(genBuf, sigBuf)) {
+    return true;
   }
-  return crypto.timingSafeEqual(genBuf, sigBuf);
+  // Allow test fallback only if simulated order and signature token
+  if (orderId.startsWith('order_sim_') && signature === 'simulated_sig') {
+    return true;
+  }
+  return false;
 }
 
 // Check if authenticated session role matches one of allowed roles

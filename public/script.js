@@ -1245,7 +1245,7 @@ async function launchRazorpayCheckout() {
       throw new Error('Razorpay SDK failed to load. Please check your internet connection.');
     }
 
-    const keyId = (createData && createData.keyId) || 'rzp_test_TeOn3Cq5Vfubfu';
+    const keyId = (createData && createData.keyId) || 'rzp_test_Tzzsw766inwFeB';
     const rzpOrderId = (createData && createData.order_id && !createData.order_id.startsWith('order_sim_')) ? createData.order_id : null;
 
     // 4. Configure Razorpay Standard Checkout Options
