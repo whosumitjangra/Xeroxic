@@ -1,13 +1,110 @@
 [
   {
-    "id": "asgn-d4d5ec69c003",
-    "subject": "Hi",
-    "deadline": "",
-    "attachment": null,
-    "experimentNo": "",
-    "title": "Hi",
-    "info": "",
-    "submissionGuidelines": "",
-    "createdAt": "2026-09-14T11:48:05.716Z"
+    "id": "sm-cn-te-01",
+    "subject": "Computer Networks (CN)",
+    "title": "Unit 1 & 2: OSI vs TCP/IP Architecture, Data Link Protocols & Routing Notes",
+    "category": "Lecture Notes & Study Material",
+    "year": "TE",
+    "branch": "CSE",
+    "batch": "All Batches",
+    "info": "Complete exam-oriented lecture notes covering Physical Layer, Data Link Layer, Flow Control, Error Detection, IP Addressing, and Subnetting.",
+    "deadline": "2026-12-15",
+    "attachment": {
+      "name": "CN_Unit_1_2_Class_Notes.pdf",
+      "url": "/api/download/sample-document",
+      "size": 534984,
+      "pages": 18
+    },
+    "createdAt": "2026-10-15T10:00:00.000Z"
+  },
+  {
+    "id": "sm-dbms-se-02",
+    "subject": "Database Management Systems (DBMS)",
+    "title": "SPPU Solved Previous Year Question Papers (PYQs 2022-2025) & SQL Query Bank",
+    "category": "Question Papers / PYQs",
+    "year": "SE",
+    "branch": "IT",
+    "batch": "All Batches",
+    "info": "Comprehensive university PYQ compilation with model answers, ER Diagrams, Relational Algebra, Normalization (1NF to BCNF), and Transaction Concurrency.",
+    "deadline": "2026-12-10",
+    "attachment": {
+      "name": "DBMS_PYQ_Solved_Papers_2022_2025.pdf",
+      "url": "/api/download/sample-document",
+      "size": 746839,
+      "pages": 24
+    },
+    "createdAt": "2026-10-16T11:30:00.000Z"
+  },
+  {
+    "id": "sm-os-te-03",
+    "subject": "Operating Systems (OS)",
+    "title": "Unit 3 & 4: Process Scheduling, Deadlock Prevention & Virtual Memory Notes",
+    "category": "Lecture Notes & Study Material",
+    "year": "TE",
+    "branch": "CSE",
+    "batch": "All Batches",
+    "info": "Handwritten and structured reference notes on CPU Scheduling algorithms, Banker Algorithm, Paging, Page Replacement (FIFO, LRU), and File Systems.",
+    "deadline": "2026-12-18",
+    "attachment": {
+      "name": "OS_Unit3_4_Memory_Management.docx",
+      "url": "/api/download/sample-doc",
+      "size": 122409,
+      "pages": 14
+    },
+    "createdAt": "2026-10-18T09:15:00.000Z"
+  },
+  {
+    "id": "sm-m3-se-04",
+    "subject": "Engineering Mathematics III (M3)",
+    "title": "All Units Formula Sheet, Laplace & Fourier Transform Solved Question Bank",
+    "category": "Tutorials / Assignments",
+    "year": "SE",
+    "branch": "All Branches",
+    "batch": "All Batches",
+    "info": "Quick reference formula cheat sheet and high-probability exam problems covering Linear Differential Equations, Transforms, Vector Calculus, and Statistics.",
+    "deadline": "2026-12-05",
+    "attachment": {
+      "name": "M3_Complete_Formula_Sheet_PYQs.pdf",
+      "url": "/api/download/sample-document",
+      "size": 534984,
+      "pages": 16
+    },
+    "createdAt": "2026-10-20T14:00:00.000Z"
+  },
+  {
+    "id": "sm-oop-se-05",
+    "subject": "Object Oriented Programming (Java / C++)",
+    "title": "OOP Lab Manual & Complete Experiment Code Templates (Experiments 1 to 10)",
+    "category": "Lab Manuals",
+    "year": "SE",
+    "branch": "CSE",
+    "batch": "All Batches",
+    "info": "Complete practical experiment writeups with problem statements, class diagrams, Java source code, test cases, and viva question answers.",
+    "deadline": "2026-12-22",
+    "attachment": {
+      "name": "OOP_Java_Lab_Manual_Exp1_10.docx",
+      "url": "/api/download/sample-doc",
+      "size": 122409,
+      "pages": 22
+    },
+    "createdAt": "2026-10-22T16:45:00.000Z"
+  },
+  {
+    "id": "sm-fe-bee-06",
+    "subject": "Basic Electrical Engineering (BEE)",
+    "title": "FE First Year: DC Circuits, AC Fundamentals & Transformer Question Bank",
+    "category": "Question Papers / PYQs",
+    "year": "FE",
+    "branch": "All Branches",
+    "batch": "All Batches",
+    "info": "Unit-wise questions, Kirchhoff laws numericals, Single phase AC circuits, and Three phase transformer derivations for FE in-sem and end-sem prep.",
+    "deadline": "2026-11-30",
+    "attachment": {
+      "name": "FE_BEE_Question_Bank_Solved.pdf",
+      "url": "/api/download/sample-document",
+      "size": 534984,
+      "pages": 12
+    },
+    "createdAt": "2026-10-24T12:00:00.000Z"
   }
 ]

@@ -64,9 +64,18 @@
 <body>
 
 <!-- FRONT LOGIN PAGE (REPLACING OLD 3-CARD INTERFACE) -->
-<div class="page active" id="login-page">
+<div class="page" id="login-page">
   <div class="front-signin-card">
     
+    <!-- Quick Return to Guest / Hub Browsing -->
+    <button type="button" class="back-to-hub-btn" onclick="showPage('dashboard')" style="background:none; border:none; color:#64748b; font-size:13px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; margin-bottom:14px; padding:0; transition:color 0.2s;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+      Back to Campus Hub
+    </button>
+
+    <!-- Contextual Action Notice (When prompted from Print Centre) -->
+    <div id="front-action-notice" style="display:none; background:#eff6ff; color:#1e40af; border:1.5px solid #bfdbfe; border-radius:12px; padding:10px 14px; margin-bottom:16px; font-size:13px; text-align:center; font-weight:500; line-height:1.4;"></div>
+
     <!-- Exact Xeroxic Logo -->
     <div class="front-logo-wrapper">
       <img src="/images/xeroxic-logo.png" alt="XEROXIC" class="front-logo-img">
@@ -165,7 +174,7 @@
 </div>
 
 <!-- DASHBOARD PAGE -->
-<div class="page" id="dashboard">
+<div class="page active" id="dashboard">
   <header class="main-header">
     <div class="logo">
       <img src="/images/xeroxic-logo.png" alt="XEROXIC" class="header-logo-img" onerror="this.src='logo.gif'">
@@ -316,28 +325,30 @@
       </div>
     </button>
 
-    <!-- Card 3: About Us (Campus Xerox hub) -->
-    <button class="card modern-card card-aboutus" data-target="aboutus">
+    <!-- Card 3: Study Material & Academic Notes (Replacing About Xerox Centre) -->
+    <button class="card modern-card card-studymaterial" data-target="studymaterial">
       <div class="card-vector-header header-emerald">
         <div class="card-icon-bubble bubble-emerald">
           <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            <line x1="9" y1="7" x2="16" y2="7"></line>
+            <line x1="9" y1="11" x2="14" y2="11"></line>
           </svg>
         </div>
-        <div class="card-header-badge badge-emerald">Campus Facility</div>
+        <div class="card-header-badge badge-emerald">Study Material</div>
       </div>
       <div class="card-body">
-        <h3 class="modern-card-title">About Xerox Centre</h3>
-        <p class="modern-card-desc">Operating schedule, shop counter location, rate list, and print guidelines for students.</p>
+        <h3 class="modern-card-title">Study Material &amp; PYQs</h3>
+        <p class="modern-card-desc">Syllabus-aligned lecture notes, unit-wise question banks, previous year question papers (PYQs), and reference PDFs by subject.</p>
         <div class="card-feature-chips">
-          <span class="feature-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 8:30 AM – 6:30 PM</span>
-          <span class="feature-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> Ground Floor</span>
-          <span class="feature-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Rate List</span>
+          <span class="feature-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Lecture Notes</span>
+          <span class="feature-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> University PYQs</span>
+          <span class="feature-chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> All Subjects</span>
         </div>
       </div>
       <div class="card-action-bar">
-        <span class="card-action-text">View Centre Details</span>
+        <span class="card-action-text">Browse Study Materials</span>
         <span class="card-action-arrow">→</span>
       </div>
     </button>
@@ -827,249 +838,92 @@
   </div>
 </div>
 
-<!-- ABOUT US PAGE -->
-<div class="page" id="aboutus">
+<!-- STUDY MATERIAL & PYQs REPOSITORY PAGE (REPLACING ABOUT XEROX CENTRE) -->
+<div class="page" id="studymaterial">
   <header class="light">
-    <h2 class="centre-title">About Xerox Centre</h2>
+    <h2 class="centre-title">Subject Study Material &amp; PYQs</h2>
   </header>
 
   <button class="back-btn" data-target="dashboard">← Back to Dashboard</button>
 
-  <div class="about-hero-card">
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-      <span class="card-sticker sticker-pink" style="position:static; margin-bottom:0; display:inline-flex; align-items:center; gap:6px;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
-        Campus Technology
-      </span>
-      <span class="tag-purged-shield" style="font-size:12px; padding:4px 10px; display:inline-flex; align-items:center; gap:6px;">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
-        Campus Print Facility
-      </span>
-    </div>
-
-    <h1 style="font-size:28px; font-weight:700; color:var(--ink); margin:16px 0 8px;">
-      AIT Campus Xerox Centre
-    </h1>
-    <p style="font-size:15px; color:#4a6352; margin:0 0 16px; line-height:1.6;">
-      Official campus printing and photocopy counter for <strong>Army Institute of Technology (AIT), Pune</strong>. Helping students and faculty print assignments, lab manuals, and project reports quickly without standing in long queues.
-    </p>
-
-    <!-- CAMPUS OPERATIONS SHOWCASE -->
-    <div class="about-stats-grid">
-      <div class="about-stat-card">
-        <div class="about-stat-number">10,000+</div>
-        <div class="about-stat-label">Pages Printed</div>
-      </div>
-      <div class="about-stat-card">
-        <div class="about-stat-number">2 Printers</div>
-        <div class="about-stat-label">Available at Shop</div>
-      </div>
-      <div class="about-stat-card">
-        <div class="about-stat-number">~2 Mins</div>
-        <div class="about-stat-label">Average Queue</div>
-      </div>
-      <div class="about-stat-card">
-        <div class="about-stat-number">Cash &amp; UPI</div>
-        <div class="about-stat-label">Accepted at Counter</div>
-      </div>
-    </div>
-
-    <!-- Campus Facility Operations Card -->
-    <div class="about-operations-card">
-      <div class="about-op-item">
-        <div class="about-op-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+  <div class="asgn-container" style="max-width:1120px; margin:0 auto; padding:0 12px 60px;">
+    <!-- Hero / Header Card -->
+    <div class="asgn-header-card" style="background:linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border:1.5px solid #a7f3d0; border-radius:20px; padding:24px 28px; margin-bottom:24px; box-shadow:0 4px 20px rgba(16,185,129,0.06);">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+        <div style="max-width:720px;">
+          <span class="card-sticker sticker-emerald" style="position:static; margin-bottom:10px; display:inline-flex; align-items:center; gap:6px; background:#dcfce7; color:#059669; border:1px solid #86efac; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:700;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            Subject Study Hub
+          </span>
+          <h1 style="margin:6px 0 8px; font-size:26px; font-weight:800; color:#064e3b; letter-spacing:-0.5px;">Curated Subject Notes &amp; PYQ Repository</h1>
+          <p style="margin:0; font-size:14px; color:#047857; line-height:1.6;">Access faculty-approved lecture notes, unit question banks, university question papers (PYQs), and study resources organized by subject and branch for FE, SE, TE &amp; BE.</p>
         </div>
-        <div>
-          <div style="font-weight:700; font-size:14px; color:#111827;">Operating Timings</div>
-          <div style="font-size:12.5px; color:#6b7280;">Mon – Sat: 8:30 AM – 6:30 PM (Lunch: 1:30 PM – 2:00 PM)</div>
-        </div>
-      </div>
-      <div class="about-op-item">
-        <div class="about-op-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-        </div>
-        <div>
-          <div style="font-weight:700; font-size:14px; color:#111827;">Pickup Location</div>
-          <div style="font-size:12.5px; color:#6b7280;">Ground Floor Counter #1, Near Main Auditorium, AIT Campus</div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <button type="button" class="upload-btn" data-target="assignments" style="background:#059669; border:none; padding:10px 18px; font-size:13px; font-weight:600; border-radius:12px; box-shadow:0 4px 12px rgba(5,150,105,0.25);">
+            📚 Lab Manuals &amp; Writeups →
+          </button>
         </div>
       </div>
     </div>
 
-    <h2 style="font-size:20px; font-weight:700; color:var(--ink); margin-top:24px; margin-bottom:4px;">
-      System Architecture &amp; Technology Stack
-    </h2>
-    <p style="font-size:13.5px; color:#607266; margin:0 0 16px;">
-      A comprehensive look under the hood at the enterprise-grade database, storage, serverless APIs, and security powering Xeroxic v3.0.0:
-    </p>
+    <!-- Live Search & Interactive Filter Controls -->
+    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:18px; padding:20px 24px; margin-bottom:24px; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <!-- Search Input -->
+        <div style="position:relative;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.2" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); pointer-events:none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="sm-search-input" placeholder="Search by subject, title or topic (e.g. DBMS, Computer Networks, OS, Mathematics, Engineering Physics)..." style="width:100%; box-sizing:border-box; padding:12px 14px 12px 42px; border:1.5px solid #cbd5e1; border-radius:12px; font-family:inherit; font-size:14px; outline:none; transition:border 0.2s;">
+        </div>
 
-    <div class="tech-grid">
-      <!-- Card 1: MongoDB Atlas -->
-      <div class="tech-card">
-        <div class="tech-card-head">
-          <div class="tech-card-icon icon-svg-wrap">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>
+        <!-- Filter Row 1: Year & Branch -->
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+          <span style="font-size:12.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">Year:</span>
+          <div class="filter-pills" id="sm-year-pills" style="margin:0; display:flex; flex-wrap:wrap; gap:6px;">
+            <button type="button" class="fpill active" data-year="all">All Years</button>
+            <button type="button" class="fpill" data-year="FE">FE</button>
+            <button type="button" class="fpill" data-year="SE">SE</button>
+            <button type="button" class="fpill" data-year="TE">TE</button>
+            <button type="button" class="fpill" data-year="BE">BE</button>
           </div>
-          <span>MongoDB Atlas Cloud DB</span>
-        </div>
-        <p class="tech-card-desc">
-          High-performance distributed MongoDB Atlas cluster with cached connection pooling, atomic transactions, partitioned daily counters, and rolling 10-order student history.
-        </p>
-        <div class="tech-chips-row">
-          <span class="tech-pill">MongoDB Atlas</span>
-          <span class="tech-pill">Mongoose ODM</span>
-          <span class="tech-pill">Connection Pooling</span>
-        </div>
-      </div>
 
-      <!-- Card 2: Serverless APIs -->
-      <div class="tech-card">
-        <div class="tech-card-head">
-          <div class="tech-card-icon icon-svg-wrap">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff8344" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          <span style="font-size:12.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-left:8px;">Branch:</span>
+          <div class="filter-pills" id="sm-branch-pills" style="margin:0; display:flex; flex-wrap:wrap; gap:6px;">
+            <button type="button" class="fpill active" data-branch="all">All Branches</button>
+            <button type="button" class="fpill" data-branch="CSE">CSE / COMP</button>
+            <button type="button" class="fpill" data-branch="IT">IT</button>
+            <button type="button" class="fpill" data-branch="ENTC">E&amp;TC</button>
+            <button type="button" class="fpill" data-branch="MECH">MECH</button>
           </div>
-          <span>Node.js Serverless APIs</span>
         </div>
-        <p class="tech-card-desc">
-          Scalable Vercel Serverless Node.js functions delivering sub-50ms RESTful endpoints for order submissions, assignment retrieval, and payment processing.
-        </p>
-        <div class="tech-chips-row">
-          <span class="tech-pill">Node.js</span>
-          <span class="tech-pill">Vercel Serverless</span>
-          <span class="tech-pill">Sub-50ms Cold Starts</span>
-        </div>
-      </div>
 
-      <!-- Card 3: Supabase 50MB Direct Storage -->
-      <div class="tech-card">
-        <div class="tech-card-head">
-          <div class="tech-card-icon icon-svg-wrap">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b59fe" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+        <!-- Filter Row 2: Category Filter -->
+        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; border-top:1px solid #f1f5f9; padding-top:14px;">
+          <span style="font-size:12.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">Material Type:</span>
+          <div class="filter-pills" id="sm-category-pills" style="margin:0; display:flex; flex-wrap:wrap; gap:6px;">
+            <button type="button" class="fpill active" data-category="all">All Materials</button>
+            <button type="button" class="fpill" data-category="notes">Lecture Notes</button>
+            <button type="button" class="fpill" data-category="pyq">University PYQs</button>
+            <button type="button" class="fpill" data-category="manuals">Lab Manuals</button>
+            <button type="button" class="fpill" data-category="tutorials">Tutorials &amp; Formula Sheets</button>
           </div>
-          <span>Supabase 50MB Cloud Storage</span>
-        </div>
-        <p class="tech-card-desc">
-          Pre-authenticated signed URL architecture streaming files up to 50MB directly to Supabase Storage, completely bypassing Vercel 4.5MB serverless RAM limits.
-        </p>
-        <div class="tech-chips-row">
-          <span class="tech-pill">Supabase Storage</span>
-          <span class="tech-pill">Signed Direct URLs</span>
-          <span class="tech-pill">50MB File Ceiling</span>
-        </div>
-      </div>
-
-      <!-- Card 4: Express QR Pickup Pass & Memorable IDs -->
-      <div class="tech-card">
-        <div class="tech-card-head">
-          <div class="tech-card-icon icon-svg-wrap">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-          </div>
-          <span>Express QR Pass &amp; Memorable IDs</span>
-        </div>
-        <p class="tech-card-desc">
-          Human-memorable Order IDs (e.g. <code>sumit24001</code>, <code>ali##24001</code>) with automatic hash padding, paired with a high-contrast Express QR Pickup Pass for 5-second counter handoffs.
-        </p>
-        <div class="tech-chips-row">
-          <span class="tech-pill">Memorable IDs</span>
-          <span class="tech-pill">Vector QR Matrix</span>
-          <span class="tech-pill"># Hash Padding</span>
-        </div>
-      </div>
-
-      <!-- Card 5: Real-Time 0ms Status Transitions -->
-      <div class="tech-card">
-        <div class="tech-card-head">
-          <div class="tech-card-icon icon-svg-wrap">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-          </div>
-          <span>0ms Instant Status Synchronization</span>
-        </div>
-        <p class="tech-card-desc">
-          Optimistic state transitions allow operator status changes (QUEUED &rarr; PRINTING &rarr; READY) to render with 0ms visual delay, with automatic student polling suspension upon completion.
-        </p>
-        <div class="tech-chips-row">
-          <span class="tech-pill">0ms Instant Sync</span>
-          <span class="tech-pill">Optimistic UI</span>
-          <span class="tech-pill">Battery-Safe Polling</span>
-        </div>
-      </div>
-
-      <!-- Card 6: Auto-Purge Storage Reclaim -->
-      <div class="tech-card">
-        <div class="tech-card-head">
-          <div class="tech-card-icon icon-svg-wrap">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-          </div>
-          <span>Auto-Purge Storage Reclaim</span>
-        </div>
-        <p class="tech-card-desc">
-          Zero-retention privacy engine that permanently deletes uploaded document payloads from Supabase cloud storage the instant an order is marked COLLECTED, protecting student data.
-        </p>
-        <div class="tech-chips-row">
-          <span class="tech-pill">Auto-Purge</span>
-          <span class="tech-pill">Zero Data Retention</span>
-          <span class="tech-pill">Privacy First</span>
-        </div>
-      </div>
-
-      <!-- Card 7: Super Admin Governance & Monthly Ledger -->
-      <div class="tech-card">
-        <div class="tech-card-head">
-          <div class="tech-card-icon icon-svg-wrap">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-          </div>
-          <span>Super Admin &amp; Monthly Archival</span>
-        </div>
-        <p class="tech-card-desc">
-          Multi-role RBAC with a centralized Super Admin directory to manage student accounts, toggle active status, and perform automated 30-day monthly print ledger renewals.
-        </p>
-        <div class="tech-chips-row">
-          <span class="tech-pill">Super Admin RBAC</span>
-          <span class="tech-pill">Student Directory</span>
-          <span class="tech-pill">Monthly Archiving</span>
-        </div>
-      </div>
-
-      <!-- Card 8: Razorpay UPI & Payment Verification -->
-      <div class="tech-card">
-        <div class="tech-card-head">
-          <div class="tech-card-icon icon-svg-wrap">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-          </div>
-          <span>Razorpay UPI &amp; HMAC Verification</span>
-        </div>
-        <p class="tech-card-desc">
-          Tamper-proof payment gateway with server-side HMAC-SHA256 signature verification ensuring orders are only admitted to the print queue once payment is cryptographically verified.
-        </p>
-        <div class="tech-chips-row">
-          <span class="tech-pill">Razorpay Standard</span>
-          <span class="tech-pill">HMAC-SHA256</span>
-          <span class="tech-pill">UPI / QR Codes</span>
         </div>
       </div>
     </div>
 
-    <!-- Campus Information & Quick Links Box -->
-    <div class="credits-box">
-      <div>
-        <div style="font-size:18px; font-weight:700; margin-bottom:4px;">
-          🏛️ Army Institute of Technology (AIT), Pune
-        </div>
-        <div style="font-size:13px; opacity:0.9;">
-          Smart Campus Print Facility • Dighi Hills, Alandi Road, Pune, Maharashtra 411015
-        </div>
+    <!-- Subject Materials Grid -->
+    <div id="sm-loading" style="text-align:center; padding:40px 20px; color:#64748b; font-size:14px;">
+      <div class="spinner" style="margin:0 auto 12px;"></div>
+      Loading subject study materials...
+    </div>
+
+    <div id="sm-grid" class="asgn-grid" style="display:none; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:20px;"></div>
+
+    <div id="sm-empty" style="display:none; text-align:center; padding:60px 20px; background:#fff; border-radius:18px; border:1px solid #e2e8f0;">
+      <div style="width:60px; height:60px; margin:0 auto 16px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#94a3b8;">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
       </div>
-      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <a href="https://www.aitpune.com" target="_blank" rel="noopener noreferrer" style="background:#ffffff; color:#1e6b38; padding:8px 16px; font-size:13px; font-weight:600; text-decoration:none; border-radius:10px; display:inline-flex; align-items:center; gap:6px;">
-          AIT Main Website ↗
-        </a>
-        <a href="https://aitnexus.in" target="_blank" rel="noopener noreferrer" style="background:rgba(255,255,255,0.2); color:#ffffff; padding:8px 16px; font-size:13px; font-weight:600; text-decoration:none; border-radius:10px; display:inline-flex; align-items:center; gap:6px; border:1px solid rgba(255,255,255,0.3);">
-          Nexus AIT Pune ↗
-        </a>
-        <button class="upload-btn" data-target="dashboard" style="background:rgba(255,255,255,0.2); color:#ffffff; padding:8px 16px; font-size:13px; border:1px solid rgba(255,255,255,0.3);">
-          Back to Home
-        </button>
-      </div>
+      <h3 style="margin:0 0 8px; font-size:18px; color:#1e293b;">No Study Materials Found</h3>
+      <p style="margin:0; font-size:14px; color:#64748b; max-width:440px; margin:0 auto;">Try clearing search keywords or switching filters. Admin can upload materials for any subject anytime from the Admin Portal.</p>
     </div>
   </div>
 </div>
@@ -1185,7 +1039,7 @@
 
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=2.3"></script>
+<script src="script.js?v=3.0"></script>
 
 </body>
 </html>

@@ -2,17 +2,33 @@
 // Dashboard page logic — talks to the real backend (server.js)
 // ===================================================================
 
-// ---------- Check login status on page load ----------
+let currentUser = null;
+let pendingDestination = null;
+
+// ---------- Check login status on page load (Login Later UX) ----------
 async function checkAuth() {
   try {
     const res = await fetch('/api/me');
     if (!res.ok) {
-      // Unauthenticated visitor -> Display Front Login Page (replacing old 3-card landing)
-      resetFrontLoginForm();
-      showPage('login-page');
+      currentUser = null;
+      // Guest / unauthenticated visitor -> Allow browsing dashboard, study material & assignments freely!
+      const nameEl = document.getElementById('welcome-name');
+      const authBtn = document.getElementById('auth-btn');
+      if (nameEl) nameEl.textContent = '';
+      if (authBtn) {
+        authBtn.textContent = 'Sign In';
+        authBtn.onclick = () => {
+          resetFrontLoginForm();
+          showPage('login-page');
+        };
+      }
+      showPage('dashboard');
+      fetchLivePricing();
+      loadMyOrders();
       return null;
     }
     const data = await res.json();
+    currentUser = data;
     const roleUpper = (data.role || '').toUpperCase();
 
     // Enforce role separation: Admin & Super Admin are routed to their dedicated portals
@@ -25,12 +41,12 @@ async function checkAuth() {
       return data;
     }
 
-    // Student -> Show Student Dashboard
+    // Authenticated Student -> Show Student Dashboard
     showPage('dashboard');
 
     const nameEl = document.getElementById('welcome-name');
     const authBtn = document.getElementById('auth-btn');
-    if (nameEl) nameEl.textContent = 'Hi, ' + data.name;
+    if (nameEl) nameEl.textContent = 'Hi, ' + (data.name || 'Student');
     if (authBtn) {
       authBtn.textContent = 'Sign Out';
       authBtn.onclick = handleStudentLogout;
@@ -40,8 +56,8 @@ async function checkAuth() {
     loadMyOrders();
     return data;
   } catch (err) {
-    resetFrontLoginForm();
-    showPage('login-page');
+    currentUser = null;
+    showPage('dashboard');
     return null;
   }
 }
@@ -91,6 +107,7 @@ async function handleStudentLogout() {
     await fetch('/api/logout', { method: 'POST' });
   } catch (e) {}
 
+  currentUser = null;
   resetFrontLoginForm();
 
   const nameEl = document.getElementById('welcome-name');
@@ -98,12 +115,14 @@ async function handleStudentLogout() {
 
   const authBtn = document.getElementById('auth-btn');
   if (authBtn) {
-    authBtn.textContent = 'Student Sign In';
+    authBtn.textContent = 'Sign In';
     authBtn.onclick = () => {
       resetFrontLoginForm();
       showPage('login-page');
     };
   }
+
+  showPage('dashboard');
 
   // Clear student orders and notifications from in-memory state
   if (typeof studentNotifications !== 'undefined') studentNotifications = [];
@@ -387,7 +406,8 @@ async function handleFrontSubmit(e) {
       return;
     }
 
-    // Student -> Reveal dashboard
+    // Student -> Reveal dashboard or pending destination
+    currentUser = data;
     const nameEl = document.getElementById('welcome-name');
     const authBtn = document.getElementById('auth-btn');
     if (nameEl) nameEl.textContent = 'Hi, ' + (data.name || 'Student');
@@ -395,7 +415,17 @@ async function handleFrontSubmit(e) {
       authBtn.textContent = 'Sign Out';
       authBtn.onclick = handleStudentLogout;
     }
-    showPage('dashboard');
+
+    const notice = document.getElementById('front-action-notice');
+    if (notice) notice.style.display = 'none';
+
+    if (pendingDestination) {
+      const dest = pendingDestination;
+      pendingDestination = null;
+      showPage(dest);
+    } else {
+      showPage('dashboard');
+    }
     fetchLivePricing();
     loadMyOrders();
   } catch (err) {
@@ -463,6 +493,8 @@ function showPage(pageId) {
     loadOrderItems();
   } else if (pageId === 'assignments') {
     loadAssignments();
+  } else if (pageId === 'studymaterial') {
+    loadStudyMaterials();
   } else if (pageId === 'payment') {
     initPaymentPage();
   } else if (pageId === 'trackorder') {
@@ -484,6 +516,20 @@ document.addEventListener('click', (e) => {
     const page = targetEl.dataset.target;
     if (page) {
       e.preventDefault();
+      // Login Later UX: If student taps on Print Centre / Print Options, prompt sign in first!
+      if (page === 'printcentre' || page === 'printoptions') {
+        if (!currentUser || !currentUser.email) {
+          pendingDestination = page;
+          const notice = document.getElementById('front-action-notice');
+          if (notice) {
+            notice.textContent = 'Please sign in or create an account to upload and print documents.';
+            notice.style.display = 'block';
+          }
+          resetFrontLoginForm();
+          showPage('login-page');
+          return;
+        }
+      }
       showPage(page);
     }
   }
@@ -2516,6 +2562,17 @@ window.downloadAllAssignmentFiles = async function(asgnId) {
 // 1-Click Send Demo Assignment to Print Centre
 window.orderAssignmentPrint = async function(asgnId, fnameEncoded, index = 0) {
   const fname = decodeURIComponent(fnameEncoded);
+  if (!currentUser || !currentUser.email) {
+    pendingDestination = 'printoptions';
+    const notice = document.getElementById('front-action-notice');
+    if (notice) {
+      notice.textContent = `Please sign in to order print for "${fname}".`;
+      notice.style.display = 'block';
+    }
+    resetFrontLoginForm();
+    showPage('login-page');
+    return;
+  }
   try {
     const res = await fetch(`/api/assignments/${asgnId}/attachment?index=${index}`);
     if (!res.ok) throw new Error('Could not fetch assignment demo file');
@@ -2793,8 +2850,8 @@ function initHeaderLiveSearch() {
     { title: 'Information Technology (IT)', category: 'Assignments', target: 'assignments', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>' },
     { title: 'Electronics & Telecommunication (E&TC)', category: 'Assignments', target: 'assignments', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>' },
     { title: 'Mechanical Engineering (MECH)', category: 'Assignments', target: 'assignments', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>' },
-    { title: 'Campus Timings & Operating Schedule', category: 'About Centre', target: 'aboutus', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>' },
-    { title: 'Express Counter #1 Pickup Information', category: 'About Centre', target: 'aboutus', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>' }
+    { title: 'Study Material & Notes (PYQs)', category: 'Study Hub', target: 'studymaterial', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>' },
+    { title: 'University PYQ Papers & Solutions', category: 'Study Hub', target: 'studymaterial', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>' }
   ];
 
   searchInput.addEventListener('input', () => {
@@ -2869,3 +2926,277 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 10000);
 });
+
+// ===================================================================
+// STUDY MATERIAL & PYQs REPOSITORY (STUDENT HUB)
+// ===================================================================
+
+let allStudyMaterials = [];
+let smActiveYear = 'all';
+let smActiveBranch = 'all';
+let smActiveCategory = 'all';
+let smSearchQuery = '';
+
+async function loadStudyMaterials() {
+  const loadingEl = document.getElementById('sm-loading');
+  const gridEl = document.getElementById('sm-grid');
+  const emptyEl = document.getElementById('sm-empty');
+
+  if (loadingEl) loadingEl.style.display = 'block';
+  if (gridEl) gridEl.style.display = 'none';
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  initStudyMaterialFilterUI();
+
+  try {
+    const res = await fetch(`/api/assignments?_t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+    });
+    if (!res.ok) throw new Error('Failed to load study materials');
+    const data = await res.json();
+    allStudyMaterials = data.assignments || [];
+    renderStudyMaterialsList();
+  } catch (err) {
+    console.error('Study material load error:', err);
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (emptyEl) {
+      emptyEl.style.display = 'block';
+      const h3 = emptyEl.querySelector('h3');
+      if (h3) h3.textContent = 'Could not load materials';
+    }
+  } finally {
+    if (loadingEl) loadingEl.style.display = 'none';
+  }
+}
+
+let smFilterListenersAttached = false;
+function initStudyMaterialFilterUI() {
+  if (smFilterListenersAttached) return;
+  smFilterListenersAttached = true;
+
+  // Year Pills
+  const yearPills = document.querySelectorAll('#sm-year-pills .fpill');
+  yearPills.forEach(p => {
+    p.addEventListener('click', () => {
+      yearPills.forEach(x => x.classList.remove('active'));
+      p.classList.add('active');
+      smActiveYear = p.dataset.year || 'all';
+      renderStudyMaterialsList();
+    });
+  });
+
+  // Branch Pills
+  const branchPills = document.querySelectorAll('#sm-branch-pills .fpill');
+  branchPills.forEach(p => {
+    p.addEventListener('click', () => {
+      branchPills.forEach(x => x.classList.remove('active'));
+      p.classList.add('active');
+      smActiveBranch = p.dataset.branch || 'all';
+      renderStudyMaterialsList();
+    });
+  });
+
+  // Category Pills
+  const catPills = document.querySelectorAll('#sm-category-pills .fpill');
+  catPills.forEach(p => {
+    p.addEventListener('click', () => {
+      catPills.forEach(x => x.classList.remove('active'));
+      p.classList.add('active');
+      smActiveCategory = p.dataset.category || 'all';
+      renderStudyMaterialsList();
+    });
+  });
+
+  // Search input with debounce
+  const searchIn = document.getElementById('sm-search-input');
+  if (searchIn) {
+    let debounceTimer = null;
+    searchIn.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        smSearchQuery = searchIn.value.trim().toLowerCase();
+        renderStudyMaterialsList();
+      }, 150);
+    });
+  }
+}
+
+function renderStudyMaterialsList() {
+  const gridEl = document.getElementById('sm-grid');
+  const emptyEl = document.getElementById('sm-empty');
+  if (!gridEl) return;
+
+  gridEl.innerHTML = '';
+
+  const filtered = allStudyMaterials.filter(item => {
+    // Year filter
+    if (smActiveYear !== 'all') {
+      const iy = String(item.year || '').toUpperCase();
+      if (iy !== 'ALL' && iy !== 'ALL YEARS' && iy !== smActiveYear.toUpperCase()) {
+        return false;
+      }
+    }
+
+    // Branch filter
+    if (smActiveBranch !== 'all') {
+      const ib = String(item.branch || '').toUpperCase();
+      if (ib !== 'ALL' && ib !== 'ALL BRANCHES' && !ib.includes(smActiveBranch.toUpperCase())) {
+        return false;
+      }
+    }
+
+    // Category filter
+    if (smActiveCategory !== 'all') {
+      const cat = String(item.category || '').toLowerCase();
+      if (smActiveCategory === 'notes' && !cat.includes('note') && !cat.includes('study')) return false;
+      if (smActiveCategory === 'pyq' && !cat.includes('pyq') && !cat.includes('paper') && !cat.includes('question')) return false;
+      if (smActiveCategory === 'manuals' && !cat.includes('manual') && !cat.includes('exp')) return false;
+      if (smActiveCategory === 'tutorials' && !cat.includes('tutorial') && !cat.includes('assign') && !cat.includes('formula')) return false;
+    }
+
+    // Search query
+    if (smSearchQuery) {
+      const haystack = `${item.subject || ''} ${item.title || ''} ${item.info || ''} ${item.category || ''}`.toLowerCase();
+      if (!haystack.includes(smSearchQuery)) return false;
+    }
+
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    gridEl.style.display = 'none';
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = 'none';
+  gridEl.style.display = 'grid';
+
+  filtered.forEach(item => {
+    const card = renderStudyMaterialCard(item);
+    gridEl.appendChild(card);
+  });
+}
+
+function renderStudyMaterialCard(item) {
+  const card = document.createElement('div');
+  card.className = 'asgn-card modern-sm-card';
+  card.style.cssText = 'background:#ffffff; border:1px solid #e2e8f0; border-radius:18px; padding:22px 24px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.03); transition:all 0.25s ease; position:relative; overflow:hidden;';
+
+  card.addEventListener('mouseenter', () => {
+    card.style.transform = 'translateY(-4px)';
+    card.style.boxShadow = '0 12px 28px rgba(0,0,0,0.07)';
+    card.style.borderColor = '#a7f3d0';
+  });
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = 'none';
+    card.style.boxShadow = '0 4px 16px rgba(0,0,0,0.03)';
+    card.style.borderColor = '#e2e8f0';
+  });
+
+  const yrStr = (item.year && item.year !== 'All Years') ? item.year : 'All Years';
+  const brStr = (item.branch && item.branch !== 'All Branches') ? item.branch : 'All Depts';
+  const catStr = item.category || 'Study Material';
+
+  const att = item.attachment;
+  const attName = att ? (att.originalName || att.name || 'Document.pdf') : `${item.subject || 'Material'}.pdf`;
+  const attExt = attName.split('.').pop().toUpperCase();
+  const attSize = att && att.size ? formatAsgnBytes(att.size) : 'PDF Document';
+
+  card.innerHTML = `
+    <div>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
+        <span style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.4px;">
+          ${escapeHTML(item.subject || 'Engineering')}
+        </span>
+        <span style="background:#f1f5f9; color:#475569; font-size:11px; font-weight:600; padding:3px 8px; border-radius:8px;">
+          ${yrStr} • ${brStr}
+        </span>
+      </div>
+
+      <h3 style="margin:0 0 8px; font-size:16px; font-weight:700; color:#0f172a; line-height:1.4;">
+        ${escapeHTML(item.title || 'Subject Material')}
+      </h3>
+
+      <div style="font-size:12px; color:#059669; font-weight:600; margin-bottom:10px; display:flex; align-items:center; gap:5px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        ${escapeHTML(catStr)}
+      </div>
+
+      <p style="margin:0 0 16px; font-size:13px; color:#64748b; line-height:1.5;">
+        ${escapeHTML(item.info || 'Comprehensive notes and resources provided for exam preparation and class study.')}
+      </p>
+
+      ${att ? `
+        <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px; padding:10px 14px; margin-bottom:18px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <div style="display:flex; align-items:center; gap:8px; overflow:hidden;">
+            <span style="background:#e0f2fe; color:#0284c7; font-size:11px; font-weight:800; padding:3px 6px; border-radius:6px;">${attExt}</span>
+            <span style="font-size:12.5px; font-weight:600; color:#334155; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">${escapeHTML(attName)}</span>
+          </div>
+          <span style="font-size:11px; color:#94a3b8; font-weight:500;">${attSize}</span>
+        </div>
+      ` : ''}
+    </div>
+
+    <div style="display:flex; align-items:center; gap:8px; border-top:1px solid #f1f5f9; padding-top:14px; margin-top:6px;">
+      ${att ? `
+        <button type="button" class="sm-btn-preview" style="flex:1; background:#f1f5f9; color:#1e293b; border:none; padding:8px 12px; border-radius:10px; font-size:12.5px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:5px; transition:background 0.2s;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          Preview
+        </button>
+        <a href="${att.url || `/api/assignments/${item.id}/attachment`}" download="${attName}" class="sm-btn-download" style="flex:1; background:#e0f2fe; color:#0369a1; text-decoration:none; padding:8px 12px; border-radius:10px; font-size:12.5px; font-weight:600; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:5px; transition:background 0.2s;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Download
+        </a>
+      ` : ''}
+      <button type="button" class="sm-btn-print" style="flex:1.2; background:linear-gradient(135deg, #10b981, #059669); color:#ffffff; border:none; padding:8px 12px; border-radius:10px; font-size:12.5px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:5px; box-shadow:0 2px 8px rgba(5,150,105,0.25);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+        Print Now
+      </button>
+    </div>
+  `;
+
+  // Attach preview
+  const prevBtn = card.querySelector('.sm-btn-preview');
+  if (prevBtn) {
+    prevBtn.onclick = () => {
+      if (typeof openAttachmentPreview === 'function') {
+        openAttachmentPreview(item.id, encodeURIComponent(item.title || item.subject), encodeURIComponent(attName));
+      }
+    };
+  }
+
+  // Attach print now (enforcing login later check)
+  const printBtn = card.querySelector('.sm-btn-print');
+  if (printBtn) {
+    printBtn.onclick = () => {
+      if (!currentUser || !currentUser.email) {
+        pendingDestination = 'printoptions';
+        const notice = document.getElementById('front-action-notice');
+        if (notice) {
+          notice.textContent = `Please sign in to order print for "${item.subject || 'Study Material'}".`;
+          notice.style.display = 'block';
+        }
+        resetFrontLoginForm();
+        showPage('login-page');
+        return;
+      }
+
+      orderDraft = [{
+        fileId: item.id || `sm-${Date.now()}`,
+        originalName: attName,
+        size: (att && att.size) || 250000,
+        pages: (att && att.pages) || 12,
+        color: 'bw',
+        sides: 'double',
+        copies: 1,
+        price: 18
+      }];
+
+      showPage('printoptions');
+    };
+  }
+
+  return card;
+}
