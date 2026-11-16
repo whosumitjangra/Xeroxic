@@ -466,13 +466,6 @@ function showPage(pageId) {
   } else if (pageId === 'payment') {
     initPaymentPage();
   } else if (pageId === 'trackorder') {
-    const trackIn = document.getElementById('track-input');
-    if (trackIn && !trackIn.value.trim()) {
-      try {
-        const saved = JSON.parse(localStorage.getItem('xerox_student_orders') || '[]');
-        if (saved.length > 0) trackIn.value = saved[0];
-      } catch (e) {}
-    }
     loadMyOrders();
   }
 }
@@ -1212,27 +1205,21 @@ async function launchRazorpayCheckout() {
     const amountInPaise = Math.max(100, Math.round(amountInRupees * 100));
 
     // 2. Call backend to create Razorpay Order
-    let createData = null;
-    try {
-      const createRes = await fetch('/api/create-order', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: amountInPaise,
-          currency: 'INR',
-          receipt: currentPendingOrder.orderId,
-          orderId: currentPendingOrder.orderId
-        })
-      });
-      if (createRes.ok) {
-        createData = await createRes.json();
-      } else {
-        const errJson = await createRes.json().catch(() => ({}));
-        console.warn('Backend /api/create-order notice:', errJson.error || createRes.statusText);
-      }
-    } catch (createErr) {
-      console.warn('Backend order call exception, falling back to test gateway mode:', createErr.message);
+    const createRes = await fetch('/api/create-order', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: amountInPaise,
+        currency: 'INR',
+        receipt: currentPendingOrder.orderId,
+        orderId: currentPendingOrder.orderId
+      })
+    });
+
+    const createData = await createRes.json();
+    if (!createRes.ok || !createData.order_id) {
+      throw new Error(createData.error || 'Failed to initialize Razorpay order on server.');
     }
 
     // 3. Verify Razorpay checkout script is loaded
@@ -1240,54 +1227,40 @@ async function launchRazorpayCheckout() {
       throw new Error('Razorpay SDK failed to load. Please check your internet connection.');
     }
 
-    const keyId = (createData && createData.keyId) || 'rzp_test_Tzzsw766inwFeB';
-    const rzpOrderId = (createData && createData.order_id && !createData.order_id.startsWith('order_sim_')) ? createData.order_id : null;
+    const keyId = createData.keyId || 'rzp_test_TeOn3Cq5Vfubfu';
 
     // 4. Configure Razorpay Standard Checkout Options
     const options = {
       key: keyId,
-      amount: (createData && createData.amount) || amountInPaise,
-      currency: (createData && createData.currency) || 'INR',
+      amount: createData.amount,
+      currency: createData.currency || 'INR',
       name: 'Xerox Centre — AIT Pune',
       description: `Printing Order #${currentPendingOrder.orderId}`,
       image: 'icons/icon-192.png',
-      ...(rzpOrderId ? { order_id: rzpOrderId } : {}),
+      order_id: createData.order_id,
       handler: async function(response) {
         // Step 2 & 3: Received payment response, verify signature with backend
         try {
           if (rzpBtn) {
             rzpBtn.disabled = true;
-            rzpBtn.innerHTML = '<span>Verifying Payment...</span>';
+            rzpBtn.innerHTML = '<span>Verifying Payment Signature...</span>';
           }
 
-          let verified = false;
-          try {
-            const verifyRes = await fetch('/api/payments/verify', {
-              method: 'POST',
-              credentials: 'same-origin',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id || rzpOrderId || (createData && createData.order_id) || `order_sim_${Date.now()}`,
-                razorpay_payment_id: response.razorpay_payment_id || `pay_sim_${Date.now()}`,
-                razorpay_signature: response.razorpay_signature || 'simulated_sig',
-                orderId: currentPendingOrder.orderId,
-                paymentStatus: 'SUCCESS',
-                simulationStatus: 'SUCCESS'
-              })
-            });
+          const verifyRes = await fetch('/api/payments/verify', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              orderId: currentPendingOrder.orderId
+            })
+          });
 
-            const verifyData = await verifyRes.json();
-            if (verifyRes.ok && (verifyData.success || verifyData.verified)) {
-              verified = true;
-            }
-          } catch (e) {
-            console.warn('Unified verify call error:', e);
-          }
-
-          if (!verified) {
-            // Direct fallback to student verification route
-            await verifyPayment('SUCCESS', response.razorpay_payment_id || 'RZP-PAID');
-            return;
+          const verifyData = await verifyRes.json();
+          if (!verifyRes.ok || !verifyData.success) {
+            throw new Error(verifyData.error || 'Payment signature verification failed.');
           }
 
           // Payment verified successfully!
@@ -1299,8 +1272,11 @@ async function launchRazorpayCheckout() {
           showPage('confirmation');
         } catch (verifyErr) {
           console.error('Razorpay verification error:', verifyErr);
-          // Auto fallback so student is never stuck
-          await verifyPayment('SUCCESS', response.razorpay_payment_id || 'RZP-PAID');
+          if (errBox) {
+            errBox.style.display = 'block';
+            errBox.textContent = `Payment verification failed: ${verifyErr.message}`;
+          }
+          alert(`Payment verification failed: ${verifyErr.message}`);
         } finally {
           if (rzpBtn) {
             rzpBtn.disabled = false;
@@ -1377,20 +1353,7 @@ document.getElementById('btn-sim-success')?.addEventListener('click', () => veri
 document.getElementById('btn-sim-fail')?.addEventListener('click', () => verifyPayment('FAILED'));
 document.getElementById('btn-sim-cancel')?.addEventListener('click', () => verifyPayment('CANCELLED'));
 
-function rememberStudentOrder(orderId) {
-  if (!orderId) return;
-  try {
-    const list = JSON.parse(localStorage.getItem('xerox_student_orders') || '[]');
-    const cleanId = String(orderId).trim();
-    if (!list.includes(cleanId)) {
-      list.unshift(cleanId);
-      localStorage.setItem('xerox_student_orders', JSON.stringify(list.slice(0, 30)));
-    }
-  } catch (e) {}
-}
-
 function renderConfirmation(orderId, total, items, method = 'Razorpay') {
-  rememberStudentOrder(orderId);
   document.getElementById('confirm-token').textContent = orderId;
   document.getElementById('confirm-total').textContent = '₹' + total;
 
@@ -1429,14 +1392,6 @@ document.getElementById('track-btn')?.addEventListener('click', () => {
   const id = document.getElementById('track-input').value.trim();
   if (!id) return;
   trackOrder(id);
-});
-
-document.getElementById('track-input')?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    const id = document.getElementById('track-input').value.trim();
-    if (id) trackOrder(id);
-  }
 });
 
 function formatStudentStatus(status) {
@@ -1506,7 +1461,6 @@ function stopTrackingPoller() {
 
 async function trackOrder(orderId) {
   stopTrackingPoller();
-  rememberStudentOrder(orderId);
 
   const errorEl = document.getElementById('track-error');
   const resultEl = document.getElementById('track-result');
@@ -1754,14 +1708,7 @@ async function loadMyOrders() {
   if (completedEmpty) completedEmpty.style.display = 'none';
 
   try {
-    let fetchUrl = '/api/orders';
-    try {
-      const saved = JSON.parse(localStorage.getItem('xerox_student_orders') || '[]');
-      if (saved.length > 0) {
-        fetchUrl += '?ids=' + encodeURIComponent(saved.join(','));
-      }
-    } catch (e) {}
-    const res = await fetch(fetchUrl);
+    const res = await fetch('/api/orders');
     if (!res.ok) throw new Error('Failed to fetch orders');
     const data = await res.json();
     const orders = data.orders || [];

@@ -107,20 +107,10 @@ const PRICE_TABLE = {
 let lastStatsPurgeTime = 0;
 const STATS_PURGE_INTERVAL_MS = 60 * 60 * 1000;
 
-function isCrossStudentBlocked(session, ownerId) {
-  if (!session || !ownerId) return false;
-  const isSessionReg = !session.isGuest && !String(session.userId).startsWith('guest_') && normalizeRole(session.role) === 'STUDENT';
-  const isOrderReg = !String(ownerId).startsWith('guest_');
-  return isSessionReg && isOrderReg && ownerId !== session.userId;
-}
-
-// Razorpay SDK Configuration (secrets loaded from environment with test fallback)
-const DEFAULT_TEST_RAZORPAY_KEY_ID = 'rzp_test_Tzzsw766inwFeB';
-const DEFAULT_TEST_RAZORPAY_KEY_SECRET = 'jzNIcv2ND06L6glbnZNDKlCt';
-
+// Razorpay SDK Configuration (secrets loaded strictly from environment)
 function getRazorpayConfig() {
-  const keyId = process.env.RAZORPAY_KEY_ID || DEFAULT_TEST_RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET || DEFAULT_TEST_RAZORPAY_KEY_SECRET;
+  const keyId = process.env.RAZORPAY_KEY_ID || '';
+  const keySecret = process.env.RAZORPAY_KEY_SECRET || '';
   return { keyId, keySecret };
 }
 
@@ -136,11 +126,8 @@ function getRazorpayInstance() {
 }
 
 function verifyRazorpaySignature(orderId, paymentId, signature) {
-  if (!orderId || !paymentId || !signature) {
-    return false;
-  }
   const { keySecret } = getRazorpayConfig();
-  if (!keySecret) {
+  if (!keySecret || !orderId || !paymentId || !signature) {
     return false;
   }
   const generatedSignature = crypto
@@ -150,14 +137,10 @@ function verifyRazorpaySignature(orderId, paymentId, signature) {
 
   const genBuf = Buffer.from(generatedSignature, 'utf8');
   const sigBuf = Buffer.from(signature, 'utf8');
-  if (genBuf.length === sigBuf.length && crypto.timingSafeEqual(genBuf, sigBuf)) {
-    return true;
+  if (genBuf.length !== sigBuf.length) {
+    return false;
   }
-  // Allow test fallback only if simulated order and signature token
-  if (orderId.startsWith('order_sim_') && signature === 'simulated_sig') {
-    return true;
-  }
-  return false;
+  return crypto.timingSafeEqual(genBuf, sigBuf);
 }
 
 // Check if authenticated session role matches one of allowed roles
@@ -1109,7 +1092,7 @@ async function handler(req, res) {
         }
 
         if (matchedOrder) {
-          if (isCrossStudentBlocked(session, matchedOrder.ownerId)) {
+          if (matchedOrder.ownerId && matchedOrder.ownerId !== session.userId) {
             return sendJSON(res, 403, { error: "Forbidden: You cannot verify payment for another student's order." });
           }
 
@@ -1179,7 +1162,7 @@ async function handler(req, res) {
       }
 
       // Security check: Student can only verify their own order
-      if (isCrossStudentBlocked(session, order.ownerId)) {
+      if (order.ownerId !== session.userId) {
         return sendJSON(res, 403, { error: 'Forbidden: You cannot verify payment for another student’s order.' });
       }
 
@@ -1300,24 +1283,8 @@ async function handler(req, res) {
 
       const rzp = getRazorpayInstance();
       if (!rzp) {
-        // Fallback to simulated order so the student is never blocked from completing checkout
-        const simulatedOrderId = 'order_sim_' + crypto.randomBytes(8).toString('hex');
-        if (orderId) {
-          const orders = await getOrders();
-          const ord = orders.find(o => o.orderId.toUpperCase() === String(orderId).trim().toUpperCase());
-          if (ord) {
-            ord.razorpayOrderId = simulatedOrderId;
-            ord.updatedAt = new Date().toISOString();
-            await saveOrders(orders);
-          }
-        }
-        return sendJSON(res, 200, {
-          order_id: simulatedOrderId,
-          id: simulatedOrderId,
-          amount: parsedAmount,
-          currency: (currency || 'INR').toUpperCase(),
-          keyId: getRazorpayConfig().keyId || DEFAULT_TEST_RAZORPAY_KEY_ID,
-          simulated: true
+        return sendJSON(res, 500, {
+          error: 'Razorpay payment gateway is not configured on this server. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.'
         });
       }
 
@@ -1341,7 +1308,7 @@ async function handler(req, res) {
           const orders = await getOrders();
           const ord = orders.find(o => o.orderId.toUpperCase() === String(orderId).trim().toUpperCase());
           if (ord) {
-            if (isCrossStudentBlocked(session, ord.ownerId)) {
+            if (ord.ownerId && ord.ownerId !== session.userId) {
               return sendJSON(res, 403, { error: "Forbidden: You cannot initiate payment for another student's order." });
             }
             ord.razorpayOrderId = rzpOrder.id;
@@ -1358,28 +1325,34 @@ async function handler(req, res) {
           keyId: getRazorpayConfig().keyId
         });
       } catch (rzpErr) {
-        console.error('Razorpay orders.create error, falling back to test order:', rzpErr.message || rzpErr);
-        // Fallback to simulated order so student checkout is never blocked
-        const simulatedOrderId = 'order_sim_' + crypto.randomBytes(8).toString('hex');
-        if (orderId) {
-          const orders = await getOrders();
-          const ord = orders.find(o => o.orderId.toUpperCase() === String(orderId).trim().toUpperCase());
-          if (ord) {
-            if (isCrossStudentBlocked(session, ord.ownerId)) {
-              return sendJSON(res, 403, { error: "Forbidden: You cannot initiate payment for another student's order." });
+        console.error('Razorpay orders.create error:', rzpErr);
+        // If in test/sandboxed environment without internet or proxy restriction, fallback to simulated order
+        if (process.env.NODE_ENV !== 'production' || process.env.VERCEL) {
+          const simulatedOrderId = 'order_sim_' + crypto.randomBytes(8).toString('hex');
+          if (orderId) {
+            const orders = await getOrders();
+            const ord = orders.find(o => o.orderId.toUpperCase() === String(orderId).trim().toUpperCase());
+            if (ord) {
+              if (ord.ownerId && ord.ownerId !== session.userId) {
+                return sendJSON(res, 403, { error: "Forbidden: You cannot initiate payment for another student's order." });
+              }
+              ord.razorpayOrderId = simulatedOrderId;
+              ord.updatedAt = new Date().toISOString();
+              await saveOrders(orders);
             }
-            ord.razorpayOrderId = simulatedOrderId;
-            ord.updatedAt = new Date().toISOString();
-            await saveOrders(orders);
           }
+          return sendJSON(res, 200, {
+            order_id: simulatedOrderId,
+            id: simulatedOrderId,
+            amount: parsedAmount,
+            currency: (currency || 'INR').toUpperCase(),
+            keyId: getRazorpayConfig().keyId,
+            simulated: true
+          });
         }
-        return sendJSON(res, 200, {
-          order_id: simulatedOrderId,
-          id: simulatedOrderId,
-          amount: parsedAmount,
-          currency: (currency || 'INR').toUpperCase(),
-          keyId: getRazorpayConfig().keyId || DEFAULT_TEST_RAZORPAY_KEY_ID,
-          simulated: true
+        const status = rzpErr.statusCode || 500;
+        return sendJSON(res, status >= 400 && status < 600 ? status : 500, {
+          error: (rzpErr.error && rzpErr.error.description) || rzpErr.message || 'Failed to create Razorpay order.'
         });
       }
     }
@@ -1391,24 +1364,7 @@ async function handler(req, res) {
       const session = getOrCreateStudentSession(req, res, isSecure);
       if (!session) return;
       const userOrders = await getOrdersForUser(session.userId, 10);
-      let mine = userOrders;
-
-      // Allow student browser to sync their device orders (e.g. ?ids=stude14001,stude14002)
-      const queryIds = parsed.searchParams.get('ids');
-      if (queryIds) {
-        const idList = queryIds.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-        if (idList.length > 0) {
-          const allOrders = await getOrders();
-          const extraOrders = allOrders.filter(o => {
-            if (!o.orderId) return false;
-            const oId = o.orderId.toLowerCase();
-            return idList.includes(oId) && !mine.some(m => m.orderId && m.orderId.toLowerCase() === oId);
-          });
-          mine = [...mine, ...extraOrders];
-        }
-      }
-
-      const formatted = mine
+      const mine = userOrders
         .map(o => ({
           orderId: o.orderId,
           total: o.total,
@@ -1420,7 +1376,7 @@ async function handler(req, res) {
           status: computeOrderStatus(o),
           items: o.items || []
         }));
-      return sendJSON(res, 200, { orders: formatted });
+      return sendJSON(res, 200, { orders: mine });
     }
 
     // ---------------- PRICING: PUBLIC GET PRICING ----------------
@@ -1432,26 +1388,15 @@ async function handler(req, res) {
     // ---------------- ORDERS: TRACK / GET ONE (STUDENT OWNERSHIP CHECK) ----------------
     if (pathname.startsWith('/api/orders/') && !pathname.endsWith('/status') && req.method === 'GET') {
       const session = getSessionFromReq(req);
-      const rawOrderId = decodeURIComponent(pathname.split('/').pop() || '').trim();
-      const cleanQuery = rawOrderId.toLowerCase();
-      const strippedQuery = cleanQuery.replace(/[^a-z0-9]/g, '');
-
+      const orderId = decodeURIComponent(pathname.split('/').pop());
       const orders = await getOrders();
-      const order = orders.find(o => {
-        if (!o.orderId) return false;
-        const oId = String(o.orderId).trim().toLowerCase();
-        const oStripped = oId.replace(/[^a-z0-9]/g, '');
-        if (oId === cleanQuery || oStripped === strippedQuery) return true;
-        if (o.paymentId && o.paymentId.toLowerCase() === cleanQuery) return true;
-        if (o.razorpayOrderId && o.razorpayOrderId.toLowerCase() === cleanQuery) return true;
-        if (o.razorpayPaymentId && o.razorpayPaymentId.toLowerCase() === cleanQuery) return true;
-        return false;
-      });
+      const order = orders.find(o => o.orderId.toLowerCase() === orderId.toLowerCase());
       if (!order) return sendJSON(res, 404, { error: 'No order found with that ID.' });
 
       if (session) {
-        // Cross-student IDOR security: Only prevent a logged-in registered Student B from accessing Student A's registered order
-        if (isCrossStudentBlocked(session, order.ownerId)) {
+        const userRole = normalizeRole(session.role);
+        // Student security check: Registered/authenticated Student can only view their own order!
+        if (userRole === 'STUDENT' && order.ownerId && order.ownerId !== session.userId) {
           return sendJSON(res, 403, { error: 'Forbidden: You do not have access to view this order.' });
         }
       }
