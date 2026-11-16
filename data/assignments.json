@@ -15,7 +15,9 @@
       "size": 534984,
       "pages": 18
     },
-    "createdAt": "2026-10-15T10:00:00.000Z"
+    "createdAt": "2026-10-15T10:00:00.000Z",
+    "chapterNo": "Unit 1 & 2",
+    "unitNo": "Unit 1 & 2"
   },
   {
     "id": "sm-dbms-se-02",
@@ -33,7 +35,9 @@
       "size": 746839,
       "pages": 24
     },
-    "createdAt": "2026-10-16T11:30:00.000Z"
+    "createdAt": "2026-10-16T11:30:00.000Z",
+    "chapterNo": "PYQs (2022-25)",
+    "unitNo": "PYQs (2022-25)"
   },
   {
     "id": "sm-os-te-03",
@@ -51,7 +55,9 @@
       "size": 122409,
       "pages": 14
     },
-    "createdAt": "2026-10-18T09:15:00.000Z"
+    "createdAt": "2026-10-18T09:15:00.000Z",
+    "chapterNo": "Unit 3 & 4",
+    "unitNo": "Unit 3 & 4"
   },
   {
     "id": "sm-m3-se-04",
@@ -69,7 +75,9 @@
       "size": 534984,
       "pages": 16
     },
-    "createdAt": "2026-10-20T14:00:00.000Z"
+    "createdAt": "2026-10-20T14:00:00.000Z",
+    "chapterNo": "All Units (Formulae)",
+    "unitNo": "All Units (Formulae)"
   },
   {
     "id": "sm-oop-se-05",
@@ -87,7 +95,9 @@
       "size": 122409,
       "pages": 22
     },
-    "createdAt": "2026-10-22T16:45:00.000Z"
+    "createdAt": "2026-10-22T16:45:00.000Z",
+    "chapterNo": "Lab Exp 1 - 10",
+    "unitNo": "Lab Exp 1 - 10"
   },
   {
     "id": "sm-fe-bee-06",
@@ -105,6 +115,8 @@
       "size": 534984,
       "pages": 12
     },
-    "createdAt": "2026-10-24T12:00:00.000Z"
+    "createdAt": "2026-10-24T12:00:00.000Z",
+    "chapterNo": "Units 1 to 4",
+    "unitNo": "Units 1 to 4"
   }
 ]

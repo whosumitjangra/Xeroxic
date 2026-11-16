@@ -229,15 +229,23 @@
   }
   .refresh-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
 
-  /* ===== ASSIGNMENTS TAB ===== */
-  .add-asgn-btn {
-    background: #ff8344;
+  /* ===== ASSIGNMENTS & STUDY MATERIAL ACTIONS ===== */
+  .add-sm-btn {
+    background: linear-gradient(135deg, #10b981, #059669);
     color: #fff; border: none; border-radius: 12px;
-    padding: 10px 22px; font-family:'Poppins',sans-serif; font-size: 13px; font-weight: 600;
-    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;
-    box-shadow: 0 2px 8px rgba(255,131,68,0.25);
+    padding: 10px 20px; font-family:'Poppins',sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
+    box-shadow: 0 2px 8px rgba(16,185,129,0.3);
   }
-  .add-asgn-btn:hover { background: #e56f32; transform: translateY(-1px); }
+  .add-sm-btn:hover { background: linear-gradient(135deg, #059669, #047857); transform: translateY(-1px); }
+  .add-asgn-btn {
+    background: #475569;
+    color: #fff; border: none; border-radius: 12px;
+    padding: 10px 20px; font-family:'Poppins',sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
+    box-shadow: 0 2px 8px rgba(71,85,105,0.2);
+  }
+  .add-asgn-btn:hover { background: #334155; transform: translateY(-1px); }
 
   /* ===== TABS ===== */
   .portal-tabs {
@@ -676,15 +684,21 @@
   <!-- ===== TAB 2: ASSIGNMENTS ===== -->
   <div id="tab-assignments-view" style="display:none;">
     <div class="content-panel">
-      <div class="content-panel-header">
+      <div class="content-panel-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
         <div>
           <h2 class="content-panel-title">Subject Study Material &amp; Assignments</h2>
           <p class="content-panel-sub">Publish lecture notes, university PYQs, and lab manuals visible to all students</p>
         </div>
-        <button class="add-asgn-btn" id="btn-open-add-asgn">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle; margin-right:4px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          Add Material / Assignment
-        </button>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <button class="add-sm-btn" id="btn-open-add-sm" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            + Add Study Material
+          </button>
+          <button class="add-asgn-btn" id="btn-open-add-asgn" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            + Add Lab Assignment
+          </button>
+        </div>
       </div>
 
       <div class="filter-row">
@@ -723,8 +737,8 @@
   <div class="modal-box">
     <div class="modal-head">
       <h3 style="display:flex; align-items:center; gap:8px;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        Add Subject Material or Assignment
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        <span id="modal-asgn-heading">Add Subject Study Material</span>
       </h3>
       <button type="button" class="modal-x" id="modal-asgn-close">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -732,10 +746,23 @@
     </div>
     <form id="add-asgn-form">
       <div class="modal-body-pad">
+        <!-- STEP 1: SUBJECT & CHAPTER NO (REQUIRED) -->
         <div class="asgn-row-2">
           <div class="mfield">
-            <label>Subject *</label>
-            <input type="text" id="asgn-subject-input" placeholder="e.g. Computer Networks, DBMS, OS…" required>
+            <label id="label-asgn-subject">Subject *</label>
+            <input type="text" id="asgn-subject-input" placeholder="e.g. Computer Networks, DBMS, Operating Systems…" required>
+          </div>
+          <div class="mfield" id="asgn-chapter-field">
+            <label id="label-asgn-chapter">Chapter No / Unit No *</label>
+            <input type="text" id="asgn-chapter-input" placeholder="e.g. Chapter 1, Unit 2, Module 3…" required>
+          </div>
+        </div>
+
+        <!-- STEP 2: TITLE / TOPIC NAME & CATEGORY -->
+        <div class="asgn-row-2">
+          <div class="mfield">
+            <label id="label-asgn-title">Title / Topic Name *</label>
+            <input type="text" id="asgn-title-input" placeholder="e.g. Data Link Layer Framing, SQL Joins Notes…" required>
           </div>
           <div class="mfield">
             <label>Material Category *</label>
@@ -750,6 +777,8 @@
             </datalist>
           </div>
         </div>
+
+        <!-- STEP 3: TARGET AUDIENCE (YEAR, BRANCH, BATCH) -->
         <div class="asgn-row-3">
           <div class="mfield">
             <label>Target Year</label>
@@ -777,49 +806,34 @@
             <input list="asgn-batch-list" id="asgn-batch-input" placeholder="e.g. All Batches, A1, B2, Z6..." value="All Batches" style="width:100%; padding:10px 12px; border:1.5px solid #d0ddd4; border-radius:10px; font-family:'Poppins'; font-size:13.5px; background:#fff;">
             <datalist id="asgn-batch-list">
               <option value="All Batches">
-              <option value="A1">
-              <option value="A2">
-              <option value="A3">
-              <option value="A4">
-              <option value="A5">
-              <option value="A6">
-              <option value="B1">
-              <option value="B2">
-              <option value="B3">
-              <option value="B4">
-              <option value="B5">
-              <option value="B6">
-              <option value="C1">
-              <option value="C2">
-              <option value="C3">
-              <option value="C4">
-              <option value="C5">
-              <option value="C6">
-              <option value="D1">
-              <option value="D2">
-              <option value="D3">
-              <option value="D4">
-              <option value="D5">
-              <option value="D6">
-              <option value="Z1">
-              <option value="Z2">
-              <option value="Z3">
-              <option value="Z4">
-              <option value="Z5">
-              <option value="Z6">
+              <option value="A1"><option value="A2"><option value="A3"><option value="A4"><option value="A5"><option value="A6">
+              <option value="B1"><option value="B2"><option value="B3"><option value="B4"><option value="B5"><option value="B6">
+              <option value="C1"><option value="C2"><option value="C3"><option value="C4"><option value="C5"><option value="C6">
+              <option value="D1"><option value="D2"><option value="D3"><option value="D4"><option value="D5"><option value="D6">
+              <option value="Z1"><option value="Z2"><option value="Z3"><option value="Z4"><option value="Z5"><option value="Z6">
             </datalist>
           </div>
         </div>
-        <div class="mfield">
-          <label>Submission Due Date</label>
-          <input type="date" id="asgn-deadline-input">
+
+        <!-- STEP 4: DUE DATE & DESCRIPTION -->
+        <div class="asgn-row-2">
+          <div class="mfield">
+            <label id="label-asgn-deadline">Submission Due Date (Optional for Study Material)</label>
+            <input type="date" id="asgn-deadline-input">
+          </div>
+          <div class="mfield">
+            <label>Key Topics / Description</label>
+            <input type="text" id="asgn-info-input" placeholder="e.g. Complete syllabus notes, formulas, and past exam questions…">
+          </div>
         </div>
+
+        <!-- STEP 5: FILE ATTACHMENTS (DOCX/PDF/IMAGES) -->
         <div class="mfield">
-          <label>Assignment Images & Attachments (Upload 1 or More)</label>
+          <label id="label-asgn-dropzone">Attachments &amp; PDF Notes (Upload 1 or More)</label>
           <div class="file-drop" id="asgn-dropzone">
             <p style="display:flex; align-items:center; justify-content:center; gap:8px;">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-              Click or Drop Documents / Images (Multiple Supported)
+              Click or Drop Documents / Notes / PDF (Multiple Supported)
             </p>
             <span id="asgn-file-status">Supports PDF, DOC, DOCX, PPT, JPG, PNG (Up to 50 MB each, direct cloud upload)</span>
             <input type="file" id="asgn-file-input" style="display:none;" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.ppt,.pptx,.txt,.rtf" multiple>
@@ -829,7 +843,7 @@
             <div class="staged-preview-header">
               <span id="asgn-staged-count" style="display:flex; align-items:center; gap:6px;">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                0 Images Selected
+                0 Files Selected
               </span>
               <div class="staged-header-actions">
                 <button type="button" class="staged-mini-btn" id="asgn-add-more-btn">
@@ -857,7 +871,7 @@
       </div>
       <div class="modal-foot">
         <button type="button" class="btn-cancel" id="modal-asgn-cancel">Cancel</button>
-        <button type="submit" class="btn-submit" id="submit-asgn-btn">Publish Assignment</button>
+        <button type="submit" class="btn-submit" id="submit-asgn-btn">Publish Study Material</button>
       </div>
     </form>
   </div>

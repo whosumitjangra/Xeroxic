@@ -948,7 +948,9 @@ function renderAdminAssignments() {
     const q = currentAdminSearch.toLowerCase();
     const matchesSearch = !q ||
       (a.subject && a.subject.toLowerCase().includes(q)) ||
+      (a.chapterNo && a.chapterNo.toLowerCase().includes(q)) ||
       (a.title && a.title.toLowerCase().includes(q)) ||
+      (a.category && a.category.toLowerCase().includes(q)) ||
       (a.attachmentName && a.attachmentName.toLowerCase().includes(q));
     return matchesSubject && matchesSearch;
   });
@@ -1011,7 +1013,8 @@ function renderAdminAssignments() {
       <div>
         <div class="asgn-card-top" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:8px;">
           <span class="asgn-subject-tag">${a.subject}</span>
-          <span class="asgn-batch-tag" style="background:#f3e8ff; color:#6b21a8; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #e9d5ff;">${a.category || 'Lab Experiments'}</span>
+          ${a.chapterNo ? `<span class="asgn-batch-tag" style="background:#eff6ff; color:#1d4ed8; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:700; border:1px solid #bfdbfe;">${escapeHtml(a.chapterNo)}</span>` : ''}
+          <span class="asgn-batch-tag" style="background:#f3e8ff; color:#6b21a8; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #e9d5ff;">${a.category || 'Study Material'}</span>
           <span class="asgn-batch-tag" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #bae6fd;">${a.targetClass || 'All Classes'}</span>
           <span class="asgn-batch-tag" style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #fde68a;">${a.batch || 'All Batches'}</span>
           ${a.deadline ? `<span class="asgn-deadline-pill">Due: ${a.deadline}</span>` : '<span class="asgn-deadline-pill" style="background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;">No Deadline</span>'}
@@ -1040,6 +1043,7 @@ document.getElementById('admin-asgn-search-input')?.addEventListener('input', (e
 
 // Modal Dialog Controls
 const addModal = document.getElementById('admin-asgn-modal');
+const btnOpenAddSm = document.getElementById('btn-open-add-sm');
 const btnOpenAddAsgn = document.getElementById('btn-open-add-asgn');
 const modalClose = document.getElementById('modal-asgn-close');
 const modalCancel = document.getElementById('modal-asgn-cancel');
@@ -1048,9 +1052,33 @@ const asgnFileInput = document.getElementById('asgn-file-input');
 const asgnFileStatus = document.getElementById('asgn-file-status');
 const addAsgnForm = document.getElementById('add-asgn-form');
 
-btnOpenAddAsgn?.addEventListener('click', () => {
-  if (addModal) addModal.style.display = 'flex';
-});
+const modalAsgnHeading = document.getElementById('modal-asgn-heading');
+const labelAsgnChapter = document.getElementById('label-asgn-chapter');
+const asgnChapterInput = document.getElementById('asgn-chapter-input');
+const asgnCatInput = document.getElementById('asgn-category-input');
+const submitAsgnBtn = document.getElementById('submit-asgn-btn');
+
+function openAddModal(type = 'studymaterial') {
+  if (!addModal) return;
+  if (type === 'studymaterial') {
+    if (modalAsgnHeading) modalAsgnHeading.textContent = 'Add Subject Study Material (Lecture Notes / PYQs)';
+    if (asgnCatInput) asgnCatInput.value = 'Lecture Notes & Study Material';
+    if (labelAsgnChapter) labelAsgnChapter.textContent = 'Chapter No / Unit No *';
+    if (asgnChapterInput) asgnChapterInput.placeholder = 'e.g. Chapter 1, Unit 2, Module 3…';
+    if (submitAsgnBtn) submitAsgnBtn.textContent = 'Publish Study Material';
+  } else {
+    if (modalAsgnHeading) modalAsgnHeading.textContent = 'Add Lab Assignment / Experiment';
+    if (asgnCatInput) asgnCatInput.value = 'Lab Experiments & Manuals';
+    if (labelAsgnChapter) labelAsgnChapter.textContent = 'Experiment No / Unit No';
+    if (asgnChapterInput) asgnChapterInput.placeholder = 'e.g. Exp 1, Unit 2…';
+    if (submitAsgnBtn) submitAsgnBtn.textContent = 'Publish Lab Assignment';
+  }
+  addModal.style.display = 'flex';
+  document.getElementById('asgn-subject-input')?.focus();
+}
+
+btnOpenAddSm?.addEventListener('click', () => openAddModal('studymaterial'));
+btnOpenAddAsgn?.addEventListener('click', () => openAddModal('assignment'));
 
 modalClose?.addEventListener('click', () => {
   if (addModal) addModal.style.display = 'none';
@@ -1429,16 +1457,19 @@ addAsgnForm?.addEventListener('submit', async (e) => {
   }
 
   const subject = document.getElementById('asgn-subject-input')?.value.trim();
-  const category = document.getElementById('asgn-category-input')?.value.trim() || 'Lab Experiments';
+  const chapterNo = document.getElementById('asgn-chapter-input')?.value.trim() || '';
+  const title = document.getElementById('asgn-title-input')?.value.trim() || (chapterNo ? `${subject} - ${chapterNo}` : subject);
+  const category = document.getElementById('asgn-category-input')?.value.trim() || 'Lecture Notes & Study Material';
   const year = document.getElementById('asgn-year-input')?.value || 'All Years';
   const branch = document.getElementById('asgn-branch-input')?.value || 'All Branches';
   const batch = document.getElementById('asgn-batch-input')?.value?.trim() || 'All Batches';
   const targetClass = (year !== 'All Years' || branch !== 'All Branches') ? `${year} ${branch}`.trim() : 'All Classes';
   const deadline = document.getElementById('asgn-deadline-input')?.value || '';
+  const info = document.getElementById('asgn-info-input')?.value.trim() || '';
 
   if (!subject) {
     alert('Subject is required.');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Publish Assignment'; }
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Publish'; }
     return;
   }
 
@@ -1464,6 +1495,10 @@ addAsgnForm?.addEventListener('submit', async (e) => {
 
     const payloadData = {
       subject,
+      chapterNo,
+      unitNo: chapterNo,
+      title,
+      info,
       category,
       year,
       branch,
@@ -1509,8 +1544,8 @@ addAsgnForm?.addEventListener('submit', async (e) => {
       return;
     }
 
-    showToast('Assignment published successfully with preview!', 'success');
-    alert('Assignment published successfully!');
+    showToast('Study material / assignment published successfully!', 'success');
+    alert('Published successfully!');
     addAsgnForm.reset();
     stagedAttachments = [];
     activeStagedIndex = 0;

@@ -2233,6 +2233,7 @@ function renderAssignmentsList() {
     const matchesSubject = currentSubjectFilter === 'all' || a.subject === currentSubjectFilter;
     const matchesSearch = !search ||
       (a.subject && a.subject.toLowerCase().includes(search)) ||
+      (a.chapterNo && a.chapterNo.toLowerCase().includes(search)) ||
       (a.title && a.title.toLowerCase().includes(search)) ||
       (a.category && a.category.toLowerCase().includes(search)) ||
       (a.attachmentName && a.attachmentName.toLowerCase().includes(search));
@@ -2364,6 +2365,7 @@ function renderAssignmentsList() {
         <div>
           <div class="asgn-card-top" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:8px;">
             <span class="asgn-subject-tag">${a.subject}</span>
+            ${a.chapterNo ? `<span class="asgn-batch-tag" style="background:#eff6ff; color:#1d4ed8; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:700; border:1px solid #bfdbfe;">${escapeHtml(a.chapterNo)}</span>` : ''}
             <span class="asgn-batch-tag" style="background:#f3e8ff; color:#6b21a8; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #e9d5ff;">${a.category || 'Lab Experiments'}</span>
             <span class="asgn-batch-tag" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #bae6fd;">${a.targetClass || 'All Classes'}</span>
             ${a.batch && a.batch !== 'All Batches' ? `<span class="asgn-batch-tag" style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; border:1px solid #fde68a;">${a.batch}</span>` : ''}
@@ -3057,7 +3059,7 @@ function renderStudyMaterialsList() {
 
     // Search query
     if (smSearchQuery) {
-      const haystack = `${item.subject || ''} ${item.title || ''} ${item.info || ''} ${item.category || ''}`.toLowerCase();
+      const haystack = `${item.subject || ''} ${item.chapterNo || ''} ${item.title || ''} ${item.info || ''} ${item.category || ''}`.toLowerCase();
       if (!haystack.includes(smSearchQuery)) return false;
     }
 
@@ -3107,9 +3109,16 @@ function renderStudyMaterialCard(item) {
   card.innerHTML = `
     <div>
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
-        <span style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.4px;">
-          ${escapeHTML(item.subject || 'Engineering')}
-        </span>
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.4px;">
+            ${escapeHTML(item.subject || 'Engineering')}
+          </span>
+          ${item.chapterNo ? `
+            <span style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:11px; font-weight:700; padding:3px 9px; border-radius:10px;">
+              ${escapeHTML(item.chapterNo)}
+            </span>
+          ` : ''}
+        </div>
         <span style="background:#f1f5f9; color:#475569; font-size:11px; font-weight:600; padding:3px 8px; border-radius:8px;">
           ${yrStr} • ${brStr}
         </span>

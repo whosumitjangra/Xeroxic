@@ -1972,6 +1972,8 @@ async function handler(req, res) {
         return {
           id: a.id,
           subject: a.subject,
+          chapterNo: a.chapterNo || a.unitNo || '',
+          unitNo: a.unitNo || a.chapterNo || '',
           experimentNo: a.experimentNo,
           title: a.title,
           info: a.info,
@@ -1987,7 +1989,7 @@ async function handler(req, res) {
           branch: a.branch || (a.targetClass && a.targetClass !== 'All Classes' ? a.targetClass.split(' ').slice(1).join(' ') || 'All' : 'All'),
           targetClass: a.targetClass || 'All Classes',
           batch: a.batch || 'All Batches',
-          category: a.category || 'Lab Experiments'
+          category: a.category || 'Lecture Notes & Study Material'
         };
       });
 
@@ -2088,14 +2090,19 @@ async function handler(req, res) {
 
       const newAssignment = await createAssignment({
         subject: subject.trim(),
-        category: (category && category.trim()) || 'Lab Experiments',
+        chapterNo: (body.chapterNo || body.unitNo || '').trim(),
+        unitNo: (body.chapterNo || body.unitNo || '').trim(),
+        title: (body.title || '').trim(),
+        info: (body.info || '').trim(),
+        category: (category && category.trim()) || 'Lecture Notes & Study Material',
         deadline: deadline || '',
         attachment: cleanAttachments[0] || null,
         attachments: cleanAttachments,
         year: body.year || '',
         branch: body.branch || '',
         targetClass: body.targetClass || body.class || 'All Classes',
-        batch: body.batch || 'All Batches'
+        batch: body.batch || 'All Batches',
+        submissionGuidelines: (body.submissionGuidelines || '').trim()
       });
 
       return sendJSON(res, 201, { success: true, assignment: newAssignment });
