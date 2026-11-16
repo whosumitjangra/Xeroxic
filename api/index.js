@@ -1364,7 +1364,24 @@ async function handler(req, res) {
       const session = getOrCreateStudentSession(req, res, isSecure);
       if (!session) return;
       const userOrders = await getOrdersForUser(session.userId, 10);
-      const mine = userOrders
+      let mine = userOrders;
+
+      // Allow student browser to sync their device orders (e.g. ?ids=token1,token2)
+      const queryIds = parsed.searchParams.get('ids');
+      if (queryIds) {
+        const idList = queryIds.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+        if (idList.length > 0) {
+          const allOrders = await getOrders();
+          const extraOrders = allOrders.filter(o => {
+            if (!o.orderId) return false;
+            const oId = o.orderId.toLowerCase();
+            return idList.includes(oId) && !mine.some(m => m.orderId && m.orderId.toLowerCase() === oId);
+          });
+          mine = [...mine, ...extraOrders];
+        }
+      }
+
+      const formatted = mine
         .map(o => ({
           orderId: o.orderId,
           total: o.total,
@@ -1376,7 +1393,7 @@ async function handler(req, res) {
           status: computeOrderStatus(o),
           items: o.items || []
         }));
-      return sendJSON(res, 200, { orders: mine });
+      return sendJSON(res, 200, { orders: formatted });
     }
 
     // ---------------- PRICING: PUBLIC GET PRICING ----------------
@@ -1388,15 +1405,28 @@ async function handler(req, res) {
     // ---------------- ORDERS: TRACK / GET ONE (STUDENT OWNERSHIP CHECK) ----------------
     if (pathname.startsWith('/api/orders/') && !pathname.endsWith('/status') && req.method === 'GET') {
       const session = getSessionFromReq(req);
-      const orderId = decodeURIComponent(pathname.split('/').pop());
+      const rawOrderId = decodeURIComponent(pathname.split('/').pop() || '').trim();
+      const cleanQuery = rawOrderId.toLowerCase();
+      const strippedQuery = cleanQuery.replace(/[^a-z0-9]/g, '');
+
       const orders = await getOrders();
-      const order = orders.find(o => o.orderId.toLowerCase() === orderId.toLowerCase());
+      const order = orders.find(o => {
+        if (!o.orderId) return false;
+        const oId = String(o.orderId).trim().toLowerCase();
+        const oStripped = oId.replace(/[^a-z0-9]/g, '');
+        if (oId === cleanQuery || oStripped === strippedQuery) return true;
+        if (o.paymentId && o.paymentId.toLowerCase() === cleanQuery) return true;
+        return false;
+      });
       if (!order) return sendJSON(res, 404, { error: 'No order found with that ID.' });
 
       if (session) {
         const userRole = normalizeRole(session.role);
-        // Student security check: Registered/authenticated Student can only view their own order!
-        if (userRole === 'STUDENT' && order.ownerId && order.ownerId !== session.userId) {
+        const isSessionRegisteredStudent = userRole === 'STUDENT' && !session.isGuest && !String(session.userId).startsWith('guest_');
+        const isOrderRegisteredStudent = order.ownerId && !String(order.ownerId).startsWith('guest_');
+
+        // Cross-student IDOR security: Only prevent a logged-in registered Student B from accessing Student A's registered order
+        if (isSessionRegisteredStudent && isOrderRegisteredStudent && order.ownerId !== session.userId) {
           return sendJSON(res, 403, { error: 'Forbidden: You do not have access to view this order.' });
         }
       }
